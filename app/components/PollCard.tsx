@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import StakingModal from './StakingModal'
+import ResultsPage from './ResultsPage'
 
 export default function PollCard() {
   const [cards] = useState([
@@ -11,14 +13,18 @@ export default function PollCard() {
 
   const [currentIndex, setCurrentIndex] = useState(0)
   const [transform, setTransform] = useState({ x: 0, y: 0, rotate: 0 })
-  const [votes, setVotes] = useState<{ cardId: number; vote: string }[]>([])
+  const [votes, setVotes] = useState<{ cardId: number; vote: string; amount: number }[]>([])
   
+  const [showStakingModal, setShowStakingModal] = useState(false)
+  const [stakingDirection, setStakingDirection] = useState<'YES' | 'NO' | null>(null)
+  const [showResults, setShowResults] = useState(false)
+
   const startX = useRef(0)
   const startY = useRef(0)
   const isDragging = useRef(false)
 
   const currentCard = cards[currentIndex]
-  const userVote = votes.find(v => v.cardId === currentCard.id)?.vote
+  const userVote = votes.find(v => v.cardId === currentCard.id)
 
   const handleStart = (clientX: number, clientY: number) => {
     startX.current = clientX
@@ -46,11 +52,8 @@ export default function PollCard() {
 
     if (Math.abs(diffX) > threshold && Math.abs(diffX) > Math.abs(diffY)) {
       const voteDirection = diffX > 0 ? 'YES' : 'NO'
-      
-      if (!userVote) {
-        setVotes([...votes, { cardId: currentCard.id, vote: voteDirection }])
-      }
-      
+      setStakingDirection(voteDirection)
+      setShowStakingModal(true)
       setTransform({ x: 0, y: 0, rotate: 0 })
       return
     }
@@ -61,11 +64,20 @@ export default function PollCard() {
       } else {
         setCurrentIndex((currentIndex - 1 + cards.length) % cards.length)
       }
+      setShowResults(false)
       setTransform({ x: 0, y: 0, rotate: 0 })
       return
     }
 
     setTransform({ x: 0, y: 0, rotate: 0 })
+  }
+
+  const handleConfirmStake = (amount: number) => {
+    if (stakingDirection) {
+      setVotes([...votes, { cardId: currentCard.id, vote: stakingDirection, amount }])
+      setShowStakingModal(false)
+      setShowResults(true)
+    }
   }
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -93,8 +105,48 @@ export default function PollCard() {
     handleEnd()
   }
 
+  if (showResults && userVote && stakingDirection) {
+    return (
+      <>
+        <ResultsPage
+          question={currentCard.question}
+          voteDirection={userVote.vote as 'YES' | 'NO'}
+          amount={userVote.amount}
+          yesPercent={currentCard.yesPercent}
+          noPercent={currentCard.noPercent}
+          onBack={() => {
+            setShowResults(false)
+            setCurrentIndex((currentIndex + 1) % cards.length)
+          }}
+          onAddMore={() => {
+            setShowResults(false)
+            setStakingDirection(userVote.vote as 'YES' | 'NO')
+            setShowStakingModal(true)
+          }}
+          onChangeVote={() => {
+            setShowResults(false)
+            setShowStakingModal(true)
+            setStakingDirection(userVote.vote === 'YES' ? 'NO' : 'YES')
+          }}
+        />
+      </>
+    )
+  }
+
   return (
     <div className="bg-slate-950 min-h-screen p-4 flex items-center justify-center pb-48">
+      {showStakingModal && stakingDirection && (
+        <StakingModal
+          question={currentCard.question}
+          voteDirection={stakingDirection}
+          onConfirm={handleConfirmStake}
+          onCancel={() => {
+            setShowStakingModal(false)
+            setStakingDirection(null)
+          }}
+        />
+      )}
+
       <div className="w-full max-w-sm">
         <div className="bg-slate-800 rounded-xl p-6 mb-8">
           <div className="flex items-center justify-between mb-6">
@@ -119,52 +171,13 @@ export default function PollCard() {
             <div className="text-center w-full">
               <p className="text-white font-bold text-2xl mb-12">{currentCard.question}</p>
               
-              {userVote ? (
-                <div className="space-y-6">
-                  <p className={`text-lg font-bold ${userVote === 'YES' ? 'text-cyan-400' : 'text-pink-500'}`}>
-                    you voted {userVote}
-                  </p>
-
-                  <div className="my-8 space-y-4">
-                    <div className="space-y-1">
-                      <div className="h-12 bg-slate-800 rounded border border-cyan-500 flex items-center">
-                        <div 
-                          className="h-full bg-cyan-500 rounded flex items-center justify-end pr-2"
-                          style={{ width: `${currentCard.yesPercent}%` }}
-                        >
-                          {currentCard.yesPercent > 30 && <span className="text-black text-xs font-bold">YES</span>}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="h-12 bg-slate-800 rounded border border-pink-500 flex items-center">
-                        <div 
-                          className="h-full bg-pink-500 rounded flex items-center justify-end pr-2"
-                          style={{ width: `${currentCard.noPercent}%` }}
-                        >
-                          {currentCard.noPercent > 30 && <span className="text-black text-xs font-bold">NO</span>}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between text-lg font-bold">
-                    <span className="text-cyan-400">YES {currentCard.yesPercent}%</span>
-                    <span className="text-pink-500">NO {currentCard.noPercent}%</span>
-                  </div>
-
-                  <p className="text-slate-500 text-xs mt-6">← NO · swipe to change vote · YES →</p>
+              <div className="space-y-4">
+                <div className="w-40 h-40 mx-auto bg-slate-800 rounded-lg flex items-center justify-center mb-4">
+                  <div className="text-5xl">🗳️</div>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="w-40 h-40 mx-auto bg-slate-800 rounded-lg flex items-center justify-center mb-4">
-                    <div className="text-5xl">🗳️</div>
-                  </div>
-                  <p className="text-slate-400 text-sm">vote to see results</p>
-                  <p className="text-slate-500 text-xs">swipe right for YES, left for NO</p>
-                </div>
-              )}
+                <p className="text-slate-400 text-sm">swipe to stake</p>
+                <p className="text-slate-500 text-xs">swipe right for YES, left for NO</p>
+              </div>
             </div>
           </div>
         </div>
