@@ -15,26 +15,31 @@ export default function PollCard() {
   
   const startX = useRef(0)
   const startY = useRef(0)
+  const isDragging = useRef(false)
 
   const currentCard = cards[currentIndex]
   const userVote = votes.find(v => v.cardId === currentCard.id)?.vote
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    startX.current = e.clientX
-    startY.current = e.clientY
+  const handleStart = (clientX: number, clientY: number) => {
+    startX.current = clientX
+    startY.current = clientY
+    isDragging.current = true
   }
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (e.buttons !== 1) return
+  const handleMove = (clientX: number, clientY: number) => {
+    if (!isDragging.current) return
 
-    const diffX = e.clientX - startX.current
-    const diffY = e.clientY - startY.current
+    const diffX = clientX - startX.current
+    const diffY = clientY - startY.current
 
     const rotate = (diffX / 100) * 10
     setTransform({ x: diffX, y: diffY, rotate })
   }
 
-  const handleMouseUp = (e: React.MouseEvent) => {
+  const handleEnd = () => {
+    if (!isDragging.current) return
+    isDragging.current = false
+
     const diffX = transform.x
     const diffY = transform.y
     const threshold = 80
@@ -63,6 +68,31 @@ export default function PollCard() {
     setTransform({ x: 0, y: 0, rotate: 0 })
   }
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    handleStart(e.clientX, e.clientY)
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (e.buttons !== 1) return
+    handleMove(e.clientX, e.clientY)
+  }
+
+  const handleMouseUp = () => {
+    handleEnd()
+  }
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    handleStart(e.touches[0].clientX, e.touches[0].clientY)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    handleMove(e.touches[0].clientX, e.touches[0].clientY)
+  }
+
+  const handleTouchEnd = () => {
+    handleEnd()
+  }
+
   return (
     <div className="bg-slate-950 min-h-screen p-4 flex items-center justify-center pb-48">
       <div className="w-full max-w-sm">
@@ -76,8 +106,11 @@ export default function PollCard() {
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
-            onMouseLeave={() => setTransform({ x: 0, y: 0, rotate: 0 })}
-            className="bg-slate-900 p-8 rounded-lg border border-slate-700 cursor-grab active:cursor-grabbing min-h-96 flex flex-col items-center justify-center select-none"
+            onMouseLeave={handleMouseUp}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            className="bg-slate-900 p-8 rounded-lg border border-slate-700 cursor-grab active:cursor-grabbing min-h-96 flex flex-col items-center justify-center select-none touch-none"
             style={{
               transform: `translateX(${transform.x}px) translateY(${transform.y * 0.3}px) rotate(${transform.rotate}deg)`,
               transition: transform.x === 0 && transform.y === 0 ? 'transform 0.5s ease-out' : 'none',
