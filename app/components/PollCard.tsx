@@ -28,7 +28,7 @@ export default function PollCard() {
 
   const [showResults, setShowResults] = useState(false)
 
-  // deck movement
+  // deck movement + swipe-to-vote
   const deckRef = useRef<HTMLDivElement | null>(null)
   const startPos = useRef({ x: 0, y: 0 })
   const [dragging, setDragging] = useState(false)
@@ -149,15 +149,15 @@ export default function PollCard() {
     )
   }
 
-  // deck transform while dragging
+  // deck transform while dragging vertically
   const deckTranslate = showStakingModal
     ? `translate3d(0, ${-currentIndex * 100}%, 0)`
     : axis === 'y'
       ? `translate3d(0, ${-currentIndex * 100}%, 0) translate3d(0, ${deltaY}px, 0)`
       : `translate3d(0, ${-currentIndex * 100}%, 0)`
 
-  const activeCardTilt =
-    axis === 'x' ? `translateX(${deltaX}px) rotate(${deltaX / 18}deg)` : 'translateX(0px)'
+  // apply tilt to the whole poll panel (not only text)
+  const activeCardTilt = axis === 'x' ? `translateX(${deltaX}px) rotate(${deltaX / 18}deg)` : 'translateX(0px)'
 
   return (
     <>
@@ -170,30 +170,27 @@ export default function PollCard() {
           onTouchEnd={onTouchEnd}
           style={{ touchAction: 'none' }}
         >
-          <div
-            className="h-full w-full transition-transform duration-500 ease-out"
-            style={{ transform: deckTranslate }}
-          >
+          <div className="h-full w-full transition-transform duration-500 ease-out" style={{ transform: deckTranslate }}>
             {cards.map((c, i) => {
               const isActive = i === currentIndex
+
               return (
                 <div key={c.id} className="h-screen w-full flex items-center justify-center px-4">
                   <div className="w-full max-w-xl bg-slate-800 rounded-xl p-6 border border-slate-700">
                     <div className="flex items-center justify-between mb-6">
-                      <div className="bg-cyan-900 text-cyan-400 px-3 py-1 rounded text-sm font-mono">
-                        00:46:49
-                      </div>
+                      <div className="bg-cyan-900 text-cyan-400 px-3 py-1 rounded text-sm font-mono">00:46:49</div>
                       <div className="text-slate-400 text-sm">${100 + i * 50} USDC</div>
                     </div>
 
-                    <div className="bg-slate-900 rounded-lg border border-slate-700 min-h-[520px] flex items-center justify-center">
-                      <div
-                        className="text-center w-full px-4"
-                        style={{
-                          transform: isActive ? activeCardTilt : 'translateX(0px)',
-                          transition: isActive && dragging && axis === 'x' ? 'none' : 'transform 200ms ease-out',
-                        }}
-                      >
+                    {/* this is the whole card panel that moves now */}
+                    <div
+                      className="bg-slate-900 rounded-lg border border-slate-700 min-h-[520px] flex items-center justify-center transition-transform"
+                      style={{
+                        transform: isActive ? activeCardTilt : 'translateX(0px)',
+                        transition: isActive && dragging && axis === 'x' ? 'none' : 'transform 200ms ease-out',
+                      }}
+                    >
+                      <div className="text-center w-full px-4">
                         <p className="text-white font-bold text-3xl mb-10 leading-tight">{c.question}</p>
 
                         <div className="space-y-4">
@@ -208,9 +205,7 @@ export default function PollCard() {
                       </div>
                     </div>
 
-                    <div className="text-center mt-6 text-slate-500 text-xs">
-                      0.5% fee · 24h consensus · no gas
-                    </div>
+                    <div className="text-center mt-6 text-slate-500 text-xs">0.5% fee · 24h consensus · no gas</div>
                   </div>
                 </div>
               )
@@ -219,18 +214,19 @@ export default function PollCard() {
         </div>
       </div>
 
-      {showStakingModal && stakingDirection && createPortal(
-        <StakingModal
-          question={currentCard.question}
-          voteDirection={stakingDirection}
-          onConfirm={handleConfirmVote}
-          onCancel={() => {
-            setShowStakingModal(false)
-            setStakingDirection(null)
-          }}
-        />,
-        document.body
-      )}
+      {showStakingModal && stakingDirection &&
+        createPortal(
+          <StakingModal
+            question={currentCard.question}
+            voteDirection={stakingDirection}
+            onConfirm={handleConfirmVote}
+            onCancel={() => {
+              setShowStakingModal(false)
+              setStakingDirection(null)
+            }}
+          />,
+          document.body
+        )}
     </>
   )
 }
