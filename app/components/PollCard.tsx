@@ -156,56 +156,55 @@ export default function PollCard() {
       ? `translate3d(0, ${-currentIndex * 100}%, 0) translate3d(0, ${deltaY}px, 0)`
       : `translate3d(0, ${-currentIndex * 100}%, 0)`
 
-  // apply tilt to the whole poll panel (not only text)
+  // apply tilt to the whole poll panel
   const activeCardTilt = axis === 'x' ? `translateX(${deltaX}px) rotate(${deltaX / 18}deg)` : 'translateX(0px)'
 
   return (
     <>
-      <div className="h-screen w-full overflow-hidden bg-slate-950">
+      <div className="h-screen w-full overflow-hidden bg-slate-950 flex flex-col">
         <div
           ref={deckRef}
-          className="w-full h-full touch-none overscroll-none"
+          className="flex-1 w-full touch-none overscroll-none"
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
           style={{ touchAction: 'none' }}
         >
-          <div className="h-full w-full transition-transform duration-500 ease-out" style={{ transform: deckTranslate }}>
+          <div className="w-full h-full transition-transform duration-500 ease-out" style={{ transform: deckTranslate }}>
             {cards.map((c, i) => {
               const isActive = i === currentIndex
 
               return (
-                <div key={c.id} className="h-screen w-full flex items-center justify-center px-4">
-                  <div className="w-full max-w-xl bg-slate-800 rounded-xl p-6 border border-slate-700">
-                    <div className="flex items-center justify-between mb-6">
+                <div key={c.id} className="h-screen w-full flex flex-col items-center justify-center px-3 py-4">
+                  <div className="w-full bg-slate-800 rounded-2xl p-5 border border-slate-700 flex flex-col h-full">
+                    <div className="flex items-center justify-between mb-4">
                       <div className="bg-cyan-900 text-cyan-400 px-3 py-1 rounded text-sm font-mono">00:46:49</div>
                       <div className="text-slate-400 text-sm">${100 + i * 50} USDC</div>
                     </div>
 
-                    {/* this is the whole card panel that moves now */}
                     <div
-                      className="bg-slate-900 rounded-lg border border-slate-700 min-h-[520px] flex items-center justify-center transition-transform"
+                      className="bg-slate-900 rounded-lg border border-slate-700 flex-1 flex items-center justify-center transition-transform"
                       style={{
                         transform: isActive ? activeCardTilt : 'translateX(0px)',
                         transition: isActive && dragging && axis === 'x' ? 'none' : 'transform 200ms ease-out',
                       }}
                     >
-                      <div className="text-center w-full px-4">
-                        <p className="text-white font-bold text-3xl mb-10 leading-tight">{c.question}</p>
+                      <div className="text-center w-full px-6">
+                        <p className="text-white font-bold text-3xl mb-8 leading-tight">{c.question}</p>
 
-                        <div className="space-y-4">
-                          <div className="w-44 h-44 mx-auto bg-slate-800 rounded-lg flex items-center justify-center">
+                        <div className="space-y-3">
+                          <div className="w-40 h-40 mx-auto bg-slate-800 rounded-lg flex items-center justify-center">
                             <div className="text-6xl">🗳️</div>
                           </div>
 
                           <p className="text-slate-400 text-sm">swipe to vote</p>
                           <p className="text-slate-500 text-xs">swipe right for yes, left for no</p>
-                          <p className="text-slate-500 text-xs mt-3">swipe up/down for next poll</p>
+                          <p className="text-slate-500 text-xs">swipe up/down for next poll</p>
                         </div>
                       </div>
                     </div>
 
-                    <div className="text-center mt-6 text-slate-500 text-xs">0.5% fee · 24h consensus · no gas</div>
+                    <div className="text-center mt-4 text-slate-500 text-xs">0.5% fee · 24h consensus · no gas</div>
                   </div>
                 </div>
               )
