@@ -20,12 +20,10 @@ export default function StakingModal({ question, voteDirection, onConfirm, onCan
   const textColor = isYes ? 'text-cyan-400' : 'text-pink-500'
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-slate-900 rounded-t-3xl p-8 z-50 border-t border-slate-700">
+    <div className="fixed inset-x-0 bottom-0 z-50 bg-slate-900 rounded-t-3xl p-8 border-t border-slate-700">
       <div className="max-w-sm mx-auto">
         <div className="mb-8">
-          <p className={`text-sm font-bold mb-3 ${textColor}`}>
-            STAKE {voteDirection}
-          </p>
+          <p className={`text-sm font-bold mb-3 ${textColor}`}>STAKE {voteDirection}</p>
           <h2 className="text-white font-bold text-2xl">{question}</h2>
         </div>
 

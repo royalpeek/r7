@@ -46,6 +46,7 @@ export default function PollCard() {
       isDragging.current = false
       return
     }
+
     isDragging.current = false
 
     const diffX = transform.x
@@ -54,9 +55,13 @@ export default function PollCard() {
 
     if (Math.abs(diffX) > threshold && Math.abs(diffX) > Math.abs(diffY)) {
       const voteDirection = diffX > 0 ? 'YES' : 'NO'
-      setStakingDirection(voteDirection)
-      setShowStakingModal(true)
       setTransform({ x: 0, y: 0, rotate: 0 })
+
+      requestAnimationFrame(() => {
+        setStakingDirection(voteDirection)
+        setShowStakingModal(true)
+      })
+
       return
     }
 
@@ -139,7 +144,7 @@ export default function PollCard() {
           <div className="bg-slate-800 rounded-xl p-6 mb-8">
             <div className="flex items-center justify-between mb-6">
               <div className="bg-cyan-900 text-cyan-400 px-3 py-1 rounded text-sm font-mono">00:46:49</div>
-              <div className="text-slate-400 text-sm">${(100 + currentIndex * 50)} USDC</div>
+              <div className="text-slate-400 text-sm">${100 + currentIndex * 50} USDC</div>
             </div>
 
             <div
