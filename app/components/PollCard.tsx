@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import StakingModal from './StakingModal'
 import ResultsPage from './ResultsPage'
@@ -18,6 +18,7 @@ export default function PollCard() {
   const [showStakingModal, setShowStakingModal] = useState(false)
   const [stakingDirection, setStakingDirection] = useState<'YES' | 'NO' | null>(null)
   const [showResults, setShowResults] = useState(false)
+  const [isSwiping, setIsSwiping] = useState(false)
 
   const startX = useRef(0)
   const startY = useRef(0)
@@ -26,34 +27,58 @@ export default function PollCard() {
   const currentCard = cards[currentIndex]
   const userVote = votes.find(v => v.cardId === currentCard.id)
 
+  useEffect(() => {
+    document.body.style.overflow = isSwiping || showStakingModal ? 'hidden' : ''
+    document.documentElement.style.overflow = isSwiping || showStakingModal ? 'hidden' : ''
+
+    return () => {
+      document.body.style.overflow = ''
+      document.documentElement.style.overflow = ''
+    }
+  }, [isSwiping, showStakingModal])
+
   const handleStart = (clientX: number, clientY: number) => {
     if (showStakingModal || showResults) return
     startX.current = clientX
     startY.current = clientY
     isDragging.current = true
+    setIsSwiping(true)
   }
 
   const handleMove = (clientX: number, clientY: number) => {
     if (!isDragging.current || showStakingModal || showResults) return
     const diffX = clientX - startX.current
     const diffY = clientY - startY.current
-    const rotate = (diffX / 100) * 10
+    const rotate = diffX / 25
     setTransform({ x: diffX, y: diffY, rotate })
   }
 
   const handleEnd = () => {
     if (!isDragging.current) {
       isDragging.current = false
+      setIsSwiping(false)
       return
     }
 
     isDragging.current = false
+    setIsSwiping(false)
 
     const diffX = transform.x
     const diffY = transform.y
-    const threshold = 80
+    const thresholdX = 80
+    const thresholdY = 80
 
-    if (Math.abs(diffX) > threshold && Math.abs(diffX) > Math.abs(diffY)) {
+    if (Math.abs(diffY) > thresholdY && Math.abs(diffY) > Math.abs(diffX)) {
+      if (diffY < 0) {
+        setCurrentIndex((currentIndex + 1) % cards.length)
+      } else {
+        setCurrentIndex((currentIndex - 1 + cards.length) % cards.length)
+      }
+      setTransform({ x: 0, y: 0, rotate: 0 })
+      return
+    }
+
+    if (Math.abs(diffX) > thresholdX) {
       const voteDirection = diffX > 0 ? 'YES' : 'NO'
       setTransform({ x: 0, y: 0, rotate: 0 })
 
@@ -67,16 +92,6 @@ export default function PollCard() {
         setShowStakingModal(true)
       }
 
-      return
-    }
-
-    if (Math.abs(diffY) > threshold) {
-      if (diffY < 0) {
-        setCurrentIndex((currentIndex + 1) % cards.length)
-      } else {
-        setCurrentIndex((currentIndex - 1 + cards.length) % cards.length)
-      }
-      setTransform({ x: 0, y: 0, rotate: 0 })
       return
     }
 
@@ -160,7 +175,7 @@ export default function PollCard() {
 
   return (
     <>
-      <div className="bg-slate-950 min-h-screen p-4 flex items-center justify-center pb-48 overflow-x-hidden">
+      <div className="bg-slate-950 min-h-screen p-4 flex items-center justify-center pb-48 overflow-x-hidden overscroll-none">
         <div className="w-full max-w-sm">
           <div className="bg-slate-800 rounded-xl p-6 mb-8">
             <div className="flex items-center justify-between mb-6">
@@ -176,11 +191,11 @@ export default function PollCard() {
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
-              className="bg-slate-900 p-8 rounded-lg border border-slate-700 cursor-grab active:cursor-grabbing min-h-96 flex flex-col items-center justify-center select-none touch-pan-y"
+              className="bg-slate-900 p-8 rounded-lg border border-slate-700 cursor-grab active:cursor-grabbing min-h-96 flex flex-col items-center justify-center select-none touch-none will-change-transform"
               style={{
-                touchAction: 'pan-y',
-                transform: `translateX(${transform.x}px) translateY(${transform.y * 0.3}px) rotate(${transform.rotate}deg)`,
-                transition: transform.x === 0 && transform.y === 0 ? 'transform 0.5s ease-out' : 'none',
+                touchAction: 'none',
+                transform: `translate3d(${transform.x}px, ${transform.y}px, 0) rotate(${transform.rotate}deg)`,
+                transition: transform.x === 0 && transform.y === 0 ? 'transform 0.25s ease-out' : 'none',
               }}
             >
               <div className="text-center w-full">
@@ -190,7 +205,7 @@ export default function PollCard() {
                     <div className="text-5xl">🗳️</div>
                   </div>
                   <p className="text-slate-400 text-sm">swipe to stake</p>
-                  <p className="text-slate-500 text-xs">swipe right for YES, left for NO</p>
+                  <p className="text-slate-500 text-xs">swipe right for YES, left for NO, up or down for next card</p>
                 </div>
               </div>
             </div>
