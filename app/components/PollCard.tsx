@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import StakingModal from './StakingModal'
 import ResultsPage from './ResultsPage'
 
@@ -176,18 +177,21 @@ export default function PollCard() {
         </div>
       </div>
 
-      {showStakingModal && stakingDirection && (
-        <StakingModal
-          question={currentCard.question}
-          voteDirection={stakingDirection}
-          onConfirm={handleConfirmStake}
-          onCancel={() => {
-            setShowStakingModal(false)
-            setStakingDirection(null)
-            setTransform({ x: 0, y: 0, rotate: 0 })
-          }}
-        />
-      )}
+      {showStakingModal && stakingDirection &&
+        createPortal(
+          <StakingModal
+            question={currentCard.question}
+            voteDirection={stakingDirection}
+            onConfirm={handleConfirmStake}
+            onCancel={() => {
+              setShowStakingModal(false)
+              setStakingDirection(null)
+              setTransform({ x: 0, y: 0, rotate: 0 })
+            }}
+          />,
+          document.body
+        )
+      }
     </div>
   )
 }
