@@ -162,7 +162,7 @@ export default function PollCard() {
             const isActive = i === currentIndex
 
             return (
-              <div key={c.id} className="h-screen w-full flex flex-col px-4 pt-4 pb-50">
+              <div key={c.id} className="h-screen w-full flex flex-col px-4 pt-4 pb-60">
                 {/* card fills the screen */}
                 <div
                   className="flex-1 bg-slate-900 rounded-2xl border border-slate-700 flex flex-col overflow-hidden"
