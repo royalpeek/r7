@@ -82,7 +82,7 @@ export default function Portfolio() {
   })
 
   return (
-    <div className="bg-slate-950 min-h-screen p-4 pb-32 overflow-y-auto">
+    <div className="bg-slate-950 min-h-screen p-4 pb-32 h-[100dvh] overflow-y-auto">
       {/* header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-white">r7</h1>
