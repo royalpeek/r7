@@ -58,13 +58,12 @@ export default function PollCard() {
       return
     }
     
-    if (Math.abs(diffY) > threshold) {
+    if (Math.abs(diffY) > threshold && !showResults) {
       if (diffY < 0) {
         setCurrentIndex((currentIndex + 1) % cards.length)
       } else {
         setCurrentIndex((currentIndex - 1 + cards.length) % cards.length)
       }
-      setShowResults(false)
       setTransform({ x: 0, y: 0, rotate: 0 })
       return
     }
@@ -81,11 +80,12 @@ export default function PollCard() {
   }
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    if (showStakingModal || showResults) return
     handleStart(e.clientX, e.clientY)
   }
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (e.buttons !== 1) return
+    if (e.buttons !== 1 || showStakingModal || showResults) return
     handleMove(e.clientX, e.clientY)
   }
 
@@ -94,10 +94,12 @@ export default function PollCard() {
   }
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (showStakingModal || showResults) return
     handleStart(e.touches[0].clientX, e.touches[0].clientY)
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    if (showStakingModal || showResults) return
     handleMove(e.touches[0].clientX, e.touches[0].clientY)
   }
 
@@ -107,34 +109,32 @@ export default function PollCard() {
 
   if (showResults && userVote && stakingDirection) {
     return (
-      <>
-        <ResultsPage
-          question={currentCard.question}
-          voteDirection={userVote.vote as 'YES' | 'NO'}
-          amount={userVote.amount}
-          yesPercent={currentCard.yesPercent}
-          noPercent={currentCard.noPercent}
-          onBack={() => {
-            setShowResults(false)
-            setCurrentIndex((currentIndex + 1) % cards.length)
-          }}
-          onAddMore={() => {
-            setShowResults(false)
-            setStakingDirection(userVote.vote as 'YES' | 'NO')
-            setShowStakingModal(true)
-          }}
-          onChangeVote={() => {
-            setShowResults(false)
-            setShowStakingModal(true)
-            setStakingDirection(userVote.vote === 'YES' ? 'NO' : 'YES')
-          }}
-        />
-      </>
+      <ResultsPage
+        question={currentCard.question}
+        voteDirection={userVote.vote as 'YES' | 'NO'}
+        amount={userVote.amount}
+        yesPercent={currentCard.yesPercent}
+        noPercent={currentCard.noPercent}
+        onBack={() => {
+          setShowResults(false)
+          setCurrentIndex((currentIndex + 1) % cards.length)
+        }}
+        onAddMore={() => {
+          setShowResults(false)
+          setStakingDirection(userVote.vote as 'YES' | 'NO')
+          setShowStakingModal(true)
+        }}
+        onChangeVote={() => {
+          setShowResults(false)
+          setShowStakingModal(true)
+          setStakingDirection(userVote.vote === 'YES' ? 'NO' : 'YES')
+        }}
+      />
     )
   }
 
   return (
-    <div className="bg-slate-950 min-h-screen p-4 flex items-center justify-center pb-48">
+    <>
       {showStakingModal && stakingDirection && (
         <StakingModal
           question={currentCard.question}
@@ -143,49 +143,52 @@ export default function PollCard() {
           onCancel={() => {
             setShowStakingModal(false)
             setStakingDirection(null)
+            setTransform({ x: 0, y: 0, rotate: 0 })
           }}
         />
       )}
 
-      <div className="w-full max-w-sm">
-        <div className="bg-slate-800 rounded-xl p-6 mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div className="bg-cyan-900 text-cyan-400 px-3 py-1 rounded text-sm font-mono">00:46:49</div>
-            <div className="text-slate-400 text-sm">${(100 + currentIndex * 50)} USDC</div>
-          </div>
+      <div className="bg-slate-950 min-h-screen p-4 flex items-center justify-center pb-48">
+        <div className="w-full max-w-sm">
+          <div className="bg-slate-800 rounded-xl p-6 mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <div className="bg-cyan-900 text-cyan-400 px-3 py-1 rounded text-sm font-mono">00:46:49</div>
+              <div className="text-slate-400 text-sm">${(100 + currentIndex * 50)} USDC</div>
+            </div>
 
-          <div
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            className="bg-slate-900 p-8 rounded-lg border border-slate-700 cursor-grab active:cursor-grabbing min-h-96 flex flex-col items-center justify-center select-none touch-none"
-            style={{
-              transform: `translateX(${transform.x}px) translateY(${transform.y * 0.3}px) rotate(${transform.rotate}deg)`,
-              transition: transform.x === 0 && transform.y === 0 ? 'transform 0.5s ease-out' : 'none',
-            }}
-          >
-            <div className="text-center w-full">
-              <p className="text-white font-bold text-2xl mb-12">{currentCard.question}</p>
-              
-              <div className="space-y-4">
-                <div className="w-40 h-40 mx-auto bg-slate-800 rounded-lg flex items-center justify-center mb-4">
-                  <div className="text-5xl">🗳️</div>
+            <div
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              className="bg-slate-900 p-8 rounded-lg border border-slate-700 cursor-grab active:cursor-grabbing min-h-96 flex flex-col items-center justify-center select-none touch-none"
+              style={{
+                transform: `translateX(${transform.x}px) translateY(${transform.y * 0.3}px) rotate(${transform.rotate}deg)`,
+                transition: transform.x === 0 && transform.y === 0 ? 'transform 0.5s ease-out' : 'none',
+              }}
+            >
+              <div className="text-center w-full">
+                <p className="text-white font-bold text-2xl mb-12">{currentCard.question}</p>
+                
+                <div className="space-y-4">
+                  <div className="w-40 h-40 mx-auto bg-slate-800 rounded-lg flex items-center justify-center mb-4">
+                    <div className="text-5xl">🗳️</div>
+                  </div>
+                  <p className="text-slate-400 text-sm">swipe to stake</p>
+                  <p className="text-slate-500 text-xs">swipe right for YES, left for NO</p>
                 </div>
-                <p className="text-slate-400 text-sm">swipe to stake</p>
-                <p className="text-slate-500 text-xs">swipe right for YES, left for NO</p>
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="text-center mt-8 text-slate-500 text-xs space-y-2">
-          <p className="text-slate-600">0.5% fee · 24h consensus · no gas</p>
+          <div className="text-center mt-8 text-slate-500 text-xs space-y-2">
+            <p className="text-slate-600">0.5% fee · 24h consensus · no gas</p>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }
