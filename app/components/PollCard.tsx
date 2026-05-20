@@ -57,10 +57,15 @@ export default function PollCard() {
       const voteDirection = diffX > 0 ? 'YES' : 'NO'
       setTransform({ x: 0, y: 0, rotate: 0 })
 
-      requestAnimationFrame(() => {
-        setStakingDirection(voteDirection)
+      if (voteDirection === 'YES') {
+        requestAnimationFrame(() => {
+          setStakingDirection('YES')
+          setShowStakingModal(true)
+        })
+      } else {
+        setStakingDirection('NO')
         setShowStakingModal(true)
-      })
+      }
 
       return
     }
@@ -104,6 +109,7 @@ export default function PollCard() {
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault()
     handleMove(e.touches[0].clientX, e.touches[0].clientY)
   }
 
@@ -139,7 +145,7 @@ export default function PollCard() {
 
   return (
     <>
-      <div className="bg-slate-950 min-h-screen p-4 flex items-center justify-center pb-48">
+      <div className="bg-slate-950 min-h-screen p-4 flex items-center justify-center pb-48 overflow-x-hidden">
         <div className="w-full max-w-sm">
           <div className="bg-slate-800 rounded-xl p-6 mb-8">
             <div className="flex items-center justify-between mb-6">
@@ -155,8 +161,9 @@ export default function PollCard() {
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
-              className="bg-slate-900 p-8 rounded-lg border border-slate-700 cursor-grab active:cursor-grabbing min-h-96 flex flex-col items-center justify-center select-none touch-none"
+              className="bg-slate-900 p-8 rounded-lg border border-slate-700 cursor-grab active:cursor-grabbing min-h-96 flex flex-col items-center justify-center select-none touch-pan-y"
               style={{
+                touchAction: 'pan-y',
                 transform: `translateX(${transform.x}px) translateY(${transform.y * 0.3}px) rotate(${transform.rotate}deg)`,
                 transition: transform.x === 0 && transform.y === 0 ? 'transform 0.5s ease-out' : 'none',
               }}
