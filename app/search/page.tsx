@@ -1,8 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation' // 1. import useRouter
 
 export default function Search() {
+  const router = useRouter() // 2. initialize router
+
   const allPolls = [
     { id: 1, question: 'Is crypto the future of money?' },
     { id: 2, question: 'Should couples split everything 50/50?' },
@@ -29,6 +32,11 @@ export default function Search() {
     }
   }
 
+  // 3. handle the navigation
+  const handlePollClick = (id: number) => {
+    router.push(`/vote/${id}`) // change this route to your voting page URL
+  }
+
   return (
     <div className="bg-slate-950 min-h-screen p-4 pb-48">
       <h1 className="text-2xl font-bold text-white mb-6">Search Polls</h1>
@@ -50,12 +58,13 @@ export default function Search() {
           <p className="text-slate-400 text-sm text-center mt-8">No polls found</p>
         ) : (
           filteredPolls.map(poll => (
-            <div
+            <button
               key={poll.id}
-              className="bg-slate-900 p-4 rounded-lg border border-slate-700 cursor-pointer hover:border-cyan-400 transition"
+              onClick={() => handlePollClick(poll.id)} // 4. trigger navigation on click
+              className="w-full text-left bg-slate-900 p-4 rounded-lg border border-slate-700 cursor-pointer hover:border-cyan-400 transition"
             >
               <p className="text-white font-bold">{poll.question}</p>
-            </div>
+            </button>
           ))
         )}
       </div>
