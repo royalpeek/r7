@@ -18,63 +18,63 @@ export default function PollCard() {
   const [showResults, setShowResults] = useState(false)
   const [votes, setVotes] = useState<{ cardId: number; vote: 'YES' | 'NO'; amount: number }[]>([])
 
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [offset, setOffset] = useState(0)
+  // swipe state
+  const [dragX, setDragX] = useState(0)
+  const [dragY, setDragY] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
-  const startY = useRef(0)
+  const startPos = useRef({ x: 0, y: 0 })
 
-  // handle vertical swipe
-  const handleTouchStart = (e: React.TouchEvent) => {
-    startY.current = e.touches[0].clientY
+  const handleStart = (clientX: number, clientY: number) => {
+    startPos.current = { x: clientX, y: clientY }
     setIsDragging(true)
   }
 
-  const handleTouchMove = (e: React.TouchEvent) => {
+  const handleMove = (clientX: number, clientY: number) => {
     if (!isDragging) return
-    const currentY = e.touches[0].clientY
-    const diff = currentY - startY.current
-    setOffset(diff)
+    const dx = clientX - startPos.current.x
+    const dy = clientY - startPos.current.y
+    // limit horizontal drag for vote, vertical for navigation
+    if (Math.abs(dx) > Math.abs(dy)) setDragX(dx)
+    else setDragY(dy)
   }
 
-  const handleTouchEnd = () => {
+  const handleEnd = () => {
+    if (dragX > 100) { setStakingDirection('YES'); setShowStakingModal(true) }
+    else if (dragX < -100) { setStakingDirection('NO'); setShowStakingModal(true) }
+    else if (dragY < -100 && currentIndex < cards.length - 1) setCurrentIndex(i => i + 1)
+    else if (dragY > 100 && currentIndex > 0) setCurrentIndex(i => i - 1)
+    
+    setDragX(0)
+    setDragY(0)
     setIsDragging(false)
-    if (offset < -100 && currentIndex < cards.length - 1) setCurrentIndex(prev => prev + 1)
-    else if (offset > 100 && currentIndex > 0) setCurrentIndex(prev => prev - 1)
-    setOffset(0)
   }
 
   return (
-    <div className="h-screen w-full overflow-hidden relative bg-slate-950">
-      <div
-        ref={containerRef}
-        className="h-full w-full transition-transform duration-500 ease-out flex flex-col"
-        style={{ transform: `translateY(calc(${-currentIndex * 100}vh + ${offset}px))` }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+    <div className="h-screen w-full overflow-hidden bg-slate-950 flex flex-col items-center justify-center p-4">
+      <div 
+        className="w-full h-full flex flex-col justify-center items-center transition-transform duration-500 ease-out"
+        style={{ transform: `translateY(calc(${-currentIndex * 100}vh + ${dragY}px))` }}
       >
         {cards.map((card, i) => (
-          <div key={card.id} className="h-screen w-full flex items-center justify-center p-4 flex-shrink-0">
+          <div key={card.id} className="h-screen w-full flex-shrink-0 flex items-center justify-center">
             <div 
-              className="w-full max-w-sm bg-slate-900 p-8 rounded-xl border border-slate-700 shadow-2xl relative"
-              // simple horizontal swipe for yes/no
-              onTouchStart={(e) => {
-                const startX = e.touches[0].clientX
-                e.currentTarget.ontouchend = (ev) => {
-                  const endX = ev.changedTouches[0].clientX
-                  if (startX - endX > 100) { setStakingDirection('NO'); setShowStakingModal(true) }
-                  else if (endX - startX > 100) { setStakingDirection('YES'); setShowStakingModal(true) }
-                }
+              className="w-full max-w-lg bg-slate-900 p-10 rounded-2xl border border-slate-700 shadow-2xl transition-transform duration-300"
+              style={{
+                transform: i === currentIndex ? `translateX(${dragX}px) rotate(${dragX / 20}deg)` : 'none',
+                opacity: i === currentIndex ? 1 - Math.abs(dragX) / 500 : 0.5
               }}
+              onTouchStart={(e) => handleStart(e.touches[0].clientX, e.touches[0].clientY)}
+              onTouchMove={(e) => { e.preventDefault(); handleMove(e.touches[0].clientX, e.touches[0].clientY) }}
+              onTouchEnd={handleEnd}
             >
-              <p className="text-white font-bold text-2xl mb-4">{card.question}</p>
-              <p className="text-slate-500 text-sm">swipe left/right to stake</p>
-              <p className="text-slate-500 text-sm">swipe up/down to scroll polls</p>
+              <p className="text-white font-bold text-4xl mb-12 leading-tight">{card.question}</p>
+              <div className="text-slate-400 text-lg">swipe right for YES, left for NO</div>
+              <div className="text-slate-400 text-lg">swipe up for next poll</div>
             </div>
           </div>
         ))}
       </div>
-
+      
       {showStakingModal && (
         createPortal(
           <StakingModal
