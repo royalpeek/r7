@@ -15,7 +15,6 @@ export default function PollCard() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [transform, setTransform] = useState({ x: 0, y: 0, rotate: 0 })
   const [votes, setVotes] = useState<{ cardId: number; vote: string; amount: number }[]>([])
-  
   const [showStakingModal, setShowStakingModal] = useState(false)
   const [stakingDirection, setStakingDirection] = useState<'YES' | 'NO' | null>(null)
   const [showResults, setShowResults] = useState(false)
@@ -36,16 +35,14 @@ export default function PollCard() {
 
   const handleMove = (clientX: number, clientY: number) => {
     if (!isDragging.current || showStakingModal || showResults) return
-
     const diffX = clientX - startX.current
     const diffY = clientY - startY.current
-
     const rotate = (diffX / 100) * 10
     setTransform({ x: diffX, y: diffY, rotate })
   }
 
   const handleEnd = () => {
-    if (!isDragging.current || showStakingModal || showResults) {
+    if (!isDragging.current) {
       isDragging.current = false
       return
     }
@@ -62,7 +59,7 @@ export default function PollCard() {
       setTransform({ x: 0, y: 0, rotate: 0 })
       return
     }
-    
+
     if (Math.abs(diffY) > threshold) {
       if (diffY < 0) {
         setCurrentIndex((currentIndex + 1) % cards.length)
@@ -136,48 +133,49 @@ export default function PollCard() {
   }
 
   return (
-    <div className="bg-slate-950 min-h-screen p-4 flex items-center justify-center pb-48">
-      <div className="w-full max-w-sm">
-        <div className="bg-slate-800 rounded-xl p-6 mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div className="bg-cyan-900 text-cyan-400 px-3 py-1 rounded text-sm font-mono">00:46:49</div>
-            <div className="text-slate-400 text-sm">${(100 + currentIndex * 50)} USDC</div>
-          </div>
+    <>
+      <div className="bg-slate-950 min-h-screen p-4 flex items-center justify-center pb-48">
+        <div className="w-full max-w-sm">
+          <div className="bg-slate-800 rounded-xl p-6 mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <div className="bg-cyan-900 text-cyan-400 px-3 py-1 rounded text-sm font-mono">00:46:49</div>
+              <div className="text-slate-400 text-sm">${(100 + currentIndex * 50)} USDC</div>
+            </div>
 
-          <div
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            className="bg-slate-900 p-8 rounded-lg border border-slate-700 cursor-grab active:cursor-grabbing min-h-96 flex flex-col items-center justify-center select-none touch-none"
-            style={{
-              transform: `translateX(${transform.x}px) translateY(${transform.y * 0.3}px) rotate(${transform.rotate}deg)`,
-              transition: transform.x === 0 && transform.y === 0 ? 'transform 0.5s ease-out' : 'none',
-            }}
-          >
-            <div className="text-center w-full">
-              <p className="text-white font-bold text-2xl mb-12">{currentCard.question}</p>
-              
-              <div className="space-y-4">
-                <div className="w-40 h-40 mx-auto bg-slate-800 rounded-lg flex items-center justify-center mb-4">
-                  <div className="text-5xl">🗳️</div>
+            <div
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              className="bg-slate-900 p-8 rounded-lg border border-slate-700 cursor-grab active:cursor-grabbing min-h-96 flex flex-col items-center justify-center select-none touch-none"
+              style={{
+                transform: `translateX(${transform.x}px) translateY(${transform.y * 0.3}px) rotate(${transform.rotate}deg)`,
+                transition: transform.x === 0 && transform.y === 0 ? 'transform 0.5s ease-out' : 'none',
+              }}
+            >
+              <div className="text-center w-full">
+                <p className="text-white font-bold text-2xl mb-12">{currentCard.question}</p>
+                <div className="space-y-4">
+                  <div className="w-40 h-40 mx-auto bg-slate-800 rounded-lg flex items-center justify-center mb-4">
+                    <div className="text-5xl">🗳️</div>
+                  </div>
+                  <p className="text-slate-400 text-sm">swipe to stake</p>
+                  <p className="text-slate-500 text-xs">swipe right for YES, left for NO</p>
                 </div>
-                <p className="text-slate-400 text-sm">swipe to stake</p>
-                <p className="text-slate-500 text-xs">swipe right for YES, left for NO</p>
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="text-center mt-8 text-slate-500 text-xs space-y-2">
-          <p className="text-slate-600">0.5% fee · 24h consensus · no gas</p>
+          <div className="text-center mt-8 text-slate-500 text-xs space-y-2">
+            <p className="text-slate-600">0.5% fee · 24h consensus · no gas</p>
+          </div>
         </div>
       </div>
 
-      {showStakingModal && stakingDirection &&
+      {showStakingModal && stakingDirection && typeof document !== 'undefined' &&
         createPortal(
           <StakingModal
             question={currentCard.question}
@@ -192,6 +190,6 @@ export default function PollCard() {
           document.body
         )
       }
-    </div>
+    </>
   )
 }
