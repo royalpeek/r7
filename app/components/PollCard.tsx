@@ -84,11 +84,26 @@ export default function PollCard() {
   }
 
   const handleConfirmStake = (amount: number) => {
-    if (stakingDirection) {
-      setVotes([...votes, { cardId: currentCard.id, vote: stakingDirection, amount }])
-      setShowStakingModal(false)
-      setShowResults(true)
+    if (!stakingDirection) return
+
+    const updatedVote = {
+      cardId: currentCard.id,
+      vote: stakingDirection,
+      amount,
     }
+
+    setVotes(prev => {
+      const existingIndex = prev.findIndex(v => v.cardId === currentCard.id)
+      if (existingIndex >= 0) {
+        const next = [...prev]
+        next[existingIndex] = updatedVote
+        return next
+      }
+      return [...prev, updatedVote]
+    })
+
+    setShowStakingModal(false)
+    setShowResults(true)
   }
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -136,8 +151,8 @@ export default function PollCard() {
         }}
         onChangeVote={() => {
           setShowResults(false)
-          setShowStakingModal(true)
           setStakingDirection(userVote.vote === 'YES' ? 'NO' : 'YES')
+          setShowStakingModal(true)
         }}
       />
     )
