@@ -81,7 +81,7 @@ export default function Portfolio() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-32">
+      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-48">
         {activeTab === 'active' && (
           <div className="space-y-4">
             {activePositions.length === 0 ? (
