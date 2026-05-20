@@ -11,7 +11,7 @@ interface StakingModalProps {
 
 export default function StakingModal({ question, voteDirection, onConfirm, onCancel }: StakingModalProps) {
   const [amount, setAmount] = useState(5)
-  const [viewportHeight, setViewportHeight] = useState<number | null>(null)
+  const [vh, setVh] = useState(0)
 
   const predefinedAmounts = [5, 10, 50, 100, 500]
   const fee = amount * 0.01
@@ -22,10 +22,7 @@ export default function StakingModal({ question, voteDirection, onConfirm, onCan
   const textColor = isYes ? 'text-cyan-400' : 'text-pink-500'
 
   useEffect(() => {
-    const update = () => {
-      setViewportHeight(window.visualViewport?.height ?? window.innerHeight)
-    }
-
+    const update = () => setVh(window.visualViewport?.height || window.innerHeight)
     update()
     window.addEventListener('resize', update)
     window.visualViewport?.addEventListener('resize', update)
@@ -44,7 +41,7 @@ export default function StakingModal({ question, voteDirection, onConfirm, onCan
         className="absolute left-0 right-0 bg-slate-900 rounded-t-3xl p-8 border-t border-slate-700"
         style={{
           bottom: 0,
-          maxHeight: viewportHeight ? `${viewportHeight}px` : '100dvh',
+          height: vh ? `${vh}px` : '100dvh',
           overflowY: 'auto',
           paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))',
         }}
@@ -68,9 +65,7 @@ export default function StakingModal({ question, voteDirection, onConfirm, onCan
               value={amount}
               onChange={(e) => setAmount(Number(e.target.value))}
               className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-              style={{
-                accentColor: isYes ? '#06b6d4' : '#ec4899',
-              }}
+              style={{ accentColor: isYes ? '#06b6d4' : '#ec4899' }}
             />
           </div>
 
@@ -80,9 +75,7 @@ export default function StakingModal({ question, voteDirection, onConfirm, onCan
                 key={preset}
                 onClick={() => setAmount(preset)}
                 className={`py-3 rounded-lg font-bold text-sm transition ${
-                  amount === preset
-                    ? `${buttonColor} text-black`
-                    : 'bg-slate-800 text-slate-300 border border-slate-700'
+                  amount === preset ? `${buttonColor} text-black` : 'bg-slate-800 text-slate-300 border border-slate-700'
                 }`}
               >
                 ${preset}
