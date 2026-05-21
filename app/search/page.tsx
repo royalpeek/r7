@@ -57,7 +57,7 @@ export default function Search() {
 
       {/* detail page */}
       {selectedPoll ? (
-        <div className="bg-slate-950 min-h-screen flex flex-col pb-32">
+        <div className="bg-slate-950 min-h-screen overflow-y-auto pb-32">
           <div className="flex items-center justify-between p-4">
             <button
               onClick={() => { setSelectedPoll(null); setVote(null) }}
@@ -141,7 +141,7 @@ export default function Search() {
 
           {/* stake buttons before voting */}
           {selectedPoll.status === 'active' && !userVote && (
-            <div className="fixed bottom-20 left-0 right-0 p-4">
+            <div className="fixed bottom-24 left-0 right-0 p-4">
               <div className="flex gap-3 max-w-sm mx-auto">
                 <button
                   onClick={() => { setStakingDirection('NO'); setShowStaking(true) }}
