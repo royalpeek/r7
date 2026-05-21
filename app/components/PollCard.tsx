@@ -93,21 +93,43 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
     }
   }
 
-  const handleConfirmVote = (amount: number) => {
+  const handleConfirmVote = async (amount: number) => {
     if (!stakingDirection || !currentCard) return
-    const updated: Vote = { pollId: currentCard.id, vote: stakingDirection, amount }
-    setVotes(prev => {
-      const idx = prev.findIndex(v => v.pollId === currentCard.id)
-      if (idx >= 0) {
-        const next = [...prev]
-        next[idx] = updated
-        return next
-      }
-      return [...prev, updated]
-    })
-    setShowResults(true)
-    setShowStakingModal(false)
-    setStakingDirection(null)
+    
+    try {
+      // call the votes api
+      const response = await fetch('/api/votes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: 'temp-user-id',
+          poll_id: currentCard.id,
+          direction: stakingDirection,
+          amount: amount,
+        }),
+      })
+
+      if (!response.ok) throw new Error('vote failed')
+
+      const data = await response.json()
+      
+      const updated: Vote = { pollId: currentCard.id, vote: stakingDirection, amount }
+      setVotes(prev => {
+        const idx = prev.findIndex(v => v.pollId === currentCard.id)
+        if (idx >= 0) {
+          const next = [...prev]
+          next[idx] = updated
+          return next
+        }
+        return [...prev, updated]
+      })
+      setShowResults(true)
+      setShowStakingModal(false)
+      setStakingDirection(null)
+    } catch (error) {
+      console.error('vote error:', error)
+      alert('vote failed. try again.')
+    }
   }
 
   if (!currentCard) {
