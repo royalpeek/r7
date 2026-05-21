@@ -40,9 +40,9 @@ export default function Portfolio() {
   })
 
   return (
-    <div className="bg-slate-950 h-screen flex flex-col">
+    <div className="bg-slate-950 min-h-screen flex flex-col overflow-hidden">
       {/* removed the r7 header, also moved content up a bit by reducing top spacing */}
-      <div className="px-4 pt-4 pb-0 space-y-4">
+      <div className="sticky top-0 z-10 bg-slate-950 px-4 pt-4 pb-0 space-y-4">
         <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6">
           <p className="text-slate-400 text-sm mb-2">Total USDC Balance</p>
           <p className="text-white text-4xl font-bold">$65.643</p>
