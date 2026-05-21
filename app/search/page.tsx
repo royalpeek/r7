@@ -22,6 +22,7 @@ export default function Search() {
   const [vote, setVote] = useState<Vote | null>(null)
   const [stakingDirection, setStakingDirection] = useState<'YES' | 'NO' | null>(null)
   const [showStaking, setShowStaking] = useState(false)
+  const [poolData, setPoolData] = useState({ yesPool: 0, noPool: 0 })
 
   const filteredPolls = useMemo(() => {
     const term = searchTerm.trim().toLowerCase()
@@ -40,7 +41,12 @@ export default function Search() {
             question={selectedPoll.question}
             voteDirection={stakingDirection}
             onConfirm={(amount) => {
-              setVote({ pollId: selectedPoll.id, direction: stakingDirection, amount })
+              const direction = stakingDirection
+              setVote({ pollId: selectedPoll.id, direction, amount })
+              setPoolData(prev => ({
+                yesPool: direction === 'YES' ? prev.yesPool + amount : prev.yesPool,
+                noPool: direction === 'NO' ? prev.noPool + amount : prev.noPool,
+              }))
               setShowStaking(false)
               setStakingDirection(null)
             }}
@@ -57,7 +63,7 @@ export default function Search() {
         <div className="bg-slate-950 min-h-screen">
           <div className="flex items-center justify-between p-4">
             <button
-              onClick={() => { setSelectedPoll(null); setVote(null) }}
+              onClick={() => { setSelectedPoll(null); setVote(null); setPoolData({ yesPool: 0, noPool: 0 }) }}
               className="text-slate-400 text-lg"
             >
               ← Back
@@ -114,11 +120,11 @@ export default function Search() {
                   <p className="text-slate-400 text-xs font-bold tracking-widest mb-3">POOL BREAKDOWN</p>
                   <div className="flex gap-3">
                     <div className="flex-1 bg-slate-800 rounded-2xl p-4">
-                      <p className="text-cyan-400 font-bold text-xl">${selectedPoll.yesPool || userVote?.amount || 0}</p>
+                      <p className="text-cyan-400 font-bold text-xl">${selectedPoll.yesPool + poolData.yesPool}</p>
                       <p className="text-slate-400 text-sm">YES Pool</p>
                     </div>
                     <div className="flex-1 bg-slate-800 rounded-2xl p-4">
-                      <p className="text-pink-500 font-bold text-xl">${selectedPoll.noPool || 0}</p>
+                      <p className="text-pink-500 font-bold text-xl">${selectedPoll.noPool + poolData.noPool}</p>
                       <p className="text-slate-400 text-sm">NO Pool</p>
                     </div>
                   </div>
@@ -193,7 +199,7 @@ export default function Search() {
             {filteredPolls.map(poll => (
               <div
                 key={poll.id}
-                onClick={() => setSelectedPoll(poll)}
+                onClick={() => { setSelectedPoll(poll); setPoolData({ yesPool: 0, noPool: 0 }) }}
                 className="bg-slate-900 p-4 rounded-2xl border border-slate-700 cursor-pointer active:opacity-80"
               >
                 <div className="flex items-center justify-between mb-2">
