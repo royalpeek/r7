@@ -3,9 +3,11 @@
 import { useState } from 'react'
 import { X, Wallet, RefreshCw, PlusCircle, Send, QrCode } from 'lucide-react'
 import PollCard from './components/PollCard'
+import { usePolls } from './hooks/usePolls'
 
 export default function Home() {
   const [showWallet, setShowWallet] = useState(false)
+  const { polls, loading } = usePolls()
 
   const handleCopy = () => {
     navigator.clipboard.writeText('3wbjCZ...kDdM')
@@ -26,7 +28,17 @@ export default function Home() {
 
       {/* poll card fills remaining space */}
       <div className="flex-1 overflow-hidden">
-        <PollCard />
+        {loading ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-slate-400">loading polls...</p>
+          </div>
+        ) : polls.length > 0 ? (
+          <PollCard polls={polls} />
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-slate-400">no polls yet</p>
+          </div>
+        )}
       </div>
 
       {/* wallet sheet overlay */}
