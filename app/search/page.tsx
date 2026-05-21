@@ -40,8 +40,7 @@ export default function Search() {
             question={selectedPoll.question}
             voteDirection={stakingDirection}
             onConfirm={(amount) => {
-              const direction = stakingDirection
-              setVote({ pollId: selectedPoll.id, direction, amount })
+              setVote({ pollId: selectedPoll.id, direction: stakingDirection, amount })
               setShowStaking(false)
               setStakingDirection(null)
             }}
@@ -55,10 +54,9 @@ export default function Search() {
       }
 
       {selectedPoll ? (
-        // detail page - flex column so buttons sit at bottom naturally
-        <div className="bg-slate-950 min-h-screen flex flex-col pb-24">
-          {/* header */}
-          <div className="flex items-center justify-between p-4 flex-shrink-0">
+        <div className="bg-slate-950 min-h-screen">
+          {/* header - stays at top */}
+          <div className="flex items-center justify-between p-4">
             <button
               onClick={() => { setSelectedPoll(null); setVote(null) }}
               className="text-slate-400 text-lg"
@@ -74,8 +72,8 @@ export default function Search() {
             </div>
           </div>
 
-          {/* scrollable content */}
-          <div className="flex-1 overflow-y-auto px-4 space-y-5">
+          {/* all content scrolls including buttons */}
+          <div className="px-4 pb-32 space-y-5 overflow-y-auto">
             <div className="bg-slate-800 rounded-2xl p-6">
               <p className="text-white font-bold text-2xl leading-tight mb-3">{selectedPoll.question}</p>
               <p className="text-slate-600 text-xs mt-4">1% fee · 24h consensus · no gas</p>
@@ -136,14 +134,9 @@ export default function Search() {
               </div>
             )}
 
-            {/* extra bottom space so content doesn't hide behind buttons */}
-            <div className="h-4" />
-          </div>
-
-          {/* buttons pinned to bottom, not floating */}
-          {selectedPoll.status === 'active' && !userVote && (
-            <div className="flex-shrink-0 p-4">
-              <div className="flex gap-3">
+            {/* buttons sit naturally in the page flow, not floating */}
+            {selectedPoll.status === 'active' && !userVote && (
+              <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => { setStakingDirection('NO'); setShowStaking(true) }}
                   className="flex-1 bg-pink-500 text-black font-bold py-4 rounded-2xl"
@@ -157,12 +150,10 @@ export default function Search() {
                   STAKE YES
                 </button>
               </div>
-            </div>
-          )}
+            )}
 
-          {selectedPoll.status === 'active' && userVote && (
-            <div className="flex-shrink-0 p-4">
-              <div className="flex gap-3">
+            {selectedPoll.status === 'active' && userVote && (
+              <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => { setStakingDirection(userVote.direction === 'YES' ? 'NO' : 'YES'); setShowStaking(true) }}
                   className={`flex-1 text-black font-bold py-4 rounded-2xl ${userVote.direction === 'YES' ? 'bg-pink-500' : 'bg-cyan-400'}`}
@@ -176,8 +167,8 @@ export default function Search() {
                   ADD {userVote.direction}
                 </button>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
       ) : (
