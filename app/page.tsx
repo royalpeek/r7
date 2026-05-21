@@ -15,7 +15,7 @@ export default function Home() {
   }
 
   return (
-    <div className="bg-slate-950 min-h-screen">
+    <div className="bg-slate-950 h-screen overflow-hidden">
       {/* header */}
       <div className="flex items-center justify-between p-4">
         <h1 className="text-2xl font-bold text-white">r7</h1>
