@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Gift, Users, LogOut, Copy, Check, Ticket } from 'lucide-react'
 
 export default function Profile() {
   const [copied, setCopied] = useState(false)
@@ -13,71 +14,68 @@ export default function Profile() {
 
   return (
     <div className="bg-slate-950 min-h-screen p-4 pb-32">
-      {/* header */}
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold text-white">profile</h1>
-      </div>
 
       {/* avatar and username */}
-      <div className="flex flex-col items-center mb-8">
+      <div className="flex flex-col items-center mb-8 pt-4">
         <div className="w-20 h-20 rounded-full bg-cyan-400 flex items-center justify-center mb-3">
           <span className="text-black text-3xl font-bold">R</span>
         </div>
         <p className="text-white font-bold text-xl">@royalpossible</p>
-        <p className="text-slate-400 text-sm mt-1">opinion staker</p>
+        <p className="text-slate-400 text-sm mt-1">Opinion Staker</p>
       </div>
 
       {/* stats row */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 text-center">
           <p className="text-white font-bold text-xl">62%</p>
-          <p className="text-slate-400 text-xs mt-1">win rate</p>
+          <p className="text-slate-400 text-xs mt-1">Win Rate</p>
         </div>
         <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 text-center">
           <p className="text-cyan-400 font-bold text-xl">$1,204</p>
-          <p className="text-slate-400 text-xs mt-1">earnings</p>
+          <p className="text-slate-400 text-xs mt-1">Earnings</p>
         </div>
         <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 text-center">
           <p className="text-white font-bold text-xl">175</p>
-          <p className="text-slate-400 text-xs mt-1">total votes</p>
+          <p className="text-slate-400 text-xs mt-1">Total Votes</p>
         </div>
       </div>
 
       {/* wallet address */}
       <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 mb-4">
-        <p className="text-slate-400 text-xs mb-2">wallet address</p>
+        <p className="text-slate-400 text-xs mb-2">Wallet Address</p>
         <div className="flex items-center justify-between">
           <p className="text-white font-mono text-sm">3wbjCZ...kDdM</p>
           <button
             onClick={handleCopy}
-            className="text-cyan-400 text-xs bg-slate-800 px-3 py-1 rounded-lg"
+            className="text-cyan-400 text-xs bg-slate-800 px-3 py-1 rounded-lg flex items-center gap-1"
           >
-            {copied ? 'copied!' : 'copy'}
+            {copied ? <Check size={12} /> : <Copy size={12} />}
+            {copied ? 'Copied!' : 'Copy'}
           </button>
         </div>
       </div>
 
       {/* badges */}
       <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 mb-4">
-        <p className="text-slate-400 text-xs mb-3">badges</p>
+        <p className="text-slate-400 text-xs mb-3">Badges</p>
         <div className="flex gap-3">
           <div className="flex flex-col items-center gap-1">
             <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center">
-              <span className="text-2xl">🔥</span>
+              <span className="text-cyan-400 text-lg font-bold">🔥</span>
             </div>
-            <p className="text-slate-400 text-xs">on fire</p>
+            <p className="text-slate-400 text-xs">On Fire</p>
           </div>
           <div className="flex flex-col items-center gap-1">
             <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center">
-              <span className="text-2xl">🎯</span>
+              <span className="text-cyan-400 text-lg font-bold">🎯</span>
             </div>
-            <p className="text-slate-400 text-xs">sharp</p>
+            <p className="text-slate-400 text-xs">Sharp</p>
           </div>
           <div className="flex flex-col items-center gap-1">
             <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center">
-              <span className="text-2xl">⚡</span>
+              <span className="text-cyan-400 text-lg font-bold">⚡</span>
             </div>
-            <p className="text-slate-400 text-xs">early</p>
+            <p className="text-slate-400 text-xs">Early</p>
           </div>
         </div>
       </div>
@@ -85,33 +83,37 @@ export default function Profile() {
       {/* invite and referrals */}
       <div className="grid grid-cols-2 gap-3 mb-4">
         <button className="bg-slate-900 border border-slate-700 rounded-2xl p-4 flex flex-col items-center gap-2">
-          <span className="text-2xl">🎁</span>
-          <p className="text-white text-sm font-semibold">invite</p>
+          <Gift size={24} className="text-cyan-400" />
+          <p className="text-white text-sm font-semibold">Invite</p>
         </button>
         <button className="bg-slate-900 border border-slate-700 rounded-2xl p-4 flex flex-col items-center gap-2">
-          <span className="text-2xl">👥</span>
-          <p className="text-white text-sm font-semibold">my referrals</p>
+          <Users size={24} className="text-cyan-400" />
+          <p className="text-white text-sm font-semibold">My Referrals</p>
         </button>
       </div>
 
       {/* referral code */}
       <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 mb-6">
-        <p className="text-slate-400 text-xs mb-2">have a referral code?</p>
+        <div className="flex items-center gap-2 mb-2">
+          <Ticket size={14} className="text-slate-400" />
+          <p className="text-slate-400 text-xs">Have a Referral Code?</p>
+        </div>
         <div className="flex gap-2">
           <input
             type="text"
-            placeholder="enter code"
-            className="flex-1 bg-slate-800 text-white placeholder-slate-500 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-cyan-400 border border-slate-700"
+            placeholder="Enter code"
+            className="flex-1 bg-slate-800 text-white placeholder-slate-500 px-3 py-2 rounded-lg text-sm focus:outline-none border border-slate-700"
           />
           <button className="bg-cyan-400 text-black font-bold px-4 py-2 rounded-lg text-sm">
-            apply
+            Apply
           </button>
         </div>
       </div>
 
       {/* sign out */}
-      <button className="w-full bg-slate-900 border border-pink-500 text-pink-500 font-bold py-4 rounded-2xl">
-        sign out
+      <button className="w-full bg-slate-900 border border-pink-500 text-pink-500 font-bold py-4 rounded-2xl flex items-center justify-center gap-2">
+        <LogOut size={18} />
+        Sign Out
       </button>
 
       {/* version */}
