@@ -34,7 +34,6 @@ export default function Search() {
 
   return (
     <>
-      {/* staking modal always at top level */}
       {showStaking && stakingDirection && selectedPoll && typeof document !== 'undefined' &&
         createPortal(
           <StakingModal
@@ -55,10 +54,10 @@ export default function Search() {
         )
       }
 
-      {/* detail page */}
       {selectedPoll ? (
-        <div className="bg-slate-950 min-h-screen overflow-y-auto pb-32">
-          <div className="flex items-center justify-between p-4">
+        <div className="bg-slate-950 h-screen flex flex-col">
+          {/* fixed header */}
+          <div className="flex items-center justify-between p-4 flex-shrink-0">
             <button
               onClick={() => { setSelectedPoll(null); setVote(null) }}
               className="text-slate-400 text-lg"
@@ -74,7 +73,8 @@ export default function Search() {
             </div>
           </div>
 
-          <div className="flex-1 p-4 space-y-5">
+          {/* scrollable content */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-5 pb-32">
             <div className="bg-slate-800 rounded-2xl p-6">
               <p className="text-white font-bold text-2xl leading-tight mb-3">{selectedPoll.question}</p>
               {selectedPoll.status === 'active' && !userVote && (
@@ -139,10 +139,10 @@ export default function Search() {
             )}
           </div>
 
-          {/* stake buttons before voting */}
+          {/* fixed bottom buttons */}
           {selectedPoll.status === 'active' && !userVote && (
-            <div className="fixed bottom-24 left-0 right-0 p-4">
-              <div className="flex gap-3 max-w-sm mx-auto">
+            <div className="flex-shrink-0 p-4 pb-20 bg-slate-950">
+              <div className="flex gap-3">
                 <button
                   onClick={() => { setStakingDirection('NO'); setShowStaking(true) }}
                   className="flex-1 bg-pink-500 text-black font-bold py-4 rounded-2xl"
@@ -159,10 +159,9 @@ export default function Search() {
             </div>
           )}
 
-          {/* add/change buttons after voting */}
           {selectedPoll.status === 'active' && userVote && (
-            <div className="fixed bottom-20 left-0 right-0 p-4">
-              <div className="flex gap-3 max-w-sm mx-auto">
+            <div className="flex-shrink-0 p-4 pb-20 bg-slate-950">
+              <div className="flex gap-3">
                 <button
                   onClick={() => { setStakingDirection(userVote.direction === 'YES' ? 'NO' : 'YES'); setShowStaking(true) }}
                   className={`flex-1 text-black font-bold py-4 rounded-2xl ${userVote.direction === 'YES' ? 'bg-pink-500' : 'bg-cyan-400'}`}
@@ -181,7 +180,6 @@ export default function Search() {
         </div>
 
       ) : (
-        /* search list */
         <div className="bg-slate-950 min-h-screen p-4 pb-24">
           <div className="mb-6">
             <div className="flex items-center bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 gap-3">
