@@ -55,6 +55,7 @@ export default function Search() {
 
       {selectedPoll ? (
         <div className="bg-slate-950 min-h-screen">
+          {/* header - stays at top */}
           <div className="flex items-center justify-between p-4">
             <button
               onClick={() => { setSelectedPoll(null); setVote(null) }}
@@ -71,6 +72,7 @@ export default function Search() {
             </div>
           </div>
 
+          {/* all content scrolls including buttons */}
           <div className="px-4 pb-32 space-y-5 overflow-y-auto">
             <div className="bg-slate-800 rounded-2xl p-6">
               <p className="text-white font-bold text-2xl leading-tight mb-3">{selectedPoll.question}</p>
@@ -98,13 +100,11 @@ export default function Search() {
                   <div className="flex items-center gap-3">
                     <span className="text-xl">📊</span>
                     <div>
-                      {selectedPoll.status === 'ended' && (
-                        <p className="font-bold">
-                          <span className="text-cyan-400">{selectedPoll.yesVotes} YES</span>
-                          <span className="text-slate-500"> · </span>
-                          <span className="text-pink-500">{selectedPoll.noVotes} NO</span>
-                        </p>
-                      )}
+                      <p className="font-bold">
+                        <span className="text-cyan-400">{selectedPoll.yesVotes || (userVote?.direction === 'YES' ? 1 : 0)} YES</span>
+                        <span className="text-slate-500"> · </span>
+                        <span className="text-pink-500">{selectedPoll.noVotes || (userVote?.direction === 'NO' ? 1 : 0)} NO</span>
+                      </p>
                       <p className="text-slate-400 text-sm">${selectedPoll.volume || userVote?.amount} USDC total volume</p>
                     </div>
                   </div>
@@ -134,6 +134,7 @@ export default function Search() {
               </div>
             )}
 
+            {/* buttons sit naturally in the page flow, not floating */}
             {selectedPoll.status === 'active' && !userVote && (
               <div className="flex gap-3 pt-2">
                 <button
