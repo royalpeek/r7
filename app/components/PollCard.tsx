@@ -148,7 +148,7 @@ export default function PollCard() {
     <>
       <div
         ref={deckRef}
-        className="h-screen w-full overflow-hidden touch-none"
+        className="h-full w-full overflow-hidden touch-none"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
