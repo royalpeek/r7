@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import StakingModal from './StakingModal'
 import ResultsPage from './ResultsPage'
+import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 
 type Vote = { pollId: string; vote: 'yes' | 'no'; amount: number }
 type Poll = {
@@ -19,6 +20,8 @@ type Poll = {
 export default function PollCard({ polls }: { polls: Poll[] }) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const currentCard = polls && polls.length > 0 ? polls[currentIndex] : null
+
+  const { userId } = useTelegramUser()
 
   const [votes, setVotes] = useState<Vote[]>([])
   const userVote = currentCard ? votes.find(v => v.pollId === currentCard.id) : null
@@ -97,12 +100,11 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
     if (!stakingDirection || !currentCard) return
     
     try {
-      // call the votes api
       const response = await fetch('/api/votes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: 'temp-user-id',
+          user_id: userId,
           poll_id: currentCard.id,
           direction: stakingDirection,
           amount: amount,
