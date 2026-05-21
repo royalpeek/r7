@@ -1,9 +1,8 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-// if StakingModal.tsx is in the same folder as this Search page, use './StakingModal'
-// if it is in a folder named 'components' next to this folder, use '../components/StakingModal'
-import StakingModal from './StakingModal' 
+import { createPortal } from 'react-dom'
+import StakingModal from '../components/StakingModal'
 
 const allPolls = [
   { id: 1, question: 'Is crypto the future of money?' },
@@ -16,7 +15,7 @@ const allPolls = [
 
 export default function Search() {
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedPoll, setSelectedPoll] = useState<(typeof allPolls)[number] | null>(null)
+  const [activePoll, setActivePoll] = useState<{ poll: any; direction: 'YES' | 'NO' } | null>(null)
 
   const filteredPolls = useMemo(() => {
     const term = searchTerm.trim().toLowerCase()
@@ -38,30 +37,42 @@ export default function Search() {
         />
       </div>
 
-      <div className="space-y-3">
-        {searchTerm.trim() === '' ? (
-          <p className="text-slate-400 text-sm text-center mt-8">start typing to search polls</p>
-        ) : filteredPolls.length === 0 ? (
-          <p className="text-slate-400 text-sm text-center mt-8">no polls found</p>
-        ) : (
-          filteredPolls.map(poll => (
-            <button
-              key={poll.id}
-              onClick={() => setSelectedPoll(poll)}
-              className="w-full text-left bg-slate-900 p-4 rounded-lg border border-slate-700 cursor-pointer hover:border-cyan-400 transition"
-            >
-              <p className="text-white font-bold">{poll.question}</p>
-            </button>
-          ))
-        )}
+      <div className="space-y-4">
+        {filteredPolls.map(poll => (
+          <div key={poll.id} className="bg-slate-900 p-4 rounded-lg border border-slate-700">
+            <p className="text-white font-bold mb-3">{poll.question}</p>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setActivePoll({ poll, direction: 'YES' })}
+                className="flex-1 bg-cyan-900 text-cyan-400 font-bold py-2 rounded-lg"
+              >
+                YES
+              </button>
+              <button 
+                onClick={() => setActivePoll({ poll, direction: 'NO' })}
+                className="flex-1 bg-pink-900 text-pink-400 font-bold py-2 rounded-lg"
+              >
+                NO
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
 
-      {selectedPoll && (
-        <StakingModal
-          poll={selectedPoll}
-          onClose={() => setSelectedPoll(null)}
-        />
-      )}
+      {activePoll && typeof document !== 'undefined' &&
+        createPortal(
+          <StakingModal
+            question={activePoll.poll.question}
+            voteDirection={activePoll.direction}
+            onConfirm={(amount) => {
+              console.log(`Staked ${amount} on ${activePoll.direction}`)
+              setActivePoll(null)
+            }}
+            onCancel={() => setActivePoll(null)}
+          />,
+          document.body
+        )
+      }
     </div>
   )
 }
