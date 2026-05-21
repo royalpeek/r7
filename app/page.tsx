@@ -22,7 +22,7 @@ export default function Home() {
           onClick={() => setShowWallet(true)}
           className="bg-slate-800 text-slate-400 px-4 py-2 rounded text-sm"
         >
-          $64.167 USDC
+          $64.167 USDT
         </button>
       </div>
 
@@ -68,7 +68,7 @@ export default function Home() {
               </button>
             </div>
             <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 mb-6">
-              <p className="text-slate-400 text-xs mb-2">USDC Balance</p>
+              <p className="text-slate-400 text-xs mb-2">USDT Balance</p>
               <div className="flex items-center justify-between">
                 <p className="text-white text-3xl font-bold">$64.167</p>
                 <button className="bg-slate-800 p-2 rounded-full">
@@ -83,7 +83,7 @@ export default function Home() {
               </button>
               <button className="flex-1 bg-slate-900 border border-slate-700 text-cyan-400 font-bold py-4 rounded-2xl flex items-center justify-center gap-2">
                 <Send size={18} />
-                Send USDC
+                Send USDT
               </button>
             </div>
             <button className="w-full flex items-center justify-center gap-2 text-slate-400 text-sm py-2">

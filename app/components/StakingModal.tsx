@@ -55,7 +55,7 @@ export default function StakingModal({ question, voteDirection, onConfirm, onCan
           <div className="mb-8">
             <div className="flex items-center justify-center mb-6">
               <span className={`text-6xl font-bold ${textColor}`}>${amount}</span>
-              <span className="text-slate-400 ml-3">USDC</span>
+              <span className="text-slate-400 ml-3">USDT</span>
             </div>
 
             <input
@@ -90,15 +90,15 @@ export default function StakingModal({ question, voteDirection, onConfirm, onCan
           <div className="space-y-4 mb-8 p-4 bg-slate-800 rounded-lg">
             <div className="flex justify-between text-sm">
               <span className="text-slate-400">Fee: 1%</span>
-              <span className="text-slate-300">${fee.toFixed(2)} USDC</span>
+              <span className="text-slate-300">${fee.toFixed(2)} USDT</span>
             </div>
             <div className="flex justify-between text-sm font-bold">
               <span className="text-white">Est. payout if {voteDirection}</span>
-              <span className={textColor}>${estimatedPayout} USDC</span>
+              <span className={textColor}>${estimatedPayout} USDT</span>
             </div>
             <div className="flex justify-between text-sm font-bold pt-4 border-t border-slate-700">
               <span className="text-white">Total cost</span>
-              <span className="text-white">${total.toFixed(2)} USDC</span>
+              <span className="text-white">${total.toFixed(2)} USDT</span>
             </div>
           </div>
 

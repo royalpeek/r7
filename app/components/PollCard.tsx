@@ -204,7 +204,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
                 >
                   <div className="flex items-center justify-between px-5 pt-5 pb-3">
                     <div className="bg-cyan-900 text-cyan-400 px-3 py-1 rounded text-sm font-mono">00:46:49</div>
-                    <div className="text-slate-400 text-sm">${(poll.yes_pool + poll.no_pool).toFixed(2)} USDC</div>
+                    <div className="text-slate-400 text-sm">${(poll.yes_pool + poll.no_pool).toFixed(2)} USDT</div>
                   </div>
 
                   <div className="px-5 pt-2 pb-6">

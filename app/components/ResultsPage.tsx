@@ -84,7 +84,7 @@ export default function ResultsPage({
               <span className="text-2xl">🔥</span>
               <div>
                 <p className="text-white font-bold">232 people staking</p>
-                <p className="text-slate-400 text-sm">$1,652 USDC total volume</p>
+                <p className="text-slate-400 text-sm">$1,652 USDT total volume</p>
               </div>
             </div>
           </div>

@@ -111,7 +111,7 @@ export default function Search() {
                           <span className="text-pink-500">{selectedPoll.noVotes} NO</span>
                         </p>
                       )}
-                      <p className="text-slate-400 text-sm">${selectedPoll.volume || userVote?.amount} USDC total volume</p>
+                      <p className="text-slate-400 text-sm">${selectedPoll.volume || userVote?.amount} USDT total volume</p>
                     </div>
                   </div>
                 </div>
