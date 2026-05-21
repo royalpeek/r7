@@ -97,7 +97,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
   }
 
   const handleConfirmVote = async (amount: number) => {
-    if (!stakingDirection || !currentCard) return
+    if (!stakingDirection || !currentCard || !userId) return
     
     try {
       const response = await fetch('/api/votes', {
