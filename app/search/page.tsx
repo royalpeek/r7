@@ -29,208 +29,214 @@ export default function Search() {
     return allPolls.filter(poll => poll.question.toLowerCase().includes(term))
   }, [searchTerm])
 
-  if (selectedPoll) {
-    const userVote = vote?.pollId === selectedPoll.id ? vote : null
-    const hasResult = userVote || selectedPoll.status === 'ended'
+  const userVote = vote?.pollId === selectedPoll?.id ? vote : null
+  const hasResult = userVote || selectedPoll?.status === 'ended'
 
-    return (
-      <div className="bg-slate-950 min-h-screen flex flex-col pb-32">
-        <div className="flex items-center justify-between p-4">
-          <button
-            onClick={() => { setSelectedPoll(null); setVote(null) }}
-            className="text-slate-400 text-lg"
-          >
-            ← Back
-          </button>
-          <div className={`px-3 py-1 rounded text-sm font-bold ${
-            selectedPoll.status === 'active'
-              ? 'bg-cyan-900 text-cyan-400 font-mono'
-              : 'bg-pink-900 text-pink-400'
-          }`}>
-            {selectedPoll.status === 'active' ? '05:12:55' : 'ENDED'}
+  return (
+    <>
+      {/* staking modal always at top level */}
+      {showStaking && stakingDirection && selectedPoll && typeof document !== 'undefined' &&
+        createPortal(
+          <StakingModal
+            question={selectedPoll.question}
+            voteDirection={stakingDirection}
+            onConfirm={(amount) => {
+              const direction = stakingDirection
+              setVote({ pollId: selectedPoll.id, direction, amount })
+              setShowStaking(false)
+              setStakingDirection(null)
+            }}
+            onCancel={() => {
+              setShowStaking(false)
+              setStakingDirection(null)
+            }}
+          />,
+          document.body
+        )
+      }
+
+      {/* detail page */}
+      {selectedPoll ? (
+        <div className="bg-slate-950 min-h-screen flex flex-col pb-32">
+          <div className="flex items-center justify-between p-4">
+            <button
+              onClick={() => { setSelectedPoll(null); setVote(null) }}
+              className="text-slate-400 text-lg"
+            >
+              ← Back
+            </button>
+            <div className={`px-3 py-1 rounded text-sm font-bold ${
+              selectedPoll.status === 'active'
+                ? 'bg-cyan-900 text-cyan-400 font-mono'
+                : 'bg-pink-900 text-pink-400'
+            }`}>
+              {selectedPoll.status === 'active' ? '05:12:55' : 'ENDED'}
+            </div>
           </div>
-        </div>
 
-        <div className="flex-1 p-4 space-y-5">
-          <div className="bg-slate-800 rounded-2xl p-6">
-            <p className="text-white font-bold text-2xl leading-tight mb-3">{selectedPoll.question}</p>
-            {selectedPoll.status === 'active' && !userVote && (
-              <p className="text-slate-400 text-sm">Tap the buttons below to cast your vote</p>
+          <div className="flex-1 p-4 space-y-5">
+            <div className="bg-slate-800 rounded-2xl p-6">
+              <p className="text-white font-bold text-2xl leading-tight mb-3">{selectedPoll.question}</p>
+              {selectedPoll.status === 'active' && !userVote && (
+                <p className="text-slate-400 text-sm">tap the buttons below to cast your vote</p>
+              )}
+              <p className="text-slate-600 text-xs mt-4">1% fee · 24h consensus · no gas</p>
+            </div>
+
+            {hasResult ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <p className="text-slate-400 text-xs font-bold tracking-widest">
+                    {selectedPoll.status === 'ended' ? 'FINAL PRICE' : 'CURRENT PRICE'}
+                  </p>
+                  <div className="flex gap-2">
+                    <span className="text-cyan-400 font-bold">${(selectedPoll.yesPercent / 100).toFixed(2)}</span>
+                    <span className="text-slate-500">·</span>
+                    <span className="text-pink-500 font-bold">${(selectedPoll.noPercent / 100).toFixed(2)}</span>
+                  </div>
+                </div>
+
+                <div className="bg-slate-800 rounded-2xl p-4 h-48 flex items-center justify-center">
+                  <p className="text-slate-500 text-sm">chart placeholder</p>
+                </div>
+
+                <div className="bg-slate-800 rounded-2xl p-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">📊</span>
+                    <div>
+                      <p className="font-bold">
+                        <span className="text-cyan-400">{selectedPoll.yesVotes || (userVote?.direction === 'YES' ? 1 : 0)} YES</span>
+                        <span className="text-slate-500"> · </span>
+                        <span className="text-pink-500">{selectedPoll.noVotes || (userVote?.direction === 'NO' ? 1 : 0)} NO</span>
+                      </p>
+                      <p className="text-slate-400 text-sm">${selectedPoll.volume || userVote?.amount} USDC total volume</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-slate-400 text-xs font-bold tracking-widest mb-3">POOL BREAKDOWN</p>
+                  <div className="flex gap-3">
+                    <div className="flex-1 bg-slate-800 rounded-2xl p-4">
+                      <p className="text-cyan-400 font-bold text-xl">${selectedPoll.yesPool || userVote?.amount || 0}</p>
+                      <p className="text-slate-400 text-sm">YES Pool</p>
+                    </div>
+                    <div className="flex-1 bg-slate-800 rounded-2xl p-4">
+                      <p className="text-pink-500 font-bold text-xl">${selectedPoll.noPool || 0}</p>
+                      <p className="text-slate-400 text-sm">NO Pool</p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="bg-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center min-h-48">
+                <div className="text-center">
+                  <div className="text-5xl mb-3">🗳️</div>
+                  <p className="text-white font-bold mb-2">Vote to unlock insights</p>
+                  <p className="text-slate-400 text-sm text-center">tap the buttons below to cast your vote. charts, odds, and pool data will appear after you vote.</p>
+                </div>
+              </div>
             )}
-            <p className="text-slate-600 text-xs mt-4">1% fee · 24h consensus · no gas</p>
           </div>
 
-          {hasResult ? (
-            <>
-              <div className="flex items-center justify-between">
-                <p className="text-slate-400 text-xs font-bold tracking-widest">
-                  {selectedPoll.status === 'ended' ? 'FINAL PRICE' : 'CURRENT PRICE'}
-                </p>
-                <div className="flex gap-2">
-                  <span className="text-cyan-400 font-bold">${(selectedPoll.yesPercent / 100).toFixed(2)}</span>
-                  <span className="text-slate-500">·</span>
-                  <span className="text-pink-500 font-bold">${(selectedPoll.noPercent / 100).toFixed(2)}</span>
-                </div>
+          {/* stake buttons before voting */}
+          {selectedPoll.status === 'active' && !userVote && (
+            <div className="fixed bottom-20 left-0 right-0 p-4">
+              <div className="flex gap-3 max-w-sm mx-auto">
+                <button
+                  onClick={() => { setStakingDirection('NO'); setShowStaking(true) }}
+                  className="flex-1 bg-pink-500 text-black font-bold py-4 rounded-2xl"
+                >
+                  STAKE NO
+                </button>
+                <button
+                  onClick={() => { setStakingDirection('YES'); setShowStaking(true) }}
+                  className="flex-1 bg-cyan-400 text-black font-bold py-4 rounded-2xl"
+                >
+                  STAKE YES
+                </button>
               </div>
+            </div>
+          )}
 
-              <div className="bg-slate-800 rounded-2xl p-4 h-48 flex items-center justify-center">
-                <p className="text-slate-500 text-sm">chart placeholder</p>
-              </div>
-
-              <div className="bg-slate-800 rounded-2xl p-4">
-                <div className="flex items-center gap-3">
-                  <span className="text-xl">📊</span>
-                  <div>
-                    <p className="font-bold">
-                      <span className="text-cyan-400">{selectedPoll.yesVotes || (userVote?.direction === 'YES' ? 1 : 0)} YES</span>
-                      <span className="text-slate-500"> · </span>
-                      <span className="text-pink-500">{selectedPoll.noVotes || (userVote?.direction === 'NO' ? 1 : 0)} NO</span>
-                    </p>
-                    <p className="text-slate-400 text-sm">${selectedPoll.volume || userVote?.amount} USDC total volume</p>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-slate-400 text-xs font-bold tracking-widest mb-3">POOL BREAKDOWN</p>
-                <div className="flex gap-3">
-                  <div className="flex-1 bg-slate-800 rounded-2xl p-4">
-                    <p className="text-cyan-400 font-bold text-xl">${selectedPoll.yesPool || userVote?.amount || 0}</p>
-                    <p className="text-slate-400 text-sm">YES Pool</p>
-                  </div>
-                  <div className="flex-1 bg-slate-800 rounded-2xl p-4">
-                    <p className="text-pink-500 font-bold text-xl">${selectedPoll.noPool || 0}</p>
-                    <p className="text-slate-400 text-sm">NO Pool</p>
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="bg-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center min-h-48">
-              <div className="text-center">
-                <div className="text-5xl mb-3">🗳️</div>
-                <p className="text-white font-bold mb-2">Vote to unlock insights</p>
-                <p className="text-slate-400 text-sm text-center">Tap the buttons below to cast your vote. Charts, odds, and pool data will appear after you vote.</p>
+          {/* add/change buttons after voting */}
+          {selectedPoll.status === 'active' && userVote && (
+            <div className="fixed bottom-20 left-0 right-0 p-4">
+              <div className="flex gap-3 max-w-sm mx-auto">
+                <button
+                  onClick={() => { setStakingDirection(userVote.direction === 'YES' ? 'NO' : 'YES'); setShowStaking(true) }}
+                  className={`flex-1 text-black font-bold py-4 rounded-2xl ${userVote.direction === 'YES' ? 'bg-pink-500' : 'bg-cyan-400'}`}
+                >
+                  CHANGE {userVote.direction === 'YES' ? 'NO' : 'YES'}
+                </button>
+                <button
+                  onClick={() => { setStakingDirection(userVote.direction); setShowStaking(true) }}
+                  className={`flex-1 text-black font-bold py-4 rounded-2xl ${userVote.direction === 'YES' ? 'bg-cyan-400' : 'bg-pink-500'}`}
+                >
+                  ADD {userVote.direction}
+                </button>
               </div>
             </div>
           )}
         </div>
 
-        {selectedPoll.status === 'active' && !userVote && (
-          <div className="fixed bottom-20 left-0 right-0 p-4">
-            <div className="flex gap-3 max-w-sm mx-auto">
-              <button
-                onClick={() => { setStakingDirection('NO'); setShowStaking(true) }}
-                className="flex-1 bg-pink-500 text-black font-bold py-4 rounded-2xl"
-              >
-                STAKE NO
-              </button>
-              <button
-                onClick={() => { setStakingDirection('YES'); setShowStaking(true) }}
-                className="flex-1 bg-cyan-400 text-black font-bold py-4 rounded-2xl"
-              >
-                STAKE YES
-              </button>
+      ) : (
+        /* search list */
+        <div className="bg-slate-950 min-h-screen p-4 pb-24">
+          <div className="mb-6">
+            <div className="flex items-center bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 gap-3">
+              <span className="text-slate-500">🔍</span>
+              <input
+                type="text"
+                placeholder="search polls..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="flex-1 bg-transparent text-white placeholder-slate-500 focus:outline-none"
+              />
             </div>
           </div>
-        )}
 
-        {selectedPoll.status === 'active' && userVote && (
-          <div className="fixed bottom-20 left-0 right-0 p-4">
-            <div className="flex gap-3 max-w-sm mx-auto">
-              <button
-                onClick={() => { setStakingDirection(userVote.direction === 'YES' ? 'NO' : 'YES'); setShowStaking(true) }}
-                className={`flex-1 text-black font-bold py-4 rounded-2xl ${userVote.direction === 'YES' ? 'bg-pink-500' : 'bg-cyan-400'}`}
+          <div className="space-y-3">
+            {filteredPolls.length === 0 && searchTerm.trim() !== '' && (
+              <p className="text-slate-500 text-center mt-8">no polls found</p>
+            )}
+
+            {filteredPolls.map(poll => (
+              <div
+                key={poll.id}
+                onClick={() => setSelectedPoll(poll)}
+                className="bg-slate-900 p-4 rounded-2xl border border-slate-700 cursor-pointer active:opacity-80"
               >
-                CHANGE {userVote.direction === 'YES' ? 'NO' : 'YES'}
-              </button>
-              <button
-                onClick={() => { setStakingDirection(userVote.direction); setShowStaking(true) }}
-                className={`flex-1 text-black font-bold py-4 rounded-2xl ${userVote.direction === 'YES' ? 'bg-cyan-400' : 'bg-pink-500'}`}
-              >
-                ADD {userVote.direction}
-              </button>
-            </div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${poll.status === 'active' ? 'bg-cyan-400' : 'bg-slate-500'}`}></div>
+                    <span className={`text-xs ${poll.status === 'active' ? 'text-cyan-400' : 'text-slate-500'}`}>
+                      {poll.status === 'active' ? 'Active' : 'Ended'}
+                    </span>
+                  </div>
+                  <span className="text-slate-500 text-xs">${poll.volume.toLocaleString()} vol</span>
+                </div>
+
+                <p className="text-white font-bold mb-3">{poll.question}</p>
+
+                <div className="space-y-2">
+                  <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                    <div className="h-full bg-cyan-400 rounded-full" style={{ width: `${poll.yesPercent}%` }}></div>
+                  </div>
+                  <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                    <div className="h-full bg-pink-500 rounded-full" style={{ width: `${poll.noPercent}%` }}></div>
+                  </div>
+                </div>
+
+                <div className="flex justify-between mt-2">
+                  <span className="text-cyan-400 text-xs font-bold">{poll.yesPercent}% Yes</span>
+                  <span className="text-pink-500 text-xs font-bold">{poll.noPercent}% No</span>
+                </div>
+              </div>
+            ))}
           </div>
-        )}
-
-        {showStaking && stakingDirection && typeof document !== 'undefined' &&
-          createPortal(
-            <StakingModal
-              question={selectedPoll.question}
-              voteDirection={stakingDirection}
-              onConfirm={(amount) => {
-                const direction = stakingDirection!
-                setVote({ pollId: selectedPoll.id, direction, amount })
-                setShowStaking(false)
-                setStakingDirection(null)
-              }}
-              onCancel={() => {
-                setShowStaking(false)
-                setStakingDirection(null)
-              }}
-            />,
-            document.body
-          )
-        }
-      </div>
-    )
-  }
-
-  return (
-    <div className="bg-slate-950 min-h-screen p-4 pb-24">
-      <div className="mb-6">
-        <div className="flex items-center bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 gap-3">
-          <span className="text-slate-500">🔍</span>
-          <input
-            type="text"
-            placeholder="search polls..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 bg-transparent text-white placeholder-slate-500 focus:outline-none"
-          />
         </div>
-      </div>
-
-      <div className="space-y-3">
-        {filteredPolls.length === 0 && searchTerm.trim() !== '' && (
-          <p className="text-slate-500 text-center mt-8">no polls found</p>
-        )}
-
-        {filteredPolls.map(poll => (
-          <div
-            key={poll.id}
-            onClick={() => setSelectedPoll(poll)}
-            className="bg-slate-900 p-4 rounded-2xl border border-slate-700 cursor-pointer active:opacity-80"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${poll.status === 'active' ? 'bg-cyan-400' : 'bg-slate-500'}`}></div>
-                <span className={`text-xs ${poll.status === 'active' ? 'text-cyan-400' : 'text-slate-500'}`}>
-                  {poll.status === 'active' ? 'Active' : 'Ended'}
-                </span>
-              </div>
-              <span className="text-slate-500 text-xs">${poll.volume.toLocaleString()} vol</span>
-            </div>
-
-            <p className="text-white font-bold mb-3">{poll.question}</p>
-
-            <div className="space-y-2">
-              <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-                <div className="h-full bg-cyan-400 rounded-full" style={{ width: `${poll.yesPercent}%` }}></div>
-              </div>
-              <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-                <div className="h-full bg-pink-500 rounded-full" style={{ width: `${poll.noPercent}%` }}></div>
-              </div>
-            </div>
-
-            <div className="flex justify-between mt-2">
-              <span className="text-cyan-400 text-xs font-bold">{poll.yesPercent}% Yes</span>
-              <span className="text-pink-500 text-xs font-bold">{poll.noPercent}% No</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+      )}
+    </>
   )
 }
