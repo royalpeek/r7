@@ -1,30 +1,30 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import StakingModal from './StakingModal'
 import ResultsPage from './ResultsPage'
 
-type Vote = { cardId: number; vote: 'YES' | 'NO'; amount: number }
+type Vote = { pollId: string; vote: 'yes' | 'no'; amount: number }
+type Poll = {
+  id: string
+  question: string
+  yes_votes: number
+  no_votes: number
+  yes_pool: number
+  no_pool: number
+  ends_at: string
+}
 
-export default function PollCard() {
-  const cards = useMemo(
-    () => [
-      { id: 1, question: 'Is crypto the future of money?', yesPercent: 65, noPercent: 35 },
-      { id: 2, question: 'Should couples split everything 50/50?', yesPercent: 58, noPercent: 42 },
-      { id: 3, question: 'Is trash talking necessary in sports?', yesPercent: 72, noPercent: 28 },
-    ],
-    []
-  )
-
+export default function PollCard({ polls }: { polls: Poll[] }) {
   const [currentIndex, setCurrentIndex] = useState(0)
-  const currentCard = cards[currentIndex]
+  const currentCard = polls && polls.length > 0 ? polls[currentIndex] : null
 
   const [votes, setVotes] = useState<Vote[]>([])
-  const userVote = votes.find(v => v.cardId === currentCard.id)
+  const userVote = currentCard ? votes.find(v => v.pollId === currentCard.id) : null
 
   const [showStakingModal, setShowStakingModal] = useState(false)
-  const [stakingDirection, setStakingDirection] = useState<'YES' | 'NO' | null>(null)
+  const [stakingDirection, setStakingDirection] = useState<'yes' | 'no' | null>(null)
   const [showResults, setShowResults] = useState(false)
 
   const deckRef = useRef<HTMLDivElement | null>(null)
@@ -81,23 +81,23 @@ export default function PollCard() {
     resetDrag()
 
     if (axis === 'y' && Math.abs(dy) > 110) {
-      if (dy < 0) setCurrentIndex(i => Math.min(i + 1, cards.length - 1))
+      if (dy < 0) setCurrentIndex(i => Math.min(i + 1, polls.length - 1))
       else setCurrentIndex(i => Math.max(i - 1, 0))
       return
     }
 
     if (axis === 'x' && Math.abs(dx) > 110) {
-      setStakingDirection(dx > 0 ? 'YES' : 'NO')
+      setStakingDirection(dx > 0 ? 'yes' : 'no')
       setShowStakingModal(true)
       return
     }
   }
 
   const handleConfirmVote = (amount: number) => {
-    if (!stakingDirection) return
-    const updated: Vote = { cardId: currentCard.id, vote: stakingDirection, amount }
+    if (!stakingDirection || !currentCard) return
+    const updated: Vote = { pollId: currentCard.id, vote: stakingDirection, amount }
     setVotes(prev => {
-      const idx = prev.findIndex(v => v.cardId === currentCard.id)
+      const idx = prev.findIndex(v => v.pollId === currentCard.id)
       if (idx >= 0) {
         const next = [...prev]
         next[idx] = updated
@@ -110,17 +110,25 @@ export default function PollCard() {
     setStakingDirection(null)
   }
 
+  if (!currentCard) {
+    return <div className="flex items-center justify-center h-full"><p className="text-slate-400">no polls</p></div>
+  }
+
+  const totalVotes = currentCard.yes_votes + currentCard.no_votes
+  const yesPercent = totalVotes > 0 ? Math.round((currentCard.yes_votes / totalVotes) * 100) : 50
+  const noPercent = 100 - yesPercent
+
   if (showResults && userVote) {
     return (
       <ResultsPage
         question={currentCard.question}
-        voteDirection={userVote.vote}
+        voteDirection={userVote.vote === 'yes' ? 'YES' : 'NO'}
         amount={userVote.amount}
-        yesPercent={currentCard.yesPercent}
-        noPercent={currentCard.noPercent}
+        yesPercent={yesPercent}
+        noPercent={noPercent}
         onBack={() => {
           setShowResults(false)
-          setCurrentIndex(i => Math.min(i + 1, cards.length - 1))
+          setCurrentIndex(i => Math.min(i + 1, polls.length - 1))
         }}
         onAddMore={() => {
           setShowResults(false)
@@ -129,7 +137,7 @@ export default function PollCard() {
         }}
         onChangeVote={() => {
           setShowResults(false)
-          setStakingDirection(userVote.vote === 'YES' ? 'NO' : 'YES')
+          setStakingDirection(userVote.vote === 'yes' ? 'no' : 'yes')
           setShowStakingModal(true)
         }}
       />
@@ -158,12 +166,11 @@ export default function PollCard() {
           className="w-full h-full transition-transform duration-500 ease-out"
           style={{ transform: deckTranslate }}
         >
-          {cards.map((c, i) => {
+          {polls.map((poll, i) => {
             const isActive = i === currentIndex
 
             return (
-              <div key={c.id} className="h-full w-full flex flex-col px-4 pt-4 pb-60">
-                {/* card fills the screen */}
+              <div key={poll.id} className="h-full w-full flex flex-col px-4 pt-4 pb-60">
                 <div
                   className="flex-1 bg-slate-900 rounded-2xl border border-slate-700 flex flex-col overflow-hidden"
                   style={{
@@ -171,31 +178,26 @@ export default function PollCard() {
                     transition: isActive && dragging && axis === 'x' ? 'none' : 'transform 200ms ease-out',
                   }}
                 >
-                  {/* top row inside card */}
                   <div className="flex items-center justify-between px-5 pt-5 pb-3">
                     <div className="bg-cyan-900 text-cyan-400 px-3 py-1 rounded text-sm font-mono">00:46:49</div>
-                    <div className="text-slate-400 text-sm">${100 + i * 50} USDC</div>
+                    <div className="text-slate-400 text-sm">${(poll.yes_pool + poll.no_pool).toFixed(2)} USDC</div>
                   </div>
 
-                  {/* question - left aligned, large */}
                   <div className="px-5 pt-2 pb-6">
-                    <p className="text-white font-bold text-3xl leading-tight text-left">{c.question}</p>
+                    <p className="text-white font-bold text-3xl leading-tight text-left">{poll.question}</p>
                   </div>
 
-                  {/* voting area - fills remaining space */}
                   <div className="flex-1 mx-4 mb-4 bg-slate-800 rounded-xl flex flex-col items-center justify-center gap-4">
                     <div className="text-7xl">🗳️</div>
                     <p className="text-white font-semibold text-base">Vote to see results</p>
                     <p className="text-slate-400 text-sm">Swipe right for YES, left for NO</p>
                   </div>
 
-                  {/* bottom row inside card */}
                   <div className="text-center py-4 text-slate-500 text-xs">
                     ← NO · swipe · YES →
                   </div>
                 </div>
 
-                {/* below card */}
                 <div className="text-center py-3 text-slate-600 text-xs">
                   1% fee · 24h consensus · no gas
                 </div>
@@ -205,11 +207,11 @@ export default function PollCard() {
         </div>
       </div>
 
-      {showStakingModal && stakingDirection &&
+      {showStakingModal && stakingDirection && currentCard &&
         createPortal(
           <StakingModal
             question={currentCard.question}
-            voteDirection={stakingDirection}
+            voteDirection={stakingDirection === 'yes' ? 'YES' : 'NO'}
             onConfirm={handleConfirmVote}
             onCancel={() => {
               setShowStakingModal(false)
