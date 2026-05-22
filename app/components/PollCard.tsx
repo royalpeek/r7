@@ -1,7 +1,8 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { supabase } from '@/lib/supabase'
 import StakingModal from './StakingModal'
 import ResultsPage from './ResultsPage'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
@@ -23,8 +24,8 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
 
   const { userId } = useTelegramUser()
 
-  const [votes, setVotes] = useState<Vote[]>([])
-  const userVote = currentCard ? votes.find(v => v.pollId === currentCard.id) : null
+  const [userVote, setUserVote] = useState<Vote | null>(null)
+  const [loadingVote, setLoadingVote] = useState(false)
 
   const [showStakingModal, setShowStakingModal] = useState(false)
   const [stakingDirection, setStakingDirection] = useState<'yes' | 'no' | null>(null)
@@ -44,6 +45,43 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
   const [axis, setAxis] = useState<'x' | 'y' | null>(null)
   const [deltaX, setDeltaX] = useState(0)
   const [deltaY, setDeltaY] = useState(0)
+
+  // fetch user's vote for current poll
+  useEffect(() => {
+    if (!userId || !currentCard) return
+
+    const fetchUserVote = async () => {
+      setLoadingVote(true)
+      try {
+        const { data, error } = await supabase
+          .from('votes')
+          .select('direction, amount')
+          .eq('user_id', userId)
+          .eq('poll_id', currentCard.id)
+          .single()
+
+        if (error && error.code !== 'PGRST116') throw error
+
+        if (data) {
+          setUserVote({
+            pollId: currentCard.id,
+            vote: data.direction as 'yes' | 'no',
+            amount: data.amount,
+          })
+          setShowResults(true)
+        } else {
+          setUserVote(null)
+          setShowResults(false)
+        }
+      } catch (err) {
+        console.error('fetch vote error:', err)
+      } finally {
+        setLoadingVote(false)
+      }
+    }
+
+    fetchUserVote()
+  }, [userId, currentCard?.id])
 
   const resetDrag = () => {
     setDragging(false)
@@ -167,18 +205,23 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
 
       if (!response.ok) throw new Error('vote failed')
 
-      // wait a bit for database to update
+      // wait for database to update
       await new Promise(resolve => setTimeout(resolve, 500))
 
-      const updated: Vote = { pollId: currentCard.id, vote: stakingDirection, amount }
-      setVotes(prev => {
-        const idx = prev.findIndex(v => v.pollId === currentCard.id)
-        if (idx >= 0) {
-          const next = [...prev]
-          next[idx] = updated
-          return next
-        }
-        return [...prev, updated]
+      // fetch the vote from database to get the exact amount stored
+      const { data: vote, error } = await supabase
+        .from('votes')
+        .select('direction, amount')
+        .eq('user_id', userId)
+        .eq('poll_id', currentCard.id)
+        .single()
+
+      if (error) throw error
+
+      setUserVote({
+        pollId: currentCard.id,
+        vote: vote.direction as 'yes' | 'no',
+        amount: vote.amount,
       })
       setShowResults(true)
       setShowDetail(false)
@@ -204,7 +247,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
   const marketEnded = new Date(currentCard.ends_at) < new Date()
 
   // show results page after voting
-  if (showResults && userVote) {
+  if (showResults && userVote && !loadingVote) {
     const voteDir: 'YES' | 'NO' = userVote.vote === 'yes' ? 'YES' : 'NO'
     return (
       <>
@@ -256,7 +299,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
       : 'translateX(0px)'
 
     // if already voted, show results directly
-    if (userVote) {
+    if (userVote && !loadingVote) {
       const voteDir: 'YES' | 'NO' = userVote.vote === 'yes' ? 'YES' : 'NO'
       return (
         <>

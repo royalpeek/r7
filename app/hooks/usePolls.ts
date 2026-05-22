@@ -3,13 +3,14 @@ import { supabase } from '@/lib/supabase'
 
 export function usePolls() {
   const [polls, setPolls] = useState<any[]>([])
+  const [userVotes, setUserVotes] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchPolls()
 
-    // refetch polls every 1 second for real-time feel
+    // refetch polls every 1 second
     const interval = setInterval(() => {
       fetchPolls()
     }, 1000)
@@ -19,13 +20,13 @@ export function usePolls() {
 
   const fetchPolls = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: pollsData, error: pollsError } = await supabase
         .from('polls')
         .select('*')
         .order('created_at', { ascending: false })
 
-      if (error) throw error
-      setPolls(data || [])
+      if (pollsError) throw pollsError
+      setPolls(pollsData || [])
       setLoading(false)
     } catch (err) {
       setError((err as any).message)
@@ -33,5 +34,5 @@ export function usePolls() {
     }
   }
 
-  return { polls, loading, error, refetch: fetchPolls }
+  return { polls, userVotes, loading, error, refetch: fetchPolls }
 }
