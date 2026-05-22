@@ -9,25 +9,12 @@ export function usePolls() {
   useEffect(() => {
     fetchPolls()
 
-    // subscribe to real-time changes
-    const channel = supabase.channel('polls-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'polls',
-        },
-        (payload) => {
-          console.log('poll updated:', payload)
-          fetchPolls() // refetch all polls when any update happens
-        }
-      )
-      .subscribe()
+    // refetch polls every 1 second for real-time feel
+    const interval = setInterval(() => {
+      fetchPolls()
+    }, 1000)
 
-    return () => {
-      channel.unsubscribe()
-    }
+    return () => clearInterval(interval)
   }, [])
 
   const fetchPolls = async () => {
