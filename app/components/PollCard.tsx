@@ -29,7 +29,15 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
   const [showStakingModal, setShowStakingModal] = useState(false)
   const [stakingDirection, setStakingDirection] = useState<'yes' | 'no' | null>(null)
   const [showResults, setShowResults] = useState(false)
+  const [showDetail, setShowDetail] = useState(false)
 
+  // detail page swipe state
+  const detailStartPos = useRef({ x: 0, y: 0 })
+  const [detailDragging, setDetailDragging] = useState(false)
+  const [detailDeltaX, setDetailDeltaX] = useState(0)
+  const [detailAxis, setDetailAxis] = useState<'x' | 'y' | null>(null)
+
+  // main deck swipe state
   const deckRef = useRef<HTMLDivElement | null>(null)
   const startPos = useRef({ x: 0, y: 0 })
   const [dragging, setDragging] = useState(false)
@@ -44,8 +52,54 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
     setDeltaY(0)
   }
 
+  const resetDetailDrag = () => {
+    setDetailDragging(false)
+    setDetailAxis(null)
+    setDetailDeltaX(0)
+  }
+
+  // detail page swipe handlers
+  const onDetailTouchStart = (e: React.TouchEvent) => {
+    if (showStakingModal) return
+    if (e.touches.length > 1) return
+    detailStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+    setDetailDragging(true)
+    setDetailAxis(null)
+    setDetailDeltaX(0)
+  }
+
+  const onDetailTouchMove = (e: React.TouchEvent) => {
+    if (!detailDragging) return
+    if (e.touches.length > 1) return
+
+    const dx = e.touches[0].clientX - detailStartPos.current.x
+    const dy = e.touches[0].clientY - detailStartPos.current.y
+
+    if (!detailAxis) {
+      if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+        setDetailAxis(Math.abs(dx) > Math.abs(dy) ? 'x' : 'y')
+      }
+    }
+
+    if (detailAxis === 'x') {
+      setDetailDeltaX(dx)
+    }
+  }
+
+  const onDetailTouchEnd = () => {
+    if (!detailDragging) return
+    const dx = detailDeltaX
+    resetDetailDrag()
+
+    if (detailAxis === 'x' && Math.abs(dx) > 110) {
+      setStakingDirection(dx > 0 ? 'yes' : 'no')
+      setShowStakingModal(true)
+    }
+  }
+
+  // main deck swipe handlers
   const onTouchStart = (e: React.TouchEvent) => {
-    if (showStakingModal || showResults) return
+    if (showStakingModal || showResults || showDetail) return
     if (e.touches.length > 1) return
     startPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
     setDragging(true)
@@ -98,7 +152,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
 
   const handleConfirmVote = async (amount: number) => {
     if (!stakingDirection || !currentCard || !userId) return
-    
+
     try {
       const response = await fetch('/api/votes', {
         method: 'POST',
@@ -124,6 +178,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
         return [...prev, updated]
       })
       setShowResults(true)
+      setShowDetail(false)
       setShowStakingModal(false)
       setStakingDirection(null)
     } catch (error) {
@@ -145,33 +200,181 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
   const noPercent = 100 - yesPercent
   const marketEnded = new Date(currentCard.ends_at) < new Date()
 
+  // show results page after voting
   if (showResults && userVote) {
     const voteDir: 'YES' | 'NO' = userVote.vote === 'yes' ? 'YES' : 'NO'
     return (
-      <ResultsPage
-        question={currentCard.question}
-        voteDirection={voteDir}
-        amount={userVote.amount}
-        yesPercent={yesPercent}
-        noPercent={noPercent}
-        yesPool={currentCard.yes_pool + (userVote.vote === 'yes' ? userVote.amount : 0)}
-        noPool={currentCard.no_pool + (userVote.vote === 'no' ? userVote.amount : 0)}
-        marketEnded={marketEnded}
-        onBack={() => {
-          setShowResults(false)
-          setCurrentIndex(i => Math.min(i + 1, polls.length - 1))
-        }}
-        onAddMore={() => {
-          setShowResults(false)
-          setStakingDirection(userVote.vote)
-          setShowStakingModal(true)
-        }}
-        onChangeVote={() => {
-          setShowResults(false)
-          setStakingDirection(userVote.vote === 'yes' ? 'no' : 'yes')
-          setShowStakingModal(true)
-        }}
-      />
+      <>
+        <ResultsPage
+          question={currentCard.question}
+          voteDirection={voteDir}
+          amount={userVote.amount}
+          yesPercent={yesPercent}
+          noPercent={noPercent}
+          yesPool={currentCard.yes_pool + (userVote.vote === 'yes' ? userVote.amount : 0)}
+          noPool={currentCard.no_pool + (userVote.vote === 'no' ? userVote.amount : 0)}
+          marketEnded={marketEnded}
+          onBack={() => {
+            setShowResults(false)
+            setCurrentIndex(i => Math.min(i + 1, polls.length - 1))
+          }}
+          onAddMore={() => {
+            setShowResults(false)
+            setStakingDirection(userVote.vote)
+            setShowStakingModal(true)
+          }}
+          onChangeVote={() => {
+            setShowResults(false)
+            setStakingDirection(userVote.vote === 'yes' ? 'no' : 'yes')
+            setShowStakingModal(true)
+          }}
+        />
+        {showStakingModal && stakingDirection && typeof document !== 'undefined' &&
+          createPortal(
+            <StakingModal
+              question={currentCard.question}
+              voteDirection={stakingDirection === 'yes' ? 'YES' : 'NO'}
+              onConfirm={handleConfirmVote}
+              onCancel={() => {
+                setShowStakingModal(false)
+                setStakingDirection(null)
+              }}
+            />,
+            document.body
+          )}
+      </>
+    )
+  }
+
+  // show detail page when arrow is clicked
+  if (showDetail) {
+    const detailCardTilt = detailAxis === 'x'
+      ? `translateX(${detailDeltaX}px) rotate(${detailDeltaX / 18}deg)`
+      : 'translateX(0px)'
+
+    // if already voted, show results directly
+    if (userVote) {
+      const voteDir: 'YES' | 'NO' = userVote.vote === 'yes' ? 'YES' : 'NO'
+      return (
+        <>
+          <ResultsPage
+            question={currentCard.question}
+            voteDirection={voteDir}
+            amount={userVote.amount}
+            yesPercent={yesPercent}
+            noPercent={noPercent}
+            yesPool={currentCard.yes_pool + (userVote.vote === 'yes' ? userVote.amount : 0)}
+            noPool={currentCard.no_pool + (userVote.vote === 'no' ? userVote.amount : 0)}
+            marketEnded={marketEnded}
+            onBack={() => setShowDetail(false)}
+            onAddMore={() => {
+              setStakingDirection(userVote.vote)
+              setShowStakingModal(true)
+            }}
+            onChangeVote={() => {
+              setStakingDirection(userVote.vote === 'yes' ? 'no' : 'yes')
+              setShowStakingModal(true)
+            }}
+          />
+          {showStakingModal && stakingDirection && typeof document !== 'undefined' &&
+            createPortal(
+              <StakingModal
+                question={currentCard.question}
+                voteDirection={stakingDirection === 'yes' ? 'YES' : 'NO'}
+                onConfirm={handleConfirmVote}
+                onCancel={() => {
+                  setShowStakingModal(false)
+                  setStakingDirection(null)
+                }}
+              />,
+              document.body
+            )}
+        </>
+      )
+    }
+
+    return (
+      <>
+        <div className="h-full w-full bg-slate-950 flex flex-col overflow-hidden">
+          {/* swipeable question card */}
+          <div
+            className="mx-4 mt-4 bg-slate-900 rounded-2xl border border-slate-700 flex flex-col p-5"
+            onTouchStart={onDetailTouchStart}
+            onTouchMove={onDetailTouchMove}
+            onTouchEnd={onDetailTouchEnd}
+            style={{
+              transform: detailCardTilt,
+              transition: detailDragging && detailAxis === 'x' ? 'none' : 'transform 200ms ease-out',
+            }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <button
+                onClick={() => setShowDetail(false)}
+                className="text-slate-400 text-lg"
+              >
+                ← Back
+              </button>
+              <div className="bg-cyan-900 text-cyan-400 px-3 py-1 rounded text-sm font-mono">
+                00:46:49
+              </div>
+            </div>
+
+            <p className="text-white font-bold text-2xl leading-tight mb-3">{currentCard.question}</p>
+            <p className="text-slate-400 text-sm mb-2">Swipe right for YES, left for NO</p>
+
+            <div className="flex items-center justify-between mt-2">
+              <p className="text-slate-500 text-xs">← NO · swipe · YES →</p>
+              <button className="text-slate-400">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* vote to unlock box */}
+          <div className="flex-1 mx-4 mt-4 bg-slate-800 rounded-2xl flex flex-col items-center justify-center gap-4 p-6">
+            <div className="text-6xl">🗳️</div>
+            <p className="text-white font-bold text-lg">Vote to unlock insights</p>
+            <p className="text-slate-400 text-sm text-center">
+              Swipe above or tap the buttons below to cast your vote. Charts, odds, and pool data will appear after you vote.
+            </p>
+          </div>
+
+          {/* stake buttons */}
+          <div className="p-4 pb-8">
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setStakingDirection('no'); setShowStakingModal(true) }}
+                className="flex-1 bg-pink-500 text-black font-bold py-4 rounded-2xl"
+              >
+                STAKE NO
+              </button>
+              <button
+                onClick={() => { setStakingDirection('yes'); setShowStakingModal(true) }}
+                className="flex-1 bg-cyan-400 text-black font-bold py-4 rounded-2xl"
+              >
+                STAKE YES
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {showStakingModal && stakingDirection && typeof document !== 'undefined' &&
+          createPortal(
+            <StakingModal
+              question={currentCard.question}
+              voteDirection={stakingDirection === 'yes' ? 'YES' : 'NO'}
+              onConfirm={handleConfirmVote}
+              onCancel={() => {
+                setShowStakingModal(false)
+                setStakingDirection(null)
+              }}
+            />,
+            document.body
+          )}
+      </>
     )
   }
 
@@ -224,8 +427,15 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
                     <p className="text-slate-400 text-sm">Swipe right for YES, left for NO</p>
                   </div>
 
-                  <div className="text-center py-4 text-slate-500 text-xs">
-                    ← NO · swipe · YES →
+                  {/* bottom row with swipe hint and arrow button */}
+                  <div className="flex items-center justify-between px-5 py-4">
+                    <p className="text-slate-500 text-xs">← NO · swipe · YES →</p>
+                    <button
+                      onClick={() => setShowDetail(true)}
+                      className="bg-cyan-400 text-black rounded-full w-9 h-9 flex items-center justify-center font-bold text-lg"
+                    >
+                      →
+                    </button>
                   </div>
                 </div>
 
