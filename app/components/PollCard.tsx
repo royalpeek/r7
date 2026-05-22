@@ -113,8 +113,6 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
 
       if (!response.ok) throw new Error('vote failed')
 
-      const data = await response.json()
-      
       const updated: Vote = { pollId: currentCard.id, vote: stakingDirection, amount }
       setVotes(prev => {
         const idx = prev.findIndex(v => v.pollId === currentCard.id)
@@ -135,21 +133,30 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
   }
 
   if (!currentCard) {
-    return <div className="flex items-center justify-center h-full"><p className="text-slate-400">no polls</p></div>
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-slate-400">no polls</p>
+      </div>
+    )
   }
 
   const totalVotes = currentCard.yes_votes + currentCard.no_votes
   const yesPercent = totalVotes > 0 ? Math.round((currentCard.yes_votes / totalVotes) * 100) : 50
   const noPercent = 100 - yesPercent
+  const marketEnded = new Date(currentCard.ends_at) < new Date()
 
   if (showResults && userVote) {
+    const voteDir: 'YES' | 'NO' = userVote.vote === 'yes' ? 'YES' : 'NO'
     return (
       <ResultsPage
         question={currentCard.question}
-        voteDirection={userVote.vote === 'yes' ? 'YES' : 'NO'}
+        voteDirection={voteDir}
         amount={userVote.amount}
         yesPercent={yesPercent}
         noPercent={noPercent}
+        yesPool={currentCard.yes_pool + (userVote.vote === 'yes' ? userVote.amount : 0)}
+        noPool={currentCard.no_pool + (userVote.vote === 'no' ? userVote.amount : 0)}
+        marketEnded={marketEnded}
         onBack={() => {
           setShowResults(false)
           setCurrentIndex(i => Math.min(i + 1, polls.length - 1))
