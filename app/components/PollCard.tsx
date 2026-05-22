@@ -343,7 +343,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
           </div>
 
           {/* stake buttons */}
-          <div className="p-4 pb-8">
+          <div className="p-4 pb-24">
             <div className="flex gap-3">
               <button
                 onClick={() => { setStakingDirection('no'); setShowStakingModal(true) }}
