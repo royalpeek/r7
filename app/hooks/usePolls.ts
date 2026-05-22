@@ -20,12 +20,7 @@ export function usePolls() {
         },
         (payload) => {
           console.log('poll updated:', payload)
-          // update the specific poll in the state
-          setPolls(prev =>
-            prev.map(poll =>
-              poll.id === payload.new.id ? payload.new : poll
-            )
-          )
+          fetchPolls() // refetch all polls when any update happens
         }
       )
       .subscribe()
@@ -37,7 +32,6 @@ export function usePolls() {
 
   const fetchPolls = async () => {
     try {
-      setLoading(true)
       const { data, error } = await supabase
         .from('polls')
         .select('*')
@@ -45,9 +39,9 @@ export function usePolls() {
 
       if (error) throw error
       setPolls(data || [])
+      setLoading(false)
     } catch (err) {
       setError((err as any).message)
-    } finally {
       setLoading(false)
     }
   }
