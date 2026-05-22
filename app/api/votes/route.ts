@@ -146,6 +146,21 @@ export async function POST(request: NextRequest) {
 
     if (updateError) throw updateError
 
+    // save poll history snapshot
+    const { error: historyError } = await supabase
+      .from('poll_history')
+      .insert([{
+        poll_id,
+        yes_pool: newYesPool,
+        no_pool: newNoPool,
+        yes_votes: newYesVotes,
+        no_votes: newNoVotes,
+      }])
+
+    if (historyError) {
+      console.error('history snapshot error:', historyError)
+    }
+
     console.log('poll updated successfully')
     return NextResponse.json({ 
       success: true,
