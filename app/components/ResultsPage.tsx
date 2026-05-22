@@ -6,6 +6,9 @@ interface ResultsPageProps {
   amount: number
   yesPercent: number
   noPercent: number
+  yesPool: number
+  noPool: number
+  marketEnded?: boolean
   onBack: () => void
   onAddMore: () => void
   onChangeVote: () => void
@@ -17,13 +20,15 @@ export default function ResultsPage({
   amount,
   yesPercent,
   noPercent,
+  yesPool,
+  noPool,
+  marketEnded = false,
   onBack,
   onAddMore,
   onChangeVote,
 }: ResultsPageProps) {
   return (
     <div className="fixed inset-0 bg-slate-950 z-40 flex flex-col">
-      {/* scrollable content */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="max-w-sm mx-auto">
           <div className="flex items-center justify-between mb-6">
@@ -65,8 +70,14 @@ export default function ResultsPage({
             </div>
 
             <div className="flex justify-between text-lg font-bold mb-4">
-              <span className="text-cyan-400">YES {yesPercent}%</span>
-              <span className="text-pink-500">NO {noPercent}%</span>
+              <div className="text-center">
+                <p className="text-cyan-400">YES {yesPercent}%</p>
+                <p className="text-cyan-400 text-sm">${yesPool.toFixed(2)}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-pink-500">NO {noPercent}%</p>
+                <p className="text-pink-500 text-sm">${noPool.toFixed(2)}</p>
+              </div>
             </div>
 
             <p className="text-slate-400 text-xs">← swipe to add or change →</p>
@@ -79,19 +90,20 @@ export default function ResultsPage({
             </div>
           </div>
 
-          <div className="bg-slate-800 rounded-xl p-4 mb-8">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">🔥</span>
-              <div>
-                <p className="text-white font-bold">232 people staking</p>
-                <p className="text-slate-400 text-sm">$1,652 USDT total volume</p>
+          {marketEnded && (
+            <div className="bg-slate-800 rounded-xl p-4 mb-8">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🔥</span>
+                <div>
+                  <p className="text-white font-bold">232 people staking</p>
+                  <p className="text-slate-400 text-sm">${(yesPool + noPool).toFixed(2)} USDT total volume</p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* buttons pinned to bottom, not floating */}
       <div className="p-4 pb-8 bg-slate-950">
         <div className="flex gap-3 max-w-sm mx-auto">
           <button
