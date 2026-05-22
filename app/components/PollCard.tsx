@@ -30,12 +30,6 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
   const [stakingDirection, setStakingDirection] = useState<'yes' | 'no' | null>(null)
   const [showResults, setShowResults] = useState(false)
   const [showDetail, setShowDetail] = useState(false)
-  const [toast, setToast] = useState<string | null>(null)
-
-  const showToast = (msg: string) => {
-    setToast(msg)
-    setTimeout(() => setToast(null), 3000)
-  }
 
   // detail page swipe state
   const detailStartPos = useRef({ x: 0, y: 0 })
@@ -156,9 +150,8 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
     }
   }
 
-  const handleConfirmVote = async (amount: number, directionParam?: 'yes' | 'no') => {
-    const dir = directionParam ?? stakingDirection
-    if (!dir || !currentCard || !userId) return
+  const handleConfirmVote = async (amount: number) => {
+    if (!stakingDirection || !currentCard || !userId) return
 
     try {
       const response = await fetch('/api/votes', {
@@ -167,7 +160,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
         body: JSON.stringify({
           user_id: userId,
           poll_id: currentCard.id,
-          direction: dir,
+          direction: stakingDirection,
           amount: amount,
         }),
       })
@@ -177,7 +170,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
       // wait a bit for database to update
       await new Promise(resolve => setTimeout(resolve, 500))
 
-      const updated: Vote = { pollId: currentCard.id, vote: dir, amount }
+      const updated: Vote = { pollId: currentCard.id, vote: stakingDirection, amount }
       setVotes(prev => {
         const idx = prev.findIndex(v => v.pollId === currentCard.id)
         if (idx >= 0) {
@@ -191,11 +184,9 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
       setShowDetail(false)
       setShowStakingModal(false)
       setStakingDirection(null)
-      showToast('Vote confirmed')
     } catch (error) {
       console.error('vote error:', error)
-      console.error(error)
-      showToast('Vote failed, try again')
+      alert('vote failed. try again.')
     }
   }
 
@@ -237,8 +228,8 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
           }}
           onChangeVote={() => {
             setShowResults(false)
-            const newDir = userVote.vote === 'yes' ? 'no' : 'yes'
-            handleConfirmVote(userVote.amount, newDir)
+            setStakingDirection(userVote.vote === 'yes' ? 'no' : 'yes')
+            setShowStakingModal(true)
           }}
         />
         {showStakingModal && stakingDirection && typeof document !== 'undefined' &&
@@ -284,8 +275,8 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
               setShowStakingModal(true)
             }}
             onChangeVote={() => {
-              const newDir = userVote.vote === 'yes' ? 'no' : 'yes'
-              handleConfirmVote(userVote.amount, newDir)
+              setStakingDirection(userVote.vote === 'yes' ? 'no' : 'yes')
+              setShowStakingModal(true)
             }}
           />
           {showStakingModal && stakingDirection && typeof document !== 'undefined' &&
@@ -402,21 +393,21 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
     <>
       <div
         ref={deckRef}
-        className="h-full w-full overflow-hidden touch-none flex justify-center"
+        className="h-full w-full overflow-hidden touch-none"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         style={{ touchAction: 'none' }}
       >
         <div
-          className="max-w-2xl w-full h-full transition-transform duration-500 ease-out"
+          className="w-full h-full transition-transform duration-500 ease-out"
           style={{ transform: deckTranslate }}
         >
           {polls.map((poll, i) => {
             const isActive = i === currentIndex
 
             return (
-              <div key={poll.id} className="h-full w-full flex flex-col px-4 pt-4 pb-60 max-w-2xl mx-auto">
+              <div key={poll.id} className="h-full w-full flex flex-col px-4 pt-4 pb-60">
                 <div
                   className="flex-1 bg-slate-900 rounded-2xl border border-slate-700 flex flex-col overflow-hidden"
                   style={{

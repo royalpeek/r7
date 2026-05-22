@@ -16,19 +16,17 @@ export async function POST(request: NextRequest) {
 
     console.log('vote request:', { user_id, poll_id, direction, amount })
 
-    // look for an existing vote by this user on the same poll
-    const userKey = user_id ? String(user_id).trim() : 'anonymous'
-    const { data: existingVotes, error: existingError } = await supabase
+    // check if user already voted on this poll
+    const { data: existingVote, error: fetchVoteError } = await supabase
       .from('votes')
       .select('*')
-      .eq('user_id', userKey)
+      .eq('user_id', user_id ? String(user_id).trim() : 'anonymous')
       .eq('poll_id', poll_id)
-      .order('created_at', { ascending: false })
-      .limit(1)
+      .single()
 
-    if (existingError) throw existingError
-
-    const prevVote = existingVotes && existingVotes.length ? existingVotes[0] : null
+    if (fetchVoteError && fetchVoteError.code !== 'PGRST116') {
+      throw fetchVoteError
+    }
 
     // fetch current poll
     const { data: poll, error: fetchError } = await supabase
@@ -39,57 +37,86 @@ export async function POST(request: NextRequest) {
 
     if (fetchError) throw fetchError
 
-    const prevDir = prevVote ? String(prevVote.direction).toLowerCase() : null
-    const prevAmount = prevVote ? Number(prevVote.amount || 0) : 0
-
-    // determine new poll values accounting for a possible previous vote
     let newYesPool = poll.yes_pool || 0
     let newNoPool = poll.no_pool || 0
     let newYesVotes = poll.yes_votes || 0
     let newNoVotes = poll.no_votes || 0
     let newVolume = poll.volume || 0
+    let voteId = null
 
-    // if user had a previous vote on this poll and changed direction, remove previous contribution
-    if (prevVote && prevDir !== direction) {
-      if (prevDir === 'yes') {
-        newYesPool = Math.max(0, newYesPool - prevAmount)
-        newYesVotes = Math.max(0, newYesVotes - 1)
-      } else if (prevDir === 'no') {
-        newNoPool = Math.max(0, newNoPool - prevAmount)
-        newNoVotes = Math.max(0, newNoVotes - 1)
+    // if user already voted
+    if (existingVote) {
+      const oldDirection = existingVote.direction
+      const oldAmount = existingVote.amount
+
+      // user is changing sides
+      if (oldDirection !== direction) {
+        // remove old amount from old pool
+        if (oldDirection === 'yes') {
+          newYesPool -= oldAmount
+          newYesVotes -= 1
+        } else {
+          newNoPool -= oldAmount
+          newNoVotes -= 1
+        }
+
+        // add new amount to new pool
+        if (direction === 'yes') {
+          newYesPool += amount
+          newYesVotes += 1
+        } else {
+          newNoPool += amount
+          newNoVotes += 1
+        }
+
+        newVolume = newVolume - oldAmount + amount
+      } else {
+        // user is adding more to the same side
+        if (direction === 'yes') {
+          newYesPool += amount
+        } else {
+          newNoPool += amount
+        }
+        newVolume += amount
       }
-      newVolume = Math.max(0, newVolume - prevAmount)
 
-      // delete the old vote record
-      const { error: deleteError } = await supabase.from('votes').delete().eq('id', prevVote.id)
-      if (deleteError) throw deleteError
+      // update existing vote
+      const { error: updateVoteError } = await supabase
+        .from('votes')
+        .update({
+          amount: oldDirection === direction ? oldAmount + amount : amount,
+          direction: direction,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingVote.id)
+
+      if (updateVoteError) throw updateVoteError
+      voteId = existingVote.id
+    } else {
+      // first time voting
+      const { data: vote, error: voteError } = await supabase
+        .from('votes')
+        .insert([{
+          user_id: user_id ? String(user_id).trim() : 'anonymous',
+          poll_id,
+          direction,
+          amount,
+        }])
+        .select()
+
+      if (voteError) throw voteError
+      voteId = vote[0].id
+
+      // add to pools
+      if (direction === 'yes') {
+        newYesPool += amount
+        newYesVotes += 1
+      } else {
+        newNoPool += amount
+        newNoVotes += 1
+      }
+      newVolume += amount
     }
-
-    // now insert the new vote
-    const { data: vote, error: voteError } = await supabase
-      .from('votes')
-      .insert([{ 
-        user_id: userKey,
-        poll_id,
-        direction,
-        amount,
-      }])
-      .select()
-
-    if (voteError) throw voteError
-
-    // apply the new contribution
-    if (direction === 'yes') {
-      newYesPool = (newYesPool || 0) + amount
-      // increment vote count only if user didn't already have a same-direction vote
-      if (!prevVote || prevDir !== 'yes') newYesVotes = (newYesVotes || 0) + 1
-    } else if (direction === 'no') {
-      newNoPool = (newNoPool || 0) + amount
-      if (!prevVote || prevDir !== 'no') newNoVotes = (newNoVotes || 0) + 1
-    }
-
-    // update volume (add new amount)
-    newVolume = (newVolume || 0) + amount
 
     console.log('updating poll:', { newYesPool, newNoPool, newYesVotes, newNoVotes, newVolume })
 
@@ -108,7 +135,11 @@ export async function POST(request: NextRequest) {
     if (updateError) throw updateError
 
     console.log('poll updated successfully')
-    return NextResponse.json({ vote: vote[0] })
+    return NextResponse.json({ 
+      success: true,
+      vote_id: voteId,
+      pools: { yes_pool: newYesPool, no_pool: newNoPool }
+    })
   } catch (error) {
     console.error('error:', error)
     return NextResponse.json({ error: String(error) }, { status: 400 })
