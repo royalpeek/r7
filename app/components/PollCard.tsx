@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import StakingModal from './StakingModal'
 import ResultsPage from './ResultsPage'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
+import { usePolls } from '@/app/hooks/usePolls'
 
 type Vote = { pollId: string; vote: 'yes' | 'no'; amount: number }
 type Poll = {
@@ -22,9 +23,9 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
   const currentCard = polls && polls.length > 0 ? polls[currentIndex] : null
 
   const { userId } = useTelegramUser()
+  const { userVotes } = usePolls()
 
-  const [votes, setVotes] = useState<Vote[]>([])
-  const userVote = currentCard ? votes.find(v => v.pollId === currentCard.id) : null
+  const userVote = currentCard ? userVotes.find(v => v.poll_id === currentCard.id) : null
 
   const [showStakingModal, setShowStakingModal] = useState(false)
   const [stakingDirection, setStakingDirection] = useState<'yes' | 'no' | null>(null)
@@ -167,19 +168,9 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
 
       if (!response.ok) throw new Error('vote failed')
 
-      // wait a bit for database to update
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // wait for database to update
+      await new Promise(resolve => setTimeout(resolve, 1000))
 
-      const updated: Vote = { pollId: currentCard.id, vote: stakingDirection, amount }
-      setVotes(prev => {
-        const idx = prev.findIndex(v => v.pollId === currentCard.id)
-        if (idx >= 0) {
-          const next = [...prev]
-          next[idx] = updated
-          return next
-        }
-        return [...prev, updated]
-      })
       setShowResults(true)
       setShowDetail(false)
       setShowStakingModal(false)
@@ -205,7 +196,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
 
   // show results page after voting
   if (showResults && userVote) {
-    const voteDir: 'YES' | 'NO' = userVote.vote === 'yes' ? 'YES' : 'NO'
+    const voteDir: 'YES' | 'NO' = userVote.vote_type === 'yes' ? 'YES' : 'NO'
     return (
       <>
         <ResultsPage
@@ -223,12 +214,12 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
           }}
           onAddMore={() => {
             setShowResults(false)
-            setStakingDirection(userVote.vote)
+            setStakingDirection(userVote.vote_type === 'yes' ? 'yes' : 'no')
             setShowStakingModal(true)
           }}
           onChangeVote={() => {
             setShowResults(false)
-            setStakingDirection(userVote.vote === 'yes' ? 'no' : 'yes')
+            setStakingDirection(userVote.vote_type === 'yes' ? 'no' : 'yes')
             setShowStakingModal(true)
           }}
         />
@@ -257,7 +248,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
 
     // if already voted, show results directly
     if (userVote) {
-      const voteDir: 'YES' | 'NO' = userVote.vote === 'yes' ? 'YES' : 'NO'
+      const voteDir: 'YES' | 'NO' = userVote.vote_type === 'yes' ? 'YES' : 'NO'
       return (
         <>
           <ResultsPage
@@ -271,11 +262,11 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
             marketEnded={marketEnded}
             onBack={() => setShowDetail(false)}
             onAddMore={() => {
-              setStakingDirection(userVote.vote)
+              setStakingDirection(userVote.vote_type === 'yes' ? 'yes' : 'no')
               setShowStakingModal(true)
             }}
             onChangeVote={() => {
-              setStakingDirection(userVote.vote === 'yes' ? 'no' : 'yes')
+              setStakingDirection(userVote.vote_type === 'yes' ? 'no' : 'yes')
               setShowStakingModal(true)
             }}
           />
