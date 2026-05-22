@@ -214,8 +214,8 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
           amount={userVote.amount}
           yesPercent={yesPercent}
           noPercent={noPercent}
-          yesPool={currentCard.yes_pool + (userVote.vote === 'yes' ? userVote.amount : 0)}
-          noPool={currentCard.no_pool + (userVote.vote === 'no' ? userVote.amount : 0)}
+          yesPool={currentCard.yes_pool}
+          noPool={currentCard.no_pool}
           marketEnded={marketEnded}
           onBack={() => {
             setShowResults(false)
@@ -266,8 +266,8 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
             amount={userVote.amount}
             yesPercent={yesPercent}
             noPercent={noPercent}
-            yesPool={currentCard.yes_pool + (userVote.vote === 'yes' ? userVote.amount : 0)}
-            noPool={currentCard.no_pool + (userVote.vote === 'no' ? userVote.amount : 0)}
+            yesPool={currentCard.yes_pool}
+            noPool={currentCard.no_pool}
             marketEnded={marketEnded}
             onBack={() => setShowDetail(false)}
             onAddMore={() => {
