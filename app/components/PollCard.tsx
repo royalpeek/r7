@@ -167,6 +167,9 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
 
       if (!response.ok) throw new Error('vote failed')
 
+      // wait a bit for database to update
+      await new Promise(resolve => setTimeout(resolve, 500))
+
       const updated: Vote = { pollId: currentCard.id, vote: stakingDirection, amount }
       setVotes(prev => {
         const idx = prev.findIndex(v => v.pollId === currentCard.id)
