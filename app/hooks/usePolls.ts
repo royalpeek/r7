@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import WebApp from '@twa-dev/sdk'
 
 export function usePolls() {
   const [polls, setPolls] = useState<any[]>([])
@@ -10,7 +9,8 @@ export function usePolls() {
   const [userId, setUserId] = useState<string | null>(null)
 
   useEffect(() => {
-    // get the user's telegram id
+    const WebApp = require('@twa-dev/sdk').default
+
     const user = WebApp.initDataUnsafe.user
     if (user) {
       setUserId(user.id.toString())
@@ -18,7 +18,6 @@ export function usePolls() {
 
     fetchData()
 
-    // refetch every 1 second
     const interval = setInterval(() => {
       fetchData()
     }, 1000)
@@ -28,6 +27,7 @@ export function usePolls() {
 
   const fetchData = async () => {
     try {
+      const WebApp = require('@twa-dev/sdk').default
       const user = WebApp.initDataUnsafe.user
       if (!user) {
         setLoading(false)
@@ -36,7 +36,6 @@ export function usePolls() {
 
       const userId = user.id.toString()
 
-      // fetch polls
       const { data: pollsData, error: pollsError } = await supabase
         .from('polls')
         .select('*')
@@ -44,7 +43,6 @@ export function usePolls() {
 
       if (pollsError) throw pollsError
 
-      // fetch this user's votes
       const { data: votesData, error: votesError } = await supabase
         .from('votes')
         .select('*')
