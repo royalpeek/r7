@@ -195,8 +195,8 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
     )
   }
 
-  const totalVotes = currentCard.yes_votes + currentCard.no_votes
-  const yesPercent = totalVotes > 0 ? Math.round((currentCard.yes_votes / totalVotes) * 100) : 50
+  const totalPool = currentCard.yes_pool + currentCard.no_pool
+  const yesPercent = totalPool > 0 ? Math.round((currentCard.yes_pool / totalPool) * 100) : 50
   const noPercent = 100 - yesPercent
   const marketEnded = new Date(currentCard.ends_at) < new Date()
 
@@ -343,7 +343,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
           </div>
 
           {/* stake buttons */}
-          <div className="p-4 pb-24">
+          <div className="p-4 pb-8">
             <div className="flex gap-3">
               <button
                 onClick={() => { setStakingDirection('no'); setShowStakingModal(true) }}
