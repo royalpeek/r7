@@ -8,22 +8,30 @@ export function usePolls() {
 
   useEffect(() => {
     fetchPolls()
-    
-    // subscribe to real-time updates on polls table
-    const subscription = supabase
-      .channel('polls')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'polls' 
-      }, (payload) => {
-        console.log('poll update:', payload)
-        fetchPolls() // refetch all polls when any change happens
-      })
+
+    // subscribe to real-time changes
+    const channel = supabase.channel('polls-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'polls',
+        },
+        (payload) => {
+          console.log('poll updated:', payload)
+          // update the specific poll in the state
+          setPolls(prev =>
+            prev.map(poll =>
+              poll.id === payload.new.id ? payload.new : poll
+            )
+          )
+        }
+      )
       .subscribe()
 
     return () => {
-      subscription.unsubscribe()
+      channel.unsubscribe()
     }
   }, [])
 
