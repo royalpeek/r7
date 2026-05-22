@@ -26,18 +26,27 @@ export async function POST(request: NextRequest) {
     if (oldVoteError) throw oldVoteError
     const oldAmount = oldVote.amount
 
-    // update vote record
-    const { error: updateVoteError } = await supabase
+    // delete old vote
+    const { error: deleteError } = await supabase
       .from('votes')
-      .update({
-        direction: new_direction,
-        amount: stakeAmount,
-        updated_at: new Date().toISOString(),
-      })
+      .delete()
       .eq('user_id', user_id)
       .eq('poll_id', poll_id)
+      .eq('direction', old_direction)
 
-    if (updateVoteError) throw updateVoteError
+    if (deleteError) throw deleteError
+
+    // create new vote with new direction
+    const { error: createVoteError } = await supabase
+      .from('votes')
+      .insert([{
+        user_id,
+        poll_id,
+        direction: new_direction,
+        amount: stakeAmount,
+      }])
+
+    if (createVoteError) throw createVoteError
 
     // get current poll
     const { data: poll, error: pollError } = await supabase
@@ -92,7 +101,7 @@ export async function POST(request: NextRequest) {
     if (updatePollError) throw updatePollError
 
     // send fee to treasury and return amount to user
-    const refundAmount = oldAmount - newAmount // user gets back the difference
+    const refundAmount = oldAmount - newAmount
 
     const { data: userData, error: userDataError } = await supabase
       .from('users')
