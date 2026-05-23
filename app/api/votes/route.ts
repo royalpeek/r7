@@ -16,22 +16,17 @@ export async function POST(request: NextRequest) {
 
     console.log('vote request:', { user_id, poll_id, direction, amount })
 
-    // check if user already voted on this poll - use limit instead of single
-    const { data: existingVotes, error: fetchVoteError } = await supabase
+    // check if user already voted on this poll
+    const { data: existingVote, error: fetchVoteError } = await supabase
       .from('votes')
       .select('*')
       .eq('user_id', user_id ? String(user_id).trim() : 'anonymous')
       .eq('poll_id', poll_id)
-      .order('created_at', { ascending: false })
-      .limit(1)
+      .single()
 
-    if (fetchVoteError) {
+    if (fetchVoteError && fetchVoteError.code !== 'PGRST116') {
       throw fetchVoteError
     }
-
-    const existingVote = existingVotes && existingVotes.length > 0 ? existingVotes[0] : null
-
-    console.log('existing vote:', existingVote)
 
     // fetch current poll
     const { data: poll, error: fetchError } = await supabase
@@ -54,11 +49,8 @@ export async function POST(request: NextRequest) {
       const oldDirection = existingVote.direction
       const oldAmount = existingVote.amount
 
-      console.log('user already voted:', { oldDirection, oldAmount, newDirection: direction, newAmount: amount })
-
       // user is changing sides
       if (oldDirection !== direction) {
-        console.log('changing sides')
         // remove old amount from old pool
         if (oldDirection === 'yes') {
           newYesPool -= oldAmount
@@ -80,7 +72,6 @@ export async function POST(request: NextRequest) {
         newVolume = newVolume - oldAmount + amount
       } else {
         // user is adding more to the same side
-        console.log('adding more to same side')
         if (direction === 'yes') {
           newYesPool += amount
         } else {
@@ -101,10 +92,8 @@ export async function POST(request: NextRequest) {
 
       if (updateVoteError) throw updateVoteError
       voteId = existingVote.id
-      console.log('updated existing vote:', voteId)
     } else {
       // first time voting
-      console.log('first time voting')
       const { data: vote, error: voteError } = await supabase
         .from('votes')
         .insert([{
@@ -127,7 +116,6 @@ export async function POST(request: NextRequest) {
         newNoVotes += 1
       }
       newVolume += amount
-      console.log('created new vote:', voteId)
     }
 
     console.log('updating poll:', { newYesPool, newNoPool, newYesVotes, newNoVotes, newVolume })
@@ -145,21 +133,6 @@ export async function POST(request: NextRequest) {
       .eq('id', poll_id)
 
     if (updateError) throw updateError
-
-    // save poll history snapshot
-    const { error: historyError } = await supabase
-      .from('poll_history')
-      .insert([{
-        poll_id,
-        yes_pool: newYesPool,
-        no_pool: newNoPool,
-        yes_votes: newYesVotes,
-        no_votes: newNoVotes,
-      }])
-
-    if (historyError) {
-      console.error('history snapshot error:', historyError)
-    }
 
     console.log('poll updated successfully')
     return NextResponse.json({ 
