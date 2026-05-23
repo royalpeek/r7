@@ -1,14 +1,30 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 
-export function usePolls() {
+export function usePolls(userId?: string | null) {
   const [polls, setPolls] = useState<any[]>([])
   const [userVotes, setUserVotes] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [userId, setUserId] = useState<string | null>(null)
 
-  const fetchData = async () => {
+  useEffect(() => {
+    fetchPolls()
+    if (userId) {
+      fetchUserVotes()
+    }
+
+    // refetch polls and votes every 1 second
+    const interval = setInterval(() => {
+      fetchPolls()
+      if (userId) {
+        fetchUserVotes()
+      }
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [userId])
+
+  const fetchPolls = async () => {
     try {
       const { data: pollsData, error: pollsError } = await supabase
         .from('polls')
@@ -16,25 +32,7 @@ export function usePolls() {
         .order('created_at', { ascending: false })
 
       if (pollsError) throw pollsError
-
       setPolls(pollsData || [])
-
-      const WebApp = require('@twa-dev/sdk').default
-      const user = WebApp.initDataUnsafe.user
-
-      if (user) {
-        const uid = user.id.toString()
-        setUserId(uid)
-
-        const { data: votesData, error: votesError } = await supabase
-          .from('votes')
-          .select('*')
-          .eq('telegram_id', uid)
-
-        if (votesError) throw votesError
-        setUserVotes(votesData || [])
-      }
-
       setLoading(false)
     } catch (err) {
       setError((err as any).message)
@@ -42,11 +40,21 @@ export function usePolls() {
     }
   }
 
-  useEffect(() => {
-    fetchData()
-    const interval = setInterval(fetchData, 1000)
-    return () => clearInterval(interval)
-  }, [])
+  const fetchUserVotes = async () => {
+    try {
+      if (!userId) return
 
-  return { polls, userVotes, loading, error, refetch: fetchData }
+      const { data: votesData, error: votesError } = await supabase
+        .from('votes')
+        .select('*')
+        .eq('user_id', userId)
+
+      if (votesError) throw votesError
+      setUserVotes(votesData || [])
+    } catch (err) {
+      console.error('fetch votes error:', err)
+    }
+  }
+
+  return { polls, userVotes, loading, error, refetch: fetchPolls }
 }

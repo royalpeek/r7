@@ -4,10 +4,12 @@ import { useState } from 'react'
 import { X, Wallet, RefreshCw, PlusCircle, Send, QrCode } from 'lucide-react'
 import PollCard from './components/PollCard'
 import { usePolls } from './hooks/usePolls'
+import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 
 export default function Home() {
   const [showWallet, setShowWallet] = useState(false)
-  const { polls, loading } = usePolls()
+  const { userId } = useTelegramUser()
+  const { polls, loading } = usePolls(userId)
 
   const handleCopy = () => {
     navigator.clipboard.writeText('3wbjCZ...kDdM')
