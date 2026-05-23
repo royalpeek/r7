@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import StakingModal from './StakingModal'
 import ResultsPage from './ResultsPage'
+import PoolHistoryChart from './PoolHistoryChart'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { usePolls } from '@/app/hooks/usePolls'
 
@@ -29,7 +30,6 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
 
   const [showStakingModal, setShowStakingModal] = useState(false)
   const [stakingDirection, setStakingDirection] = useState<'yes' | 'no' | null>(null)
-  const [showResults, setShowResults] = useState(false)
   const [showDetail, setShowDetail] = useState(false)
 
   // detail page swipe state
@@ -100,7 +100,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
 
   // main deck swipe handlers
   const onTouchStart = (e: React.TouchEvent) => {
-    if (showStakingModal || showResults || showDetail) return
+    if (showStakingModal || showDetail) return
     if (e.touches.length > 1) return
     startPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
     setDragging(true)
@@ -181,8 +181,6 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
       // wait for database to update
       await new Promise(resolve => setTimeout(resolve, 1000))
 
-      setShowResults(true)
-      setShowDetail(false)
       setShowStakingModal(false)
       setStakingDirection(null)
     } catch (error) {
@@ -205,60 +203,13 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
   const noPercent = 100 - yesPercent
   const marketEnded = new Date(currentCard.ends_at) < new Date()
 
-  // show results page after voting
-  if (showResults && userVote) {
-    const voteDir: 'YES' | 'NO' = userVote.direction === 'yes' ? 'YES' : 'NO'
-    return (
-      <>
-        <ResultsPage
-          pollId={currentCard.id}
-          question={currentCard.question}
-          voteDirection={voteDir}
-          amount={userVote.amount}
-          yesPercent={yesPercent}
-          noPercent={noPercent}
-          yesPool={currentCard.yes_pool}
-          noPool={currentCard.no_pool}
-          marketEnded={marketEnded}
-          onBack={() => {
-            setShowResults(false)
-            setCurrentIndex(i => Math.min(i + 1, polls.length - 1))
-          }}
-          onAddMore={() => {
-            setShowResults(false)
-            setStakingDirection(userVote.direction === 'yes' ? 'yes' : 'no')
-            setShowStakingModal(true)
-          }}
-          onChangeVote={() => {
-            setShowResults(false)
-            setStakingDirection(userVote.direction === 'yes' ? 'no' : 'yes')
-            setShowStakingModal(true)
-          }}
-        />
-        {showStakingModal && stakingDirection && typeof document !== 'undefined' &&
-          createPortal(
-            <StakingModal
-              question={currentCard.question}
-              voteDirection={stakingDirection === 'yes' ? 'YES' : 'NO'}
-              onConfirm={handleConfirmVote}
-              onCancel={() => {
-                setShowStakingModal(false)
-                setStakingDirection(null)
-              }}
-            />,
-            document.body
-          )}
-      </>
-    )
-  }
-
   // show detail page when arrow is clicked
   if (showDetail) {
     const detailCardTilt = detailAxis === 'x'
       ? `translateX(${detailDeltaX}px) rotate(${detailDeltaX / 18}deg)`
       : 'translateX(0px)'
 
-    // if already voted, show results directly
+    // if already voted, show results page
     if (userVote) {
       const voteDir: 'YES' | 'NO' = userVote.direction === 'yes' ? 'YES' : 'NO'
       return (
@@ -409,6 +360,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
         >
           {polls.map((poll, i) => {
             const isActive = i === currentIndex
+            const pollUserVote = userVotes.find(v => v.poll_id === poll.id)
 
             return (
               <div key={poll.id} className="h-full w-full flex flex-col px-4 pt-16 pb-50">
@@ -428,11 +380,38 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
                     <p className="text-white font-bold text-3xl leading-tight text-left">{poll.question}</p>
                   </div>
 
-                  <div className="flex-1 mx-4 mb-4 bg-slate-800 rounded-xl flex flex-col items-center justify-center gap-4">
-                    <div className="text-7xl">🗳️</div>
-                    <p className="text-white font-semibold text-base">Vote to see results</p>
-                    <p className="text-slate-400 text-sm">Swipe right for YES, left for NO</p>
-                  </div>
+                  {pollUserVote ? (
+                    // after voting - show chart inline
+                    <>
+                      <div className="px-5 mb-2">
+                        <p className={`text-sm font-bold ${pollUserVote.direction === 'yes' ? 'text-cyan-400' : 'text-pink-500'}`}>
+                          You voted {pollUserVote.direction === 'yes' ? 'YES' : 'NO'}
+                        </p>
+                      </div>
+
+                      <div className="flex-1 mx-4 mb-4 bg-slate-800 rounded-xl overflow-hidden">
+                        <PoolHistoryChart pollId={poll.id} />
+                      </div>
+
+                      <div className="px-5 pb-3 flex justify-between text-lg font-bold">
+                        <div className="text-center">
+                          <p className="text-cyan-400">{Math.round((poll.yes_pool / (poll.yes_pool + poll.no_pool)) * 100)}%</p>
+                          <p className="text-cyan-400 text-xs">YES</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-pink-500">{Math.round((poll.no_pool / (poll.yes_pool + poll.no_pool)) * 100)}%</p>
+                          <p className="text-pink-500 text-xs">NO</p>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    // before voting
+                    <div className="flex-1 mx-4 mb-4 bg-slate-800 rounded-xl flex flex-col items-center justify-center gap-4">
+                      <div className="text-7xl">🗳️</div>
+                      <p className="text-white font-semibold text-base">Vote to see results</p>
+                      <p className="text-slate-400 text-sm">Swipe right for YES, left for NO</p>
+                    </div>
+                  )}
 
                   {/* bottom row with swipe hint and arrow button */}
                   <div className="flex items-center justify-between px-5 py-4">
