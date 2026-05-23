@@ -23,7 +23,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
   const currentCard = polls && polls.length > 0 ? polls[currentIndex] : null
 
   const { userId } = useTelegramUser()
-  const { userVotes } = usePolls()
+  const { userVotes } = usePolls(userId)
 
   const userVote = currentCard ? userVotes.find(v => v.poll_id === currentCard.id) : null
 
@@ -152,9 +152,14 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
   }
 
   const handleConfirmVote = async (amount: number) => {
-    if (!stakingDirection || !currentCard || !userId) return
+    if (!stakingDirection || !currentCard || !userId) {
+      alert(`missing data: userId=${userId}, direction=${stakingDirection}, card=${currentCard?.id}`)
+      return
+    }
 
     try {
+      console.log('sending vote:', { user_id: userId, poll_id: currentCard.id, direction: stakingDirection, amount })
+
       const response = await fetch('/api/votes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -166,7 +171,12 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
         }),
       })
 
-      if (!response.ok) throw new Error('vote failed')
+      const responseData = await response.json()
+      console.log('vote response:', responseData)
+
+      if (!response.ok) {
+        throw new Error(responseData.error || 'vote failed')
+      }
 
       // wait for database to update
       await new Promise(resolve => setTimeout(resolve, 1000))
@@ -177,7 +187,8 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
       setStakingDirection(null)
     } catch (error) {
       console.error('vote error:', error)
-      alert('vote failed. try again.')
+      const errorMessage = error instanceof Error ? error.message : JSON.stringify(error)
+      alert(`vote failed: ${errorMessage}`)
     }
   }
 
@@ -196,7 +207,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
 
   // show results page after voting
   if (showResults && userVote) {
-    const voteDir: 'YES' | 'NO' = userVote.vote_type === 'yes' ? 'YES' : 'NO'
+    const voteDir: 'YES' | 'NO' = userVote.direction === 'yes' ? 'YES' : 'NO'
     return (
       <>
         <ResultsPage
@@ -214,12 +225,12 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
           }}
           onAddMore={() => {
             setShowResults(false)
-            setStakingDirection(userVote.vote_type === 'yes' ? 'yes' : 'no')
+            setStakingDirection(userVote.direction === 'yes' ? 'yes' : 'no')
             setShowStakingModal(true)
           }}
           onChangeVote={() => {
             setShowResults(false)
-            setStakingDirection(userVote.vote_type === 'yes' ? 'no' : 'yes')
+            setStakingDirection(userVote.direction === 'yes' ? 'no' : 'yes')
             setShowStakingModal(true)
           }}
         />
@@ -248,7 +259,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
 
     // if already voted, show results directly
     if (userVote) {
-      const voteDir: 'YES' | 'NO' = userVote.vote_type === 'yes' ? 'YES' : 'NO'
+      const voteDir: 'YES' | 'NO' = userVote.direction === 'yes' ? 'YES' : 'NO'
       return (
         <>
           <ResultsPage
@@ -262,11 +273,11 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
             marketEnded={marketEnded}
             onBack={() => setShowDetail(false)}
             onAddMore={() => {
-              setStakingDirection(userVote.vote_type === 'yes' ? 'yes' : 'no')
+              setStakingDirection(userVote.direction === 'yes' ? 'yes' : 'no')
               setShowStakingModal(true)
             }}
             onChangeVote={() => {
-              setStakingDirection(userVote.vote_type === 'yes' ? 'no' : 'yes')
+              setStakingDirection(userVote.direction === 'yes' ? 'no' : 'yes')
               setShowStakingModal(true)
             }}
           />
