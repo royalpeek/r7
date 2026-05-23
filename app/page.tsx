@@ -8,12 +8,14 @@ import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 
 export default function Home() {
   const [showWallet, setShowWallet] = useState(false)
-  const { userId } = useTelegramUser()
-  const { polls, loading } = usePolls(userId)
+  const { userId, loading: userLoading } = useTelegramUser()
+  const { polls, loading: pollsLoading } = usePolls(userId)
 
   const handleCopy = () => {
     navigator.clipboard.writeText('3wbjCZ...kDdM')
   }
+
+  const loading = userLoading || pollsLoading
 
   return (
     <div className="bg-slate-950 h-screen overflow-hidden flex flex-col">
