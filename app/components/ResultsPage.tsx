@@ -1,7 +1,10 @@
 'use client'
 
+import PoolHistoryChart from './PoolHistoryChart'
+
 interface ResultsPageProps {
   question: string
+  pollId: string
   voteDirection: 'YES' | 'NO'
   amount: number
   yesPercent: number
@@ -16,6 +19,7 @@ interface ResultsPageProps {
 
 export default function ResultsPage({
   question,
+  pollId,
   voteDirection,
   amount,
   yesPercent,
@@ -84,10 +88,8 @@ export default function ResultsPage({
           </div>
 
           <div className="mb-8">
-            <p className="text-slate-400 text-xs mb-2">PRICE · 24H</p>
-            <div className="bg-slate-800 rounded-xl p-4 h-48 flex items-center justify-center">
-              <p className="text-slate-500">Chart placeholder</p>
-            </div>
+            <p className="text-slate-400 text-xs mb-2">POOL HISTORY</p>
+            <PoolHistoryChart pollId={pollId} />
           </div>
 
           {marketEnded && (

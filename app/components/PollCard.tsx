@@ -211,6 +211,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
     return (
       <>
         <ResultsPage
+          pollId={currentCard.id}
           question={currentCard.question}
           voteDirection={voteDir}
           amount={userVote.amount}
@@ -263,6 +264,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
       return (
         <>
           <ResultsPage
+            pollId={currentCard.id}
             question={currentCard.question}
             voteDirection={voteDir}
             amount={userVote.amount}
