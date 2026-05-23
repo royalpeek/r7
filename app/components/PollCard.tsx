@@ -409,7 +409,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
             const isActive = i === currentIndex
 
             return (
-              <div key={poll.id} className="h-full w-full flex flex-col px-4 pt-4 pb-60">
+              <div key={poll.id} className="h-full w-full flex flex-col px-4 pt-12 pb-60">
                 <div
                   className="flex-1 bg-slate-900 rounded-2xl border border-slate-700 flex flex-col overflow-hidden"
                   style={{
