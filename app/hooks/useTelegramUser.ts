@@ -8,39 +8,59 @@ export function useTelegramUser() {
   useEffect(() => {
     const initTelegram = async () => {
       try {
-        // try to get telegram user
+        // wait a bit for telegram to be ready
+        await new Promise(resolve => setTimeout(resolve, 500))
+
         const tg = (window as any).Telegram?.WebApp
-        let user = null
+        console.log('telegram object:', tg)
 
-        console.log('telegram available:', !!tg)
-
-        if (tg) {
-          tg.ready()
-          user = tg.initDataUnsafe?.user
-          console.log('telegram user data:', user)
-        } else {
-          console.log('telegram webapp not found')
+        if (!tg) {
+          console.log('telegram not available, using test id')
+          setUserId('test-user-123')
+          setLoading(false)
+          return
         }
 
-        // if no telegram user, use a test id
-        const telegramId = user?.id?.toString() || 'test-user-123'
-        console.log('using userId:', telegramId)
+        // ready the webapp
+        tg.ready()
+        console.log('telegram ready called')
+
+        // get init data
+        const initData = tg.initData
+        const initDataUnsafe = tg.initDataUnsafe
+        console.log('initData:', initData)
+        console.log('initDataUnsafe:', initDataUnsafe)
+
+        const user = initDataUnsafe?.user
+        console.log('user from initDataUnsafe:', user)
+
+        if (!user || !user.id) {
+          console.log('no user id found, using test id')
+          setUserId('test-user-123')
+          setLoading(false)
+          return
+        }
+
+        const telegramId = user.id.toString()
+        const username = user.username || user.first_name || 'unknown'
+
+        console.log('got telegram id:', telegramId, 'username:', username)
 
         // upsert user in supabase
         const { error } = await supabase
           .from('users')
           .upsert({
             id: telegramId,
-            username: user?.username || user?.first_name || 'test user',
+            username: username,
           }, { onConflict: 'id' })
           .select()
 
         if (error) {
-          console.error('supabase upsert error:', error)
+          console.error('supabase error:', error)
           throw error
         }
 
-        console.log('user saved to supabase with id:', telegramId)
+        console.log('user saved to supabase')
         setUserId(telegramId)
       } catch (error) {
         console.error('auth error:', error)

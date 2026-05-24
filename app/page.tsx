@@ -19,6 +19,13 @@ export default function Home() {
 
   return (
     <div className="bg-slate-950 h-screen overflow-hidden flex flex-col">
+      {/* debug display - remove later */}
+      <div className="fixed top-0 left-0 bg-red-900 text-red-400 text-xs p-3 z-50 max-w-xs break-words">
+        <div>userId: {userId || 'loading...'}</div>
+        <div>userLoading: {userLoading.toString()}</div>
+        <div>pollsLoading: {pollsLoading.toString()}</div>
+      </div>
+
       {/* header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2 flex-shrink-0">
         <h1 className="text-2xl font-bold text-white">r7</h1>
