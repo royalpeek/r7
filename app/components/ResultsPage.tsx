@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 import PoolHistoryChart from './PoolHistoryChart'
 
 interface ResultsPageProps {
@@ -31,6 +33,36 @@ export default function ResultsPage({
   onAddMore,
   onChangeVote,
 }: ResultsPageProps) {
+  const [stakerCount, setStakerCount] = useState(0)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchStakers = async () => {
+      try {
+        // count unique users who voted on this poll
+        const { data, error } = await supabase
+          .from('votes')
+          .select('user_id')
+          .eq('poll_id', pollId)
+
+        if (error) throw error
+
+        // get unique count
+        const uniqueUsers = new Set(data?.map(v => v.user_id) || [])
+        setStakerCount(uniqueUsers.size)
+      } catch (err) {
+        console.error('fetch stakers error:', err)
+        setStakerCount(0)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchStakers()
+  }, [pollId])
+
+  const totalVolume = yesPool + noPool
+
   return (
     <div className="fixed inset-0 bg-slate-950 z-40 flex flex-col">
       <div className="flex-1 overflow-y-auto p-4">
@@ -92,17 +124,17 @@ export default function ResultsPage({
             <PoolHistoryChart pollId={pollId} />
           </div>
 
-          {marketEnded && (
-            <div className="bg-slate-800 rounded-xl p-4 mb-8">
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">🔥</span>
-                <div>
-                  <p className="text-white font-bold">232 people staking</p>
-                  <p className="text-slate-400 text-sm">${(yesPool + noPool).toFixed(2)} USDT total volume</p>
-                </div>
+          <div className="bg-slate-800 rounded-xl p-4 mb-8">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">🔥</span>
+              <div>
+                <p className="text-white font-bold">
+                  {loading ? 'loading...' : `${stakerCount} ${stakerCount === 1 ? 'person' : 'people'} staking`}
+                </p>
+                <p className="text-slate-400 text-sm">${totalVolume.toFixed(2)} USDT total volume</p>
               </div>
             </div>
-          )}
+          </div>
         </div>
       </div>
 
