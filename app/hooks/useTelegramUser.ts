@@ -1,6 +1,39 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
+// telegram types
+interface TelegramUser {
+  id: number
+  is_bot: boolean
+  first_name: string
+  last_name?: string
+  username?: string
+  language_code?: string
+  is_premium?: boolean
+}
+
+interface TelegramInitDataUnsafe {
+  query_id?: string
+  user?: TelegramUser
+  auth_date?: number
+  hash?: string
+}
+
+interface TelegramWebApp {
+  ready: () => void
+  expand: () => void
+  initData: string
+  initDataUnsafe: TelegramInitDataUnsafe
+}
+
+declare global {
+  interface Window {
+    Telegram?: {
+      WebApp: TelegramWebApp
+    }
+  }
+}
+
 export function useTelegramUser() {
   const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -8,34 +41,58 @@ export function useTelegramUser() {
   useEffect(() => {
     const initTelegram = async () => {
       try {
-        // wait a bit for telegram to be ready
+        console.log('=== TELEGRAM INIT START ===')
+        
+        // wait for telegram
         await new Promise(resolve => setTimeout(resolve, 2000))
 
-        const tg = (window as any).Telegram?.WebApp
-        console.log('telegram object:', tg)
+        // check window object
+        console.log('window.Telegram exists:', !!window.Telegram)
+        console.log('window.Telegram.WebApp exists:', !!window.Telegram?.WebApp)
+
+        const tg = window.Telegram?.WebApp
+        console.log('tg object:', tg)
 
         if (!tg) {
-          console.log('telegram not available, using test id')
+          console.log('❌ TELEGRAM WEBAPP NOT FOUND')
           setUserId('test-user-123')
           setLoading(false)
           return
         }
 
-        // ready the webapp
+        console.log('✓ Telegram WebApp found')
+        
+        // call ready
+        console.log('calling tg.ready()')
         tg.ready()
-        console.log('telegram ready called')
+        console.log('✓ tg.ready() called')
 
-        // get init data
+        // get all available data
+        console.log('getting initData...')
         const initData = tg.initData
-        const initDataUnsafe = tg.initDataUnsafe
         console.log('initData:', initData)
-        console.log('initDataUnsafe:', initDataUnsafe)
+        console.log('initData type:', typeof initData)
+        console.log('initData length:', initData?.length)
+
+        console.log('getting initDataUnsafe...')
+        const initDataUnsafe = tg.initDataUnsafe
+        console.log('initDataUnsafe:', JSON.stringify(initDataUnsafe))
+        console.log('initDataUnsafe keys:', Object.keys(initDataUnsafe || {}))
 
         const user = initDataUnsafe?.user
-        console.log('user from initDataUnsafe:', user)
+        console.log('user object:', JSON.stringify(user))
 
-        if (!user || !user.id) {
-          console.log('no user id found, using test id')
+        if (!user) {
+          console.log('❌ NO USER OBJECT IN initDataUnsafe')
+          console.log('full initDataUnsafe:', initDataUnsafe)
+          setUserId('test-user-123')
+          setLoading(false)
+          return
+        }
+
+        if (!user.id) {
+          console.log('❌ USER HAS NO ID')
+          console.log('user object:', user)
           setUserId('test-user-123')
           setLoading(false)
           return
@@ -44,7 +101,8 @@ export function useTelegramUser() {
         const telegramId = user.id.toString()
         const username = user.username || user.first_name || 'unknown'
 
-        console.log('got telegram id:', telegramId, 'username:', username)
+        console.log('✓ GOT TELEGRAM ID:', telegramId)
+        console.log('✓ USERNAME:', username)
 
         // upsert user in supabase
         const { error } = await supabase
@@ -56,14 +114,16 @@ export function useTelegramUser() {
           .select()
 
         if (error) {
-          console.error('supabase error:', error)
+          console.error('❌ supabase error:', error)
           throw error
         }
 
-        console.log('user saved to supabase')
+        console.log('✓ user saved to supabase')
+        console.log('=== TELEGRAM INIT SUCCESS ===')
         setUserId(telegramId)
       } catch (error) {
-        console.error('auth error:', error)
+        console.error('❌ auth error:', error)
+        console.log('=== TELEGRAM INIT FAILED ===')
         setUserId('test-user-123')
       } finally {
         setLoading(false)

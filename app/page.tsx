@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Wallet, RefreshCw, PlusCircle, Send, QrCode } from 'lucide-react'
 import PollCard from './components/PollCard'
 import { usePolls } from './hooks/usePolls'
@@ -8,8 +8,30 @@ import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 
 export default function Home() {
   const [showWallet, setShowWallet] = useState(false)
+  const [logs, setLogs] = useState<string[]>([])
   const { userId, loading: userLoading } = useTelegramUser()
   const { polls, loading: pollsLoading } = usePolls(userId)
+
+  // capture console logs
+  useEffect(() => {
+    const originalLog = console.log
+    const originalError = console.error
+
+    console.log = (...args) => {
+      originalLog(...args)
+      setLogs(prev => [...prev, 'LOG: ' + args.map(a => JSON.stringify(a)).join(' ')])
+    }
+
+    console.error = (...args) => {
+      originalError(...args)
+      setLogs(prev => [...prev, 'ERROR: ' + args.map(a => JSON.stringify(a)).join(' ')])
+    }
+
+    return () => {
+      console.log = originalLog
+      console.error = originalError
+    }
+  }, [])
 
   const handleCopy = () => {
     navigator.clipboard.writeText('3wbjCZ...kDdM')
@@ -19,15 +41,21 @@ export default function Home() {
 
   return (
     <div className="bg-slate-950 h-screen overflow-hidden flex flex-col">
-      {/* debug display - remove later */}
-      <div className="fixed top-0 left-0 bg-red-900 text-red-400 text-xs p-3 z-50 max-w-xs break-words">
+      {/* debug display with logs */}
+      <div className="fixed top-0 left-0 right-0 bg-red-900 text-red-400 text-xs p-2 z-50 max-h-40 overflow-y-auto">
+        <div className="font-bold mb-1">DEBUG LOGS:</div>
         <div>userId: {userId || 'loading...'}</div>
         <div>userLoading: {userLoading.toString()}</div>
         <div>pollsLoading: {pollsLoading.toString()}</div>
+        <div className="border-t border-red-700 mt-2 pt-2">
+          {logs.slice(-10).map((log, i) => (
+            <div key={i} className="text-xs break-words">{log}</div>
+          ))}
+        </div>
       </div>
 
-      {/* header */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-2 flex-shrink-0">
+      {/* header - moved down to avoid debug box */}
+      <div className="flex items-center justify-between px-4 pt-48 pb-2 flex-shrink-0">
         <h1 className="text-2xl font-bold text-white">r7</h1>
         <button
           onClick={() => setShowWallet(true)}
