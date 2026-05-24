@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import StakingModal from './StakingModal'
 import ResultsPage from './ResultsPage'
 import PoolHistoryChart from './PoolHistoryChart'
+import Timer from './Timer'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { usePolls } from '@/app/hooks/usePolls'
 
@@ -226,12 +227,16 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
             marketEnded={marketEnded}
             onBack={() => setShowDetail(false)}
             onAddMore={() => {
-              setStakingDirection(userVote.direction === 'yes' ? 'yes' : 'no')
-              setShowStakingModal(true)
+              if (!marketEnded) {
+                setStakingDirection(userVote.direction === 'yes' ? 'yes' : 'no')
+                setShowStakingModal(true)
+              }
             }}
             onChangeVote={() => {
-              setStakingDirection(userVote.direction === 'yes' ? 'no' : 'yes')
-              setShowStakingModal(true)
+              if (!marketEnded) {
+                setStakingDirection(userVote.direction === 'yes' ? 'no' : 'yes')
+                setShowStakingModal(true)
+              }
             }}
           />
           {showStakingModal && stakingDirection && typeof document !== 'undefined' &&
@@ -272,9 +277,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
               >
                 ← Back
               </button>
-              <div className="bg-cyan-900 text-cyan-400 px-3 py-1 rounded text-sm font-mono">
-                00:46:49
-              </div>
+              <Timer endsAt={currentCard.ends_at} />
             </div>
 
             <p className="text-white font-bold text-2xl leading-tight mb-3">{currentCard.question}</p>
@@ -305,15 +308,17 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
             <div className="flex gap-3">
               <button
                 onClick={() => { setStakingDirection('no'); setShowStakingModal(true) }}
-                className="flex-1 bg-pink-500 text-black font-bold py-4 rounded-2xl"
+                disabled={marketEnded}
+                className={`flex-1 font-bold py-4 rounded-2xl ${marketEnded ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : 'bg-pink-500 text-black'}`}
               >
-                STAKE NO
+                {marketEnded ? 'ENDED' : 'STAKE NO'}
               </button>
               <button
                 onClick={() => { setStakingDirection('yes'); setShowStakingModal(true) }}
-                className="flex-1 bg-cyan-400 text-black font-bold py-4 rounded-2xl"
+                disabled={marketEnded}
+                className={`flex-1 font-bold py-4 rounded-2xl ${marketEnded ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : 'bg-cyan-400 text-black'}`}
               >
-                STAKE YES
+                {marketEnded ? 'ENDED' : 'STAKE YES'}
               </button>
             </div>
           </div>
@@ -361,6 +366,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
           {polls.map((poll, i) => {
             const isActive = i === currentIndex
             const pollUserVote = userVotes.find(v => v.poll_id === poll.id)
+            const pollEnded = new Date(poll.ends_at) < new Date()
 
             return (
               <div key={poll.id} className="h-full w-full flex flex-col px-4 pt-16 pb-50">
@@ -372,7 +378,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
                   }}
                 >
                   <div className="flex items-center justify-between px-5 pt-5 pb-3">
-                    <div className="bg-cyan-900 text-cyan-400 px-3 py-1 rounded text-sm font-mono">00:46:49</div>
+                    <Timer endsAt={poll.ends_at} />
                     <div className="text-slate-400 text-sm">${(poll.yes_pool + poll.no_pool).toFixed(2)} USDT</div>
                   </div>
 
