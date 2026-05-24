@@ -12,13 +12,19 @@ export function useTelegramUser() {
         const tg = (window as any).Telegram?.WebApp
         let user = null
 
+        console.log('telegram available:', !!tg)
+
         if (tg) {
           tg.ready()
           user = tg.initDataUnsafe?.user
+          console.log('telegram user data:', user)
+        } else {
+          console.log('telegram webapp not found')
         }
 
         // if no telegram user, use a test id
         const telegramId = user?.id?.toString() || 'test-user-123'
+        console.log('using userId:', telegramId)
 
         // upsert user in supabase
         const { error } = await supabase
@@ -29,8 +35,12 @@ export function useTelegramUser() {
           }, { onConflict: 'id' })
           .select()
 
-        if (error) throw error
+        if (error) {
+          console.error('supabase upsert error:', error)
+          throw error
+        }
 
+        console.log('user saved to supabase with id:', telegramId)
         setUserId(telegramId)
       } catch (error) {
         console.error('auth error:', error)
