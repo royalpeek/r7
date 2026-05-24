@@ -9,7 +9,7 @@ export function useTelegramUser() {
     const initTelegram = async () => {
       try {
         // wait a bit for telegram to be ready
-        await new Promise(resolve => setTimeout(resolve, 500))
+        await new Promise(resolve => setTimeout(resolve, 2000))
 
         const tg = (window as any).Telegram?.WebApp
         console.log('telegram object:', tg)
