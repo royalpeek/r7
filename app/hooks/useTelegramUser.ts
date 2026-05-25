@@ -53,20 +53,50 @@ export function useTelegramUser() {
 
         if (user?.id) {
           const telegramId = String(user.id)
-          console.log('saving telegram id:', telegramId)
+          console.log('checking if user exists:', telegramId)
 
-          const { error } = await supabase
+          // check if user already exists
+          const { data: existingUser, error: checkError } = await supabase
             .from('users')
-            .upsert({
-              id: telegramId,
-              username: user.username || user.first_name || 'user',
-              is_creator: false,
-            }, { onConflict: 'id' })
-            .select()
+            .select('id')
+            .eq('id', telegramId)
+            .single()
 
-          if (error) {
-            console.error('supabase error:', error)
-            throw error
+          if (checkError && checkError.code !== 'PGRST116') {
+            // PGRST116 means no rows found, which is fine
+            console.error('supabase check error:', checkError)
+            throw checkError
+          }
+
+          if (!existingUser) {
+            // user is new, create them with is_creator: false
+            console.log('user is new, creating with is_creator: false')
+            const { error: insertError } = await supabase
+              .from('users')
+              .insert({
+                id: telegramId,
+                username: user.username || user.first_name || 'user',
+                is_creator: false,
+              })
+
+            if (insertError) {
+              console.error('supabase insert error:', insertError)
+              throw insertError
+            }
+          } else {
+            // user already exists, only update username
+            console.log('user exists, updating username only')
+            const { error: updateError } = await supabase
+              .from('users')
+              .update({
+                username: user.username || user.first_name || 'user',
+              })
+              .eq('id', telegramId)
+
+            if (updateError) {
+              console.error('supabase update error:', updateError)
+              throw updateError
+            }
           }
 
           console.log('success! set userid to:', telegramId)
