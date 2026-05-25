@@ -291,7 +291,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-5 pb-8">
+          <div className="flex-1 overflow-y-auto px-5 pb-24">
             <p className="text-white font-bold text-2xl leading-tight mb-6">{currentCard.question}</p>
 
             <div className="bg-slate-800 rounded-xl p-4 mb-6 flex items-center gap-3">
@@ -338,10 +338,10 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
                 <div className="text-2xl">🏁</div>
                 <div>
                   <p className="text-white font-bold">
-                    {currentCard.no_pool > currentCard.yes_pool ? 'NO Won' : currentCard.yes_pool > currentCard.no_pool ? 'YES Won' : 'Tie'}
+                    {currentCard.no_votes > currentCard.yes_votes ? 'NO Won' : currentCard.yes_votes > currentCard.no_votes ? 'YES Won' : 'It\'s a Tie'}
                   </p>
                   <p className="text-slate-400 text-sm">
-                    Market ended with {currentCard.no_pool > currentCard.yes_pool ? 'NO' : 'YES'} as the winning outcome
+                    {currentCard.no_votes > currentCard.yes_votes ? 'NO' : currentCard.yes_votes > currentCard.no_votes ? 'YES' : 'Both sides'} had more voters
                   </p>
                 </div>
               </div>

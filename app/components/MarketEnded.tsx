@@ -32,7 +32,7 @@ export default function MarketEnded({
   return (
     <div className="h-full w-full bg-slate-950 flex flex-col overflow-hidden">
       {/* header */}
-      <div className="flex items-center justify-between px-5 pt-5 pb-4">
+      <div className="flex items-center justify-between px-5 pt-5 pb-4 flex-shrink-0">
         <button
           onClick={onBack}
           className="text-slate-400 text-lg"
@@ -45,7 +45,7 @@ export default function MarketEnded({
       </div>
 
       {/* scrollable content */}
-      <div className="flex-1 overflow-y-auto px-5 pb-4">
+      <div className="flex-1 overflow-y-auto px-5 pb-24">
         {/* question */}
         <p className="text-white font-bold text-2xl leading-tight mb-6">{question}</p>
 
@@ -91,16 +91,16 @@ export default function MarketEnded({
         </div>
 
         {/* final outcome */}
-        <div className="bg-slate-800 rounded-xl p-4">
+        <div className="bg-slate-800 rounded-xl p-4 mb-6">
           <p className="text-slate-400 text-xs mb-2">FINAL OUTCOME</p>
           <div className="flex items-center gap-3">
             <div className="text-2xl">🏁</div>
             <div>
               <p className="text-white font-bold">
-                {noPool > yesPool ? 'NO Won' : yesPool > noPool ? 'YES Won' : 'Tie'}
+                {noVotes > yesVotes ? 'NO Won' : yesVotes > noVotes ? 'YES Won' : 'It\'s a Tie'}
               </p>
               <p className="text-slate-400 text-sm">
-                Market ended with {noPool > yesPool ? 'NO' : 'YES'} as the winning outcome
+                {noVotes > yesVotes ? 'NO' : yesVotes > noVotes ? 'YES' : 'Both sides'} had more voters
               </p>
             </div>
           </div>
