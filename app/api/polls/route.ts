@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { question, description, category, is_private, created_by } = body
+    const { question, category } = body
 
     if (!question || question.trim().length === 0) {
       return NextResponse.json({ error: 'Question is required' }, { status: 400 })
@@ -34,11 +34,8 @@ export async function POST(request: NextRequest) {
       .from('polls')
       .insert({
         question: question.trim(),
-        description: description?.trim() || null,
         category: category || 'general',
         status: 'active',
-        is_private: is_private || false,
-        created_by: created_by || null,
         yes_pool: 0,
         no_pool: 0,
         yes_votes: 0,
