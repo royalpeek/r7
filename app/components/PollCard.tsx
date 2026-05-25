@@ -472,7 +472,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
                     <div className="text-slate-400 text-sm">${(poll.yes_pool + poll.no_pool).toFixed(2)} USDT</div>
                   </div>
 
-                  <div className="px-5 pt-2 pb-6">
+                  <div className="px-5 pt-2 pb-4">
                     <p className="text-white font-bold text-3xl leading-tight text-left">{poll.question}</p>
                   </div>
 
