@@ -55,13 +55,19 @@ export function useTelegramUser() {
           const telegramId = String(user.id)
           console.log('saving telegram id:', telegramId)
 
-          await supabase
+          const { error } = await supabase
             .from('users')
             .upsert({
               id: telegramId,
               username: user.username || user.first_name || 'user',
+              is_creator: false,
             }, { onConflict: 'id' })
             .select()
+
+          if (error) {
+            console.error('supabase error:', error)
+            throw error
+          }
 
           console.log('success! set userid to:', telegramId)
           setUserId(telegramId)
