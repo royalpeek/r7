@@ -278,7 +278,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
     // if market ended and user didn't vote, show locked results
     if (marketEnded) {
       return (
-        <div className="h-full w-full bg-slate-950 flex flex-col overflow-y-auto">
+        <div className="h-full w-full bg-slate-950 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-5 pt-5 pb-4 flex-shrink-0">
             <button
               onClick={() => setShowDetail(false)}
@@ -354,7 +354,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
     // active market, user hasn't voted yet
     return (
       <>
-        <div className="h-full w-full bg-slate-950 flex flex-col overflow-hidden">
+        <div className="h-full w-full bg-slate-950 flex flex-col overflow-y-auto">
           <div
             className="mx-4 mt-4 bg-slate-900 rounded-2xl border border-slate-700 flex flex-col p-5"
             onTouchStart={onDetailTouchStart}
