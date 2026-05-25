@@ -1,61 +1,131 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
 
-const activePositions = [
-  { id: 1, question: 'Is crypto the future of money?', vote: 'YES', stake: 50, pnl: +12.40, timeLeft: '02:14:33', yesPercent: 65, noPercent: 35 },
-  { id: 2, question: 'Should couples split everything 50/50?', vote: 'NO', stake: 25, pnl: -4.20, timeLeft: '00:46:49', yesPercent: 58, noPercent: 42 },
-]
+type Position = {
+  id: string
+  poll_id: string
+  question: string
+  direction: string
+  amount: number
+  ends_at: string
+  created_at: string
+}
 
-const historyPositions = [
-  { id: 3, question: 'Is trash talking necessary in sports?', vote: 'YES', stake: 100, pnl: +88.50, resolved: 'YES won', date: 'May 18, 2026' },
-  { id: 4, question: 'Do you think good people are always weak?', vote: 'NO', stake: 30, pnl: -30.00, resolved: 'YES won', date: 'May 15, 2026' },
-  { id: 5, question: 'Is climate change the biggest threat?', vote: 'YES', stake: 75, pnl: +60.00, resolved: 'YES won', date: 'May 10, 2026' },
-]
-
-type SortOption = 'newest' | 'oldest' | 'highest_stake' | 'lowest_stake' | 'best_pnl' | 'worst_pnl'
+type SortOption = 'newest' | 'oldest' | 'highest_stake' | 'lowest_stake'
 
 export default function Portfolio() {
   const [activeTab, setActiveTab] = useState('active')
   const [sortBy, setSortBy] = useState<SortOption>('newest')
   const [showSortMenu, setShowSortMenu] = useState(false)
+  const [positions, setPositions] = useState<Position[]>([])
+  const [loading, setLoading] = useState(true)
+  const [userId, setUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const WebApp = require('@twa-dev/sdk').default
+    const user = WebApp.initDataUnsafe.user
+    if (user) setUserId(user.id.toString())
+  }, [])
+
+  useEffect(() => {
+    if (!userId) return
+    fetchPositions()
+  }, [userId])
+
+  const fetchPositions = async () => {
+    try {
+      const { data: votes, error: votesError } = await supabase
+        .from('votes')
+        .select('*')
+        .eq('user_id', userId)
+
+      if (votesError) throw votesError
+      if (!votes || votes.length === 0) { setLoading(false); return }
+
+      const pollIds = votes.map(v => v.poll_id)
+      const { data: polls, error: pollsError } = await supabase
+        .from('polls')
+        .select('id, question, ends_at')
+        .in('id', pollIds)
+
+      if (pollsError) throw pollsError
+
+      const merged = votes.map(vote => {
+        const poll = polls?.find(p => p.id === vote.poll_id)
+        return {
+          id: vote.id,
+          poll_id: vote.poll_id,
+          question: poll?.question || 'unknown poll',
+          direction: vote.direction,
+          amount: vote.amount,
+          ends_at: poll?.ends_at || '',
+          created_at: vote.created_at,
+        }
+      })
+
+      setPositions(merged)
+    } catch (err) {
+      console.error('fetch error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const now = new Date()
+  const active = positions.filter(p => p.ends_at && new Date(p.ends_at) > now)
+  const history = positions.filter(p => p.ends_at && new Date(p.ends_at) <= now)
+
+  const totalStaked = positions.reduce((sum, p) => sum + p.amount, 0)
 
   const sortLabel: Record<SortOption, string> = {
     newest: 'Newest',
     oldest: 'Oldest',
     highest_stake: 'Highest Stake',
     lowest_stake: 'Lowest Stake',
-    best_pnl: 'Best P&L',
-    worst_pnl: 'Worst P&L',
   }
 
-  const sortedHistory = [...historyPositions].sort((a, b) => {
-    if (sortBy === 'newest') return b.id - a.id
-    if (sortBy === 'oldest') return a.id - b.id
-    if (sortBy === 'highest_stake') return b.stake - a.stake
-    if (sortBy === 'lowest_stake') return a.stake - b.stake
-    if (sortBy === 'best_pnl') return b.pnl - a.pnl
-    if (sortBy === 'worst_pnl') return a.pnl - b.pnl
+  const sortPositions = (list: Position[]) => [...list].sort((a, b) => {
+    if (sortBy === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    if (sortBy === 'oldest') return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    if (sortBy === 'highest_stake') return b.amount - a.amount
+    if (sortBy === 'lowest_stake') return a.amount - b.amount
     return 0
   })
 
+  const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric'
+  })
+
+  const getTimeLeft = (endsAt: string) => {
+    const diff = new Date(endsAt).getTime() - now.getTime()
+    if (diff <= 0) return '00:00:00'
+    const h = Math.floor(diff / 3600000)
+    const m = Math.floor((diff % 3600000) / 60000)
+    const s = Math.floor((diff % 60000) / 1000)
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  }
+
   return (
     <div className="bg-slate-950 min-h-screen flex flex-col overflow-hidden">
-      {/* removed the r7 header, also moved content up a bit by reducing top spacing */}
       <div className="sticky top-0 z-10 bg-slate-950 px-4 pt-4 pb-0 space-y-4">
+
         <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6">
-          <p className="text-slate-400 text-sm mb-2">Total USDT Balance</p>
-          <p className="text-white text-4xl font-bold">$65.643</p>
+          <p className="text-slate-400 text-sm mb-2">Total Staked</p>
+          <p className="text-white text-4xl font-bold">
+            {loading ? '...' : `$${totalStaked.toLocaleString()}`}
+          </p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5">
             <p className="text-slate-400 text-sm mb-1">P&L</p>
-            <p className="text-cyan-400 text-2xl font-bold">+$299.70</p>
+            <p className="text-slate-500 text-2xl font-bold">--</p>
           </div>
           <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5">
             <p className="text-slate-400 text-sm mb-1">Claimable</p>
-            <p className="text-slate-300 text-2xl font-bold">$0.00</p>
+            <p className="text-slate-500 text-2xl font-bold">--</p>
           </div>
         </div>
 
@@ -65,13 +135,13 @@ export default function Portfolio() {
               onClick={() => setActiveTab('active')}
               className={`pb-4 font-semibold ${activeTab === 'active' ? 'text-white border-b-2 border-cyan-400' : 'text-slate-400'}`}
             >
-              Active ({activePositions.length})
+              Active ({loading ? '...' : active.length})
             </button>
             <button
               onClick={() => setActiveTab('history')}
               className={`pb-4 font-semibold ${activeTab === 'history' ? 'text-white border-b-2 border-cyan-400' : 'text-slate-400'}`}
             >
-              History ({historyPositions.length})
+              History ({loading ? '...' : history.length})
             </button>
           </div>
 
@@ -82,16 +152,12 @@ export default function Portfolio() {
             >
               ↕ {sortLabel[sortBy]}
             </button>
-
             {showSortMenu && (
               <div className="absolute right-0 top-8 bg-slate-800 border border-slate-700 rounded-xl z-10 w-44 overflow-hidden">
                 {(Object.keys(sortLabel) as SortOption[]).map(option => (
                   <button
                     key={option}
-                    onClick={() => {
-                      setSortBy(option)
-                      setShowSortMenu(false)
-                    }}
+                    onClick={() => { setSortBy(option); setShowSortMenu(false) }}
                     className={`w-full text-left px-4 py-3 text-sm ${sortBy === option ? 'text-cyan-400 bg-slate-700' : 'text-slate-300'}`}
                   >
                     {sortLabel[option]}
@@ -103,73 +169,53 @@ export default function Portfolio() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 pt-0 pb-48">
-        {activeTab === 'active' && (
+      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-48">
+        {loading ? (
+          <div className="text-center py-16 text-slate-400">loading...</div>
+        ) : activeTab === 'active' ? (
           <div className="space-y-4">
-            {activePositions.length === 0 ? (
-              <div className="text-center py-16 text-slate-400">No active positions</div>
-            ) : (
-              activePositions.map(pos => (
-                <div key={pos.id} className="bg-slate-900 border border-slate-700 rounded-2xl p-5">
-                  <div className="flex items-start justify-between mb-3">
-                    <p className="text-white font-semibold text-sm flex-1 pr-4">{pos.question}</p>
-                    <span
-                      className={`text-xs font-bold px-2 py-1 rounded ${pos.vote === 'YES' ? 'bg-cyan-900 text-cyan-400' : 'bg-pink-900 text-pink-400'}`}
-                    >
-                      {pos.vote}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-sm mb-3">
-                    <span className="text-slate-400">
-                      Stake: <span className="text-white font-bold">${pos.stake}</span>
-                    </span>
-                    <span className={`font-bold ${pos.pnl >= 0 ? 'text-cyan-400' : 'text-pink-400'}`}>
-                      {pos.pnl >= 0 ? '+' : ''}${pos.pnl.toFixed(2)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="w-full bg-slate-700 rounded-full h-1.5 mr-4">
-                      <div className="bg-cyan-400 h-1.5 rounded-full" style={{ width: `${pos.yesPercent}%` }} />
-                    </div>
-                    <span className="text-cyan-400 text-xs font-mono whitespace-nowrap">{pos.timeLeft}</span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-
-        {activeTab === 'history' && (
-          <div className="space-y-4">
-            {sortedHistory.map(pos => (
+            {active.length === 0 ? (
+              <div className="text-center py-16 text-slate-400">no active positions</div>
+            ) : sortPositions(active).map(pos => (
               <div key={pos.id} className="bg-slate-900 border border-slate-700 rounded-2xl p-5">
                 <div className="flex items-start justify-between mb-3">
                   <p className="text-white font-semibold text-sm flex-1 pr-4">{pos.question}</p>
-                  <span
-                    className={`text-xs font-bold px-2 py-1 rounded ${pos.vote === 'YES' ? 'bg-cyan-900 text-cyan-400' : 'bg-pink-900 text-pink-400'}`}
-                  >
-                    {pos.vote}
+                  <span className={`text-xs font-bold px-2 py-1 rounded ${pos.direction === 'yes' ? 'bg-cyan-900 text-cyan-400' : 'bg-pink-900 text-pink-400'}`}>
+                    {pos.direction.toUpperCase()}
                   </span>
                 </div>
-
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-slate-400">
-                    Stake: <span className="text-white font-bold">${pos.stake}</span>
-                  </span>
-                  <span className={`font-bold ${pos.pnl >= 0 ? 'text-cyan-400' : 'text-pink-400'}`}>
-                    {pos.pnl >= 0 ? '+' : ''}${pos.pnl.toFixed(2)}
-                  </span>
+                <div className="flex items-center justify-between text-sm mb-3">
+                  <span className="text-slate-400">Stake: <span className="text-white font-bold">${pos.amount}</span></span>
+                  <span className="text-slate-500 font-bold">P&L: --</span>
                 </div>
-
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-500 text-xs">{pos.date}</span>
-                  <span
-                    className={`text-xs font-semibold ${pos.resolved.includes(pos.vote) ? 'text-cyan-400' : 'text-pink-400'}`}
-                  >
-                    {pos.resolved}
+                  <div className="w-full bg-slate-700 rounded-full h-1.5 mr-4">
+                    <div className="bg-cyan-400 h-1.5 rounded-full w-1/2" />
+                  </div>
+                  <span className="text-cyan-400 text-xs font-mono whitespace-nowrap">{getTimeLeft(pos.ends_at)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {history.length === 0 ? (
+              <div className="text-center py-16 text-slate-400">no history yet</div>
+            ) : sortPositions(history).map(pos => (
+              <div key={pos.id} className="bg-slate-900 border border-slate-700 rounded-2xl p-5">
+                <div className="flex items-start justify-between mb-3">
+                  <p className="text-white font-semibold text-sm flex-1 pr-4">{pos.question}</p>
+                  <span className={`text-xs font-bold px-2 py-1 rounded ${pos.direction === 'yes' ? 'bg-cyan-900 text-cyan-400' : 'bg-pink-900 text-pink-400'}`}>
+                    {pos.direction.toUpperCase()}
                   </span>
+                </div>
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span className="text-slate-400">Stake: <span className="text-white font-bold">${pos.amount}</span></span>
+                  <span className="text-slate-500 font-bold">P&L: --</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 text-xs">{formatDate(pos.created_at)}</span>
+                  <span className="text-slate-500 text-xs">resolution pending</span>
                 </div>
               </div>
             ))}
