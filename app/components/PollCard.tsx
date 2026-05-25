@@ -389,7 +389,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
             </div>
           </div>
 
-          <div className="flex-1 mx-4 mt-4 bg-slate-800 rounded-2xl flex flex-col items-center justify-center gap-4 p-6">
+          <div className="flex-1 mx-4 mt-4 bg-slate-800 rounded-2xl flex flex-col items-center justify-center gap-4 p-6 overflow-y-auto">
             <div className="text-6xl">🗳️</div>
             <p className="text-white font-bold text-lg">Vote to unlock insights</p>
             <p className="text-slate-400 text-sm text-center">
