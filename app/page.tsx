@@ -131,7 +131,7 @@ export default function Home() {
 
       {/* header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2 flex-shrink-0">
-        <h1 className="text-2xl font-bold text-white">r7</h1>
+        <img src="/logo.png" alt="r7" className="h-10" />
         <button
           onClick={() => setShowWallet(true)}
           className="bg-slate-800 text-slate-400 px-4 py-2 rounded text-sm flex items-center gap-2"
