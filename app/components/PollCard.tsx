@@ -278,7 +278,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
     // if market ended and user didn't vote, show locked results
     if (marketEnded) {
       return (
-        <div className="h-full w-full bg-slate-950 flex flex-col overflow-hidden">
+        <div className="h-full w-full bg-slate-950 flex flex-col overflow-y-auto">
           <div className="flex items-center justify-between px-5 pt-5 pb-4 flex-shrink-0">
             <button
               onClick={() => setShowDetail(false)}
@@ -389,7 +389,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
             </div>
           </div>
 
-          <div className="flex-1 mx-4 mt-4 bg-slate-800 rounded-2xl flex flex-col items-center justify-center gap-4 p-6 overflow-y-auto">
+          <div className="flex-1 mx-4 mt-4 bg-slate-800 rounded-2xl flex flex-col items-center justify-center gap-4 p-6">
             <div className="text-6xl">🗳️</div>
             <p className="text-white font-bold text-lg">Vote to unlock insights</p>
             <p className="text-slate-400 text-sm text-center">
