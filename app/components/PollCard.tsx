@@ -519,7 +519,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
                 </div>
 
                 <div className="text-center py-3 text-slate-600 text-xs">
-                  1% fee · 24h consensus · no gas
+                  1% fee · 24h consensus ·
                 </div>
               </div>
             )
