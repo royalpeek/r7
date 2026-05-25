@@ -1,21 +1,84 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Wallet, RefreshCw, PlusCircle, Send, QrCode } from 'lucide-react'
 import PollCard from './components/PollCard'
 import { usePolls } from './hooks/usePolls'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
+import { supabase } from '@/lib/supabase'
+
+const CATEGORIES = ['Trending', 'New', 'Politics', 'Crypto', 'Sports', 'Tech']
+const FILTERS = {
+  status: 'active', // 'active' or 'expired'
+  sort: 'oldest', // 'newest', 'oldest', 'highest-volume', 'lowest-volume', 'most-votes', 'fewest-votes'
+}
 
 export default function Home() {
   const [showWallet, setShowWallet] = useState(false)
+  const [showFilter, setShowFilter] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState('Trending')
+  const [filterStatus, setFilterStatus] = useState('active') // 'active' or 'expired'
+  const [sortBy, setSortBy] = useState('oldest')
+  const [isCreator, setIsCreator] = useState(false)
+
   const { userId, loading: userLoading } = useTelegramUser()
   const { polls, loading: pollsLoading } = usePolls(userId)
+
+  // fetch user's creator status
+  useEffect(() => {
+    const fetchCreatorStatus = async () => {
+      if (!userId) return
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('is_creator')
+          .eq('id', userId)
+          .single()
+
+        if (error) throw error
+        setIsCreator(data?.is_creator || false)
+      } catch (err) {
+        console.error('fetch creator status error:', err)
+        setIsCreator(false)
+      }
+    }
+
+    fetchCreatorStatus()
+  }, [userId])
 
   const handleCopy = () => {
     navigator.clipboard.writeText('3wbjCZ...kDdM')
   }
 
   const loading = userLoading || pollsLoading
+
+  // filter and sort polls
+  const filteredPolls = polls
+    .filter(poll => {
+      const marketEnded = new Date(poll.ends_at) < new Date()
+      return filterStatus === 'active' ? !marketEnded : marketEnded
+    })
+    .sort((a, b) => {
+      const totalA = a.yes_pool + a.no_pool
+      const totalB = b.yes_pool + b.no_pool
+
+      switch (sortBy) {
+        case 'newest':
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        case 'oldest':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        case 'highest-volume':
+          return totalB - totalA
+        case 'lowest-volume':
+          return totalA - totalB
+        case 'most-votes':
+          return (b.yes_votes + b.no_votes) - (a.yes_votes + a.no_votes)
+        case 'fewest-votes':
+          return (a.yes_votes + a.no_votes) - (b.yes_votes + b.no_votes)
+        default:
+          return 0
+      }
+    })
 
   return (
     <div className="bg-slate-950 h-screen overflow-hidden flex flex-col">
@@ -24,10 +87,45 @@ export default function Home() {
         <h1 className="text-2xl font-bold text-white">r7</h1>
         <button
           onClick={() => setShowWallet(true)}
-          className="bg-slate-800 text-slate-400 px-4 py-2 rounded text-sm"
+          className="bg-slate-800 text-slate-400 px-4 py-2 rounded text-sm flex items-center gap-2"
         >
           $64.167 USDT
         </button>
+      </div>
+
+      {/* filter and create section */}
+      <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0">
+        <button
+          onClick={() => setShowFilter(true)}
+          className="flex items-center gap-2 bg-slate-800 text-slate-400 px-3 py-2 rounded border border-slate-700"
+        >
+          <span>⚙️</span>
+          Filter
+        </button>
+
+        {isCreator && (
+          <button className="ml-auto flex items-center gap-2 bg-cyan-400 text-black px-4 py-2 rounded-xl font-bold">
+            <PlusCircle size={18} />
+            Create
+          </button>
+        )}
+      </div>
+
+      {/* category tabs */}
+      <div className="flex gap-3 px-4 pb-3 overflow-x-auto flex-shrink-0 scrollbar-hide">
+        {CATEGORIES.map(cat => (
+          <button
+            key={cat}
+            onClick={() => setSelectedCategory(cat)}
+            className={`whitespace-nowrap py-2 px-3 rounded text-sm font-medium transition ${
+              selectedCategory === cat
+                ? 'text-cyan-400 border-b-2 border-cyan-400'
+                : 'text-slate-400'
+            }`}
+          >
+            {cat}
+          </button>
+        ))}
       </div>
 
       {/* poll card fills remaining space */}
@@ -36,14 +134,91 @@ export default function Home() {
           <div className="flex items-center justify-center h-full">
             <p className="text-slate-400">loading polls...</p>
           </div>
-        ) : polls.length > 0 ? (
-          <PollCard polls={polls} />
+        ) : filteredPolls.length > 0 ? (
+          <PollCard polls={filteredPolls} />
         ) : (
           <div className="flex items-center justify-center h-full">
             <p className="text-slate-400">no polls yet</p>
           </div>
         )}
       </div>
+
+      {/* filter modal */}
+      {showFilter && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setShowFilter(false)}
+          />
+          <div className="relative bg-slate-950 rounded-t-3xl p-6 pb-12 z-10 max-h-96 overflow-y-auto">
+            <div className="w-10 h-1 bg-slate-700 rounded-full mx-auto mb-6" />
+            <button
+              onClick={() => setShowFilter(false)}
+              className="absolute top-6 right-6 text-slate-400"
+            >
+              <X size={20} />
+            </button>
+
+            <p className="text-white text-2xl font-bold mb-6">Filter</p>
+
+            {/* status filter */}
+            <div className="mb-8">
+              <p className="text-slate-400 text-xs uppercase tracking-wide mb-3">STATUS</p>
+              <div className="space-y-3">
+                <button
+                  onClick={() => { setFilterStatus('active'); setShowFilter(false) }}
+                  className={`w-full flex items-center justify-between py-3 px-4 rounded-lg border transition ${
+                    filterStatus === 'active'
+                      ? 'bg-cyan-900 border-cyan-500 text-cyan-400'
+                      : 'bg-slate-800 border-slate-700 text-slate-400'
+                  }`}
+                >
+                  <span>Active</span>
+                  {filterStatus === 'active' && <span>✓</span>}
+                </button>
+                <button
+                  onClick={() => { setFilterStatus('expired'); setShowFilter(false) }}
+                  className={`w-full flex items-center justify-between py-3 px-4 rounded-lg border transition ${
+                    filterStatus === 'expired'
+                      ? 'bg-cyan-900 border-cyan-500 text-cyan-400'
+                      : 'bg-slate-800 border-slate-700 text-slate-400'
+                  }`}
+                >
+                  <span>Expired</span>
+                  {filterStatus === 'expired' && <span>✓</span>}
+                </button>
+              </div>
+            </div>
+
+            {/* sort options */}
+            <div>
+              <p className="text-slate-400 text-xs uppercase tracking-wide mb-3">SORT BY</p>
+              <div className="space-y-2">
+                {[
+                  { value: 'newest', label: 'Newest' },
+                  { value: 'oldest', label: 'Oldest' },
+                  { value: 'highest-volume', label: 'Highest Volume' },
+                  { value: 'lowest-volume', label: 'Lowest Volume' },
+                  { value: 'most-votes', label: 'Most Votes' },
+                  { value: 'fewest-votes', label: 'Fewest Votes' },
+                ].map(option => (
+                  <button
+                    key={option.value}
+                    onClick={() => { setSortBy(option.value); setShowFilter(false) }}
+                    className={`w-full text-left py-2 px-4 rounded transition ${
+                      sortBy === option.value
+                        ? 'bg-slate-800 text-cyan-400'
+                        : 'text-slate-400 hover:text-slate-300'
+                    }`}
+                  >
+                    {sortBy === option.value && '✓ '}{option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* wallet sheet overlay */}
       {showWallet && (

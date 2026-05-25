@@ -97,7 +97,7 @@ export default function MarketEnded({
             <div className="text-2xl">🏁</div>
             <div>
               <p className="text-white font-bold">
-                {noVotes > yesVotes ? 'NO Won' : yesVotes > noVotes ? 'YES Won' : 'It\'s a Tie'}
+                {noVotes > yesVotes ? 'NO Won' : yesVotes > noVotes ? 'YES Won' : 'It\'s a Draw'}
               </p>
               <p className="text-slate-400 text-sm">
                 {noVotes > yesVotes ? 'NO' : yesVotes > noVotes ? 'YES' : 'Both sides'} had more voters
