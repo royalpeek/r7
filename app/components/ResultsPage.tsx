@@ -1,309 +1,162 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import ResultsPage from './ResultsPage'
-import StakingModal from './StakingModal'
-import { createPortal } from 'react-dom'
+import PoolHistoryChart from './PoolHistoryChart'
 
-type Position = {
-  id: string
-  poll_id: string
+interface ResultsPageProps {
   question: string
-  direction: 'yes' | 'no'
+  pollId: string
+  voteDirection: 'YES' | 'NO'
   amount: number
-  ends_at: string
-  created_at: string
-  yes_pool: number
-  no_pool: number
+  yesPercent: number
+  noPercent: number
+  yesPool: number
+  noPool: number
+  marketEnded?: boolean
+  onBack: () => void
+  onAddMore: () => void
+  onChangeVote: () => void
 }
 
-type SortOption = 'newest' | 'oldest' | 'highest_stake' | 'lowest_stake'
-
-export default function Portfolio() {
-  const [activeTab, setActiveTab] = useState('active')
-  const [sortBy, setSortBy] = useState<SortOption>('newest')
-  const [showSortMenu, setShowSortMenu] = useState(false)
-  const [positions, setPositions] = useState<Position[]>([])
+export default function ResultsPage({
+  question,
+  pollId,
+  voteDirection,
+  amount,
+  yesPercent,
+  noPercent,
+  yesPool,
+  noPool,
+  marketEnded = false,
+  onBack,
+  onAddMore,
+  onChangeVote,
+}: ResultsPageProps) {
+  const [stakerCount, setStakerCount] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [userId, setUserId] = useState<string | null>(null)
-  const [selectedPosition, setSelectedPosition] = useState<Position | null>(null)
-  const [showStakingModal, setShowStakingModal] = useState(false)
-  const [stakingDirection, setStakingDirection] = useState<'yes' | 'no' | null>(null)
 
   useEffect(() => {
-    const WebApp = require('@twa-dev/sdk').default
-    const user = WebApp.initDataUnsafe.user
-    if (user) setUserId(user.id.toString())
-  }, [])
+    const fetchStakers = async () => {
+      try {
+        // count unique users who voted on this poll
+        const { data, error } = await supabase
+          .from('votes')
+          .select('user_id')
+          .eq('poll_id', pollId)
 
-  useEffect(() => {
-    if (!userId) return
-    fetchPositions()
-  }, [userId])
+        if (error) throw error
 
-  const fetchPositions = async () => {
-    try {
-      const { data: votes, error: votesError } = await supabase
-        .from('votes')
-        .select('*')
-        .eq('user_id', userId)
-
-      if (votesError) throw votesError
-      if (!votes || votes.length === 0) { setLoading(false); return }
-
-      const pollIds = votes.map(v => v.poll_id)
-      const { data: polls, error: pollsError } = await supabase
-        .from('polls')
-        .select('id, question, ends_at, yes_pool, no_pool')
-        .in('id', pollIds)
-
-      if (pollsError) throw pollsError
-
-      const merged = votes.map(vote => {
-        const poll = polls?.find(p => p.id === vote.poll_id)
-        return {
-          id: vote.id,
-          poll_id: vote.poll_id,
-          question: poll?.question || 'unknown poll',
-          direction: vote.direction,
-          amount: vote.amount,
-          ends_at: poll?.ends_at || '',
-          created_at: vote.created_at,
-          yes_pool: poll?.yes_pool || 0,
-          no_pool: poll?.no_pool || 0,
-        }
-      })
-
-      setPositions(merged)
-    } catch (err) {
-      console.error('fetch error:', err)
-    } finally {
-      setLoading(false)
+        // get unique count
+        const uniqueUsers = new Set(data?.map(v => v.user_id) || [])
+        setStakerCount(uniqueUsers.size)
+      } catch (err) {
+        console.error('fetch stakers error:', err)
+        setStakerCount(0)
+      } finally {
+        setLoading(false)
+      }
     }
-  }
 
-  const handleConfirmVote = async (amount: number) => {
-    if (!stakingDirection || !selectedPosition || !userId) return
-    try {
-      const response = await fetch('/api/votes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: userId,
-          poll_id: selectedPosition.poll_id,
-          direction: stakingDirection,
-          amount,
-        }),
-      })
-      if (!response.ok) throw new Error('vote failed')
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      setShowStakingModal(false)
-      setStakingDirection(null)
-      fetchPositions()
-    } catch (error) {
-      console.error('vote error:', error)
-      alert('vote failed. try again.')
-    }
-  }
+    fetchStakers()
+  }, [pollId])
 
-  const now = new Date()
-  const active = positions.filter(p => p.ends_at && new Date(p.ends_at) > now)
-  const history = positions.filter(p => p.ends_at && new Date(p.ends_at) <= now)
-  const totalStaked = positions.reduce((sum, p) => sum + p.amount, 0)
-
-  const sortLabel: Record<SortOption, string> = {
-    newest: 'Newest',
-    oldest: 'Oldest',
-    highest_stake: 'Highest Stake',
-    lowest_stake: 'Lowest Stake',
-  }
-
-  const sortPositions = (list: Position[]) => [...list].sort((a, b) => {
-    if (sortBy === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    if (sortBy === 'oldest') return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    if (sortBy === 'highest_stake') return b.amount - a.amount
-    if (sortBy === 'lowest_stake') return a.amount - b.amount
-    return 0
-  })
-
-  const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric', year: 'numeric'
-  })
-
-  const getTimeLeft = (endsAt: string) => {
-    const diff = new Date(endsAt).getTime() - now.getTime()
-    if (diff <= 0) return '00:00:00'
-    const h = Math.floor(diff / 3600000)
-    const m = Math.floor((diff % 3600000) / 60000)
-    const s = Math.floor((diff % 60000) / 1000)
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-  }
-
-  // show results page when a card is tapped
-  if (selectedPosition) {
-    const totalPool = selectedPosition.yes_pool + selectedPosition.no_pool
-    const yesPercent = totalPool > 0 ? Math.round((selectedPosition.yes_pool / totalPool) * 100) : 50
-    const noPercent = 100 - yesPercent
-    const marketEnded = new Date(selectedPosition.ends_at) <= now
-
-    return (
-      <>
-        <ResultsPage
-          question={selectedPosition.question}
-          pollId={selectedPosition.poll_id}
-          voteDirection={selectedPosition.direction === 'yes' ? 'YES' : 'NO'}
-          amount={selectedPosition.amount}
-          yesPercent={yesPercent}
-          noPercent={noPercent}
-          yesPool={selectedPosition.yes_pool}
-          noPool={selectedPosition.no_pool}
-          marketEnded={marketEnded}
-          onBack={() => setSelectedPosition(null)}
-          onAddMore={() => {
-            setStakingDirection(selectedPosition.direction)
-            setShowStakingModal(true)
-          }}
-          onChangeVote={() => {
-            setStakingDirection(selectedPosition.direction === 'yes' ? 'no' : 'yes')
-            setShowStakingModal(true)
-          }}
-        />
-        {showStakingModal && stakingDirection && typeof document !== 'undefined' &&
-          createPortal(
-            <StakingModal
-              question={selectedPosition.question}
-              voteDirection={stakingDirection === 'yes' ? 'YES' : 'NO'}
-              onConfirm={handleConfirmVote}
-              onCancel={() => { setShowStakingModal(false); setStakingDirection(null) }}
-            />,
-            document.body
-          )}
-      </>
-    )
-  }
+  const totalVolume = yesPool + noPool
 
   return (
-    <div className="bg-slate-950 min-h-screen flex flex-col overflow-hidden">
-      <div className="sticky top-0 z-10 bg-slate-950 px-4 pt-4 pb-0 space-y-4">
-        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6">
-          <p className="text-slate-400 text-sm mb-2">Total Staked</p>
-          <p className="text-white text-4xl font-bold">
-            {loading ? '...' : `$${totalStaked.toLocaleString()}`}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5">
-            <p className="text-slate-400 text-sm mb-1">P&L</p>
-            <p className="text-slate-500 text-2xl font-bold">--</p>
-          </div>
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5">
-            <p className="text-slate-400 text-sm mb-1">Claimable</p>
-            <p className="text-slate-500 text-2xl font-bold">--</p>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between border-b border-slate-700">
-          <div className="flex gap-4">
+    <div className="fixed inset-0 bg-slate-950 z-40 flex flex-col">
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="max-w-sm mx-auto">
+          <div className="flex items-center justify-between mb-6">
             <button
-              onClick={() => setActiveTab('active')}
-              className={`pb-4 font-semibold ${activeTab === 'active' ? 'text-white border-b-2 border-cyan-400' : 'text-slate-400'}`}
+              onClick={onBack}
+              className="text-slate-400 hover:text-white text-xl"
             >
-              Active ({loading ? '...' : active.length})
+              ← Back
             </button>
-            <button
-              onClick={() => setActiveTab('history')}
-              className={`pb-4 font-semibold ${activeTab === 'history' ? 'text-white border-b-2 border-cyan-400' : 'text-slate-400'}`}
-            >
-              History ({loading ? '...' : history.length})
-            </button>
+            <div className="text-cyan-400 bg-cyan-900 px-3 py-1 rounded text-sm font-mono">
+              00:04:31
+            </div>
           </div>
 
-          <div className="relative pb-4">
-            <button
-              onClick={() => setShowSortMenu(!showSortMenu)}
-              className="text-slate-400 text-sm flex items-center gap-1"
-            >
-              ↕ {sortLabel[sortBy]}
-            </button>
-            {showSortMenu && (
-              <div className="absolute right-0 top-8 bg-slate-800 border border-slate-700 rounded-xl z-10 w-44 overflow-hidden">
-                {(Object.keys(sortLabel) as SortOption[]).map(option => (
-                  <button
-                    key={option}
-                    onClick={() => { setSortBy(option); setShowSortMenu(false) }}
-                    className={`w-full text-left px-4 py-3 text-sm ${sortBy === option ? 'text-cyan-400 bg-slate-700' : 'text-slate-300'}`}
-                  >
-                    {sortLabel[option]}
-                  </button>
-                ))}
+          <div className="bg-slate-800 rounded-xl p-6 mb-8">
+            <p className={`text-sm font-bold mb-2 ${voteDirection === 'YES' ? 'text-cyan-400' : 'text-pink-500'}`}>
+              You voted {voteDirection}
+            </p>
+            <h2 className="text-white font-bold text-xl mb-4">{question}</h2>
+
+            <div className="space-y-4 mb-6">
+              <div className="h-12 bg-slate-700 rounded border border-cyan-500 flex items-center overflow-hidden">
+                <div
+                  className="h-full bg-cyan-500 flex items-center justify-end pr-2"
+                  style={{ width: `${yesPercent}%` }}
+                >
+                  <span className="text-black text-xs font-bold">YES</span>
+                </div>
               </div>
-            )}
+
+              <div className="h-12 bg-slate-700 rounded border border-pink-500 flex items-center overflow-hidden">
+                <div
+                  className="h-full bg-pink-500 flex items-center justify-end pr-2"
+                  style={{ width: `${noPercent}%` }}
+                >
+                  <span className="text-black text-xs font-bold">NO</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-between text-lg font-bold mb-4">
+              <div className="text-center">
+                <p className="text-cyan-400">YES {yesPercent}%</p>
+                <p className="text-cyan-400 text-sm">${yesPool.toFixed(2)}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-pink-500">NO {noPercent}%</p>
+                <p className="text-pink-500 text-sm">${noPool.toFixed(2)}</p>
+              </div>
+            </div>
+
+            <p className="text-slate-400 text-xs">← swipe to add or change →</p>
+          </div>
+
+          <div className="mb-8">
+            <p className="text-slate-400 text-xs mb-2">POOL HISTORY</p>
+            <PoolHistoryChart pollId={pollId} />
+          </div>
+
+          <div className="bg-slate-800 rounded-xl p-4 mb-8">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">🔥</span>
+              <div>
+                <p className="text-white font-bold">
+                  {loading ? 'loading...' : `${stakerCount} ${stakerCount === 1 ? 'person' : 'people'} staking`}
+                </p>
+                <p className="text-slate-400 text-sm">${totalVolume.toFixed(2)} USDT total volume</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-48">
-        {loading ? (
-          <div className="text-center py-16 text-slate-400">loading...</div>
-        ) : activeTab === 'active' ? (
-          <div className="space-y-4">
-            {active.length === 0 ? (
-              <div className="text-center py-16 text-slate-400">no active positions</div>
-            ) : sortPositions(active).map(pos => (
-              <div
-                key={pos.id}
-                className="bg-slate-900 border border-slate-700 rounded-2xl p-5 cursor-pointer active:opacity-70"
-                onClick={() => setSelectedPosition(pos)}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <p className="text-white font-semibold text-sm flex-1 pr-4">{pos.question}</p>
-                  <span className={`text-xs font-bold px-2 py-1 rounded ${pos.direction === 'yes' ? 'bg-cyan-900 text-cyan-400' : 'bg-pink-900 text-pink-400'}`}>
-                    {pos.direction.toUpperCase()}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm mb-3">
-                  <span className="text-slate-400">Stake: <span className="text-white font-bold">${pos.amount}</span></span>
-                  <span className="text-slate-500 text-xs">tap to view</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="w-full bg-slate-700 rounded-full h-1.5 mr-4">
-                    <div className="bg-cyan-400 h-1.5 rounded-full w-1/2" />
-                  </div>
-                  <span className="text-cyan-400 text-xs font-mono whitespace-nowrap">{getTimeLeft(pos.ends_at)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {history.length === 0 ? (
-              <div className="text-center py-16 text-slate-400">no history yet</div>
-            ) : sortPositions(history).map(pos => (
-              <div
-                key={pos.id}
-                className="bg-slate-900 border border-slate-700 rounded-2xl p-5 cursor-pointer active:opacity-70"
-                onClick={() => setSelectedPosition(pos)}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <p className="text-white font-semibold text-sm flex-1 pr-4">{pos.question}</p>
-                  <span className={`text-xs font-bold px-2 py-1 rounded ${pos.direction === 'yes' ? 'bg-cyan-900 text-cyan-400' : 'bg-pink-900 text-pink-400'}`}>
-                    {pos.direction.toUpperCase()}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-slate-400">Stake: <span className="text-white font-bold">${pos.amount}</span></span>
-                  <span className="text-slate-500 text-xs">tap to view</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 text-xs">{formatDate(pos.created_at)}</span>
-                  <span className="text-slate-500 text-xs">resolution pending</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+      <div className="p-4 pb-8 bg-slate-950">
+        <div className="flex gap-3 max-w-sm mx-auto">
+          <button
+            onClick={onAddMore}
+            className={`flex-1 text-black font-bold py-4 rounded-2xl ${
+              voteDirection === 'YES' ? 'bg-cyan-400 hover:bg-cyan-500' : 'bg-pink-500 hover:bg-pink-600'
+            }`}
+          >
+            ADD {voteDirection}
+          </button>
+          <button
+            onClick={onChangeVote}
+            className={`flex-1 text-black font-bold py-4 rounded-2xl ${
+              voteDirection === 'YES' ? 'bg-pink-500 hover:bg-pink-600' : 'bg-cyan-400 hover:bg-cyan-500'
+            }`}
+          >
+            CHANGE {voteDirection === 'YES' ? 'NO' : 'YES'}
+          </button>
+        </div>
       </div>
     </div>
   )
