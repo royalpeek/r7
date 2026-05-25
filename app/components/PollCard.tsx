@@ -459,7 +459,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
             const pollUserVote = userVotes.find(v => v.poll_id === poll.id)
 
             return (
-              <div key={poll.id} className="h-full w-full flex flex-col px-3 pt-16 pb-24">
+              <div key={poll.id} className="h-full w-full flex flex-col px-4 pt-2 pb-24">
                 <div
                   className="flex-1 bg-slate-900 rounded-2xl border border-slate-700 flex flex-col overflow-hidden"
                   style={{
