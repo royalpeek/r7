@@ -1,34 +1,53 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Wallet, RefreshCw, PlusCircle, Send, QrCode } from 'lucide-react'
+import { X, Wallet, RefreshCw, PlusCircle, Send, QrCode, Filter } from 'lucide-react'
 import PollCard from './components/PollCard'
 import { usePolls } from './hooks/usePolls'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { supabase } from '@/lib/supabase'
 
 const CATEGORIES = ['Trending', 'New', 'Politics', 'Crypto', 'Sports', 'Tech']
-const FILTERS = {
-  status: 'active', // 'active' or 'expired'
-  sort: 'oldest', // 'newest', 'oldest', 'highest-volume', 'lowest-volume', 'most-votes', 'fewest-votes'
-}
 
 export default function Home() {
   const [showWallet, setShowWallet] = useState(false)
   const [showFilter, setShowFilter] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState('Trending')
-  const [filterStatus, setFilterStatus] = useState('active') // 'active' or 'expired'
+  const [filterStatus, setFilterStatus] = useState('active')
   const [sortBy, setSortBy] = useState('oldest')
   const [isCreator, setIsCreator] = useState(false)
+  const [logs, setLogs] = useState<string[]>([])
 
   const { userId, loading: userLoading } = useTelegramUser()
   const { polls, loading: pollsLoading } = usePolls(userId)
+
+  // capture console logs
+  useEffect(() => {
+    const originalLog = console.log
+    const originalError = console.error
+
+    console.log = (...args) => {
+      originalLog(...args)
+      setLogs(prev => [...prev, 'LOG: ' + args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ')])
+    }
+
+    console.error = (...args) => {
+      originalError(...args)
+      setLogs(prev => [...prev, 'ERROR: ' + args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ')])
+    }
+
+    return () => {
+      console.log = originalLog
+      console.error = originalError
+    }
+  }, [])
 
   // fetch user's creator status
   useEffect(() => {
     const fetchCreatorStatus = async () => {
       if (!userId) return
       try {
+        console.log('fetching creator status for user:', userId)
         const { data, error } = await supabase
           .from('users')
           .select('is_creator')
@@ -36,6 +55,7 @@ export default function Home() {
           .single()
 
         if (error) throw error
+        console.log('creator status:', data?.is_creator)
         setIsCreator(data?.is_creator || false)
       } catch (err) {
         console.error('fetch creator status error:', err)
@@ -82,8 +102,21 @@ export default function Home() {
 
   return (
     <div className="bg-slate-950 h-screen overflow-hidden flex flex-col">
-      {/* header */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-2 flex-shrink-0">
+      {/* debug logs */}
+      <div className="fixed top-0 left-0 right-0 bg-red-900 text-red-400 text-xs p-2 z-50 max-h-32 overflow-y-auto">
+        <div className="font-bold mb-1">DEBUG:</div>
+        <div>userId: {userId || 'loading...'}</div>
+        <div>isCreator: {isCreator.toString()}</div>
+        <div>userLoading: {userLoading.toString()}</div>
+        <div className="border-t border-red-700 mt-2 pt-2">
+          {logs.slice(-8).map((log, i) => (
+            <div key={i} className="text-xs break-words">{log}</div>
+          ))}
+        </div>
+      </div>
+
+      {/* header - moved down to avoid debug box */}
+      <div className="flex items-center justify-between px-4 pt-36 pb-2 flex-shrink-0">
         <h1 className="text-2xl font-bold text-white">r7</h1>
         <button
           onClick={() => setShowWallet(true)}
@@ -97,14 +130,14 @@ export default function Home() {
       <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0">
         <button
           onClick={() => setShowFilter(true)}
-          className="flex items-center gap-2 bg-slate-800 text-slate-400 px-3 py-2 rounded border border-slate-700"
+          className="bg-slate-800 text-slate-400 p-2 rounded border border-slate-700 hover:text-slate-300 transition"
+          title="Filter"
         >
-          <span>⚙️</span>
-          Filter
+          <Filter size={20} />
         </button>
 
         {isCreator && (
-          <button className="ml-auto flex items-center gap-2 bg-cyan-400 text-black px-4 py-2 rounded-xl font-bold">
+          <button className="ml-auto flex items-center gap-2 bg-cyan-400 text-black px-4 py-2 rounded-xl font-bold hover:bg-cyan-500 transition">
             <PlusCircle size={18} />
             Create
           </button>
@@ -112,15 +145,15 @@ export default function Home() {
       </div>
 
       {/* category tabs */}
-      <div className="flex gap-3 px-4 pb-3 overflow-x-auto flex-shrink-0 scrollbar-hide">
+      <div className="flex gap-4 px-4 pb-4 overflow-x-auto flex-shrink-0 scrollbar-hide">
         {CATEGORIES.map(cat => (
           <button
             key={cat}
             onClick={() => setSelectedCategory(cat)}
-            className={`whitespace-nowrap py-2 px-3 rounded text-sm font-medium transition ${
+            className={`whitespace-nowrap pb-2 text-sm font-medium transition border-b-2 ${
               selectedCategory === cat
-                ? 'text-cyan-400 border-b-2 border-cyan-400'
-                : 'text-slate-400'
+                ? 'text-cyan-400 border-cyan-400'
+                : 'text-slate-400 border-transparent'
             }`}
           >
             {cat}
