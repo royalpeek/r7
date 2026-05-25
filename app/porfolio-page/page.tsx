@@ -2,15 +2,20 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import ResultsPage from '../components/ResultsPage'
+import StakingModal from '../components/StakingModal'
+import { createPortal } from 'react-dom'
 
 type Position = {
   id: string
   poll_id: string
   question: string
-  direction: string
+  direction: 'yes' | 'no'
   amount: number
   ends_at: string
   created_at: string
+  yes_pool: number
+  no_pool: number
 }
 
 type SortOption = 'newest' | 'oldest' | 'highest_stake' | 'lowest_stake'
@@ -22,6 +27,9 @@ export default function Portfolio() {
   const [positions, setPositions] = useState<Position[]>([])
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
+  const [selectedPosition, setSelectedPosition] = useState<Position | null>(null)
+  const [showStakingModal, setShowStakingModal] = useState(false)
+  const [stakingDirection, setStakingDirection] = useState<'yes' | 'no' | null>(null)
 
   useEffect(() => {
     const WebApp = require('@twa-dev/sdk').default
@@ -47,7 +55,7 @@ export default function Portfolio() {
       const pollIds = votes.map(v => v.poll_id)
       const { data: polls, error: pollsError } = await supabase
         .from('polls')
-        .select('id, question, ends_at')
+        .select('id, question, ends_at, yes_pool, no_pool')
         .in('id', pollIds)
 
       if (pollsError) throw pollsError
@@ -62,6 +70,8 @@ export default function Portfolio() {
           amount: vote.amount,
           ends_at: poll?.ends_at || '',
           created_at: vote.created_at,
+          yes_pool: poll?.yes_pool || 0,
+          no_pool: poll?.no_pool || 0,
         }
       })
 
@@ -73,10 +83,33 @@ export default function Portfolio() {
     }
   }
 
+  const handleConfirmVote = async (amount: number) => {
+    if (!stakingDirection || !selectedPosition || !userId) return
+    try {
+      const response = await fetch('/api/votes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userId,
+          poll_id: selectedPosition.poll_id,
+          direction: stakingDirection,
+          amount,
+        }),
+      })
+      if (!response.ok) throw new Error('vote failed')
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      setShowStakingModal(false)
+      setStakingDirection(null)
+      fetchPositions()
+    } catch (error) {
+      console.error('vote error:', error)
+      alert('vote failed. try again.')
+    }
+  }
+
   const now = new Date()
   const active = positions.filter(p => p.ends_at && new Date(p.ends_at) > now)
   const history = positions.filter(p => p.ends_at && new Date(p.ends_at) <= now)
-
   const totalStaked = positions.reduce((sum, p) => sum + p.amount, 0)
 
   const sortLabel: Record<SortOption, string> = {
@@ -107,10 +140,52 @@ export default function Portfolio() {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
   }
 
+  // show results page when a card is tapped
+  if (selectedPosition) {
+    const totalPool = selectedPosition.yes_pool + selectedPosition.no_pool
+    const yesPercent = totalPool > 0 ? Math.round((selectedPosition.yes_pool / totalPool) * 100) : 50
+    const noPercent = 100 - yesPercent
+    const marketEnded = new Date(selectedPosition.ends_at) <= now
+
+    return (
+      <>
+        <ResultsPage
+          question={selectedPosition.question}
+          pollId={selectedPosition.poll_id}
+          voteDirection={selectedPosition.direction === 'yes' ? 'YES' : 'NO'}
+          amount={selectedPosition.amount}
+          yesPercent={yesPercent}
+          noPercent={noPercent}
+          yesPool={selectedPosition.yes_pool}
+          noPool={selectedPosition.no_pool}
+          marketEnded={marketEnded}
+          onBack={() => setSelectedPosition(null)}
+          onAddMore={() => {
+            setStakingDirection(selectedPosition.direction)
+            setShowStakingModal(true)
+          }}
+          onChangeVote={() => {
+            setStakingDirection(selectedPosition.direction === 'yes' ? 'no' : 'yes')
+            setShowStakingModal(true)
+          }}
+        />
+        {showStakingModal && stakingDirection && typeof document !== 'undefined' &&
+          createPortal(
+            <StakingModal
+              question={selectedPosition.question}
+              voteDirection={stakingDirection === 'yes' ? 'YES' : 'NO'}
+              onConfirm={handleConfirmVote}
+              onCancel={() => { setShowStakingModal(false); setStakingDirection(null) }}
+            />,
+            document.body
+          )}
+      </>
+    )
+  }
+
   return (
     <div className="bg-slate-950 min-h-screen flex flex-col overflow-hidden">
       <div className="sticky top-0 z-10 bg-slate-950 px-4 pt-4 pb-0 space-y-4">
-
         <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6">
           <p className="text-slate-400 text-sm mb-2">Total Staked</p>
           <p className="text-white text-4xl font-bold">
@@ -177,7 +252,11 @@ export default function Portfolio() {
             {active.length === 0 ? (
               <div className="text-center py-16 text-slate-400">no active positions</div>
             ) : sortPositions(active).map(pos => (
-              <div key={pos.id} className="bg-slate-900 border border-slate-700 rounded-2xl p-5">
+              <div
+                key={pos.id}
+                className="bg-slate-900 border border-slate-700 rounded-2xl p-5 cursor-pointer active:opacity-70"
+                onClick={() => setSelectedPosition(pos)}
+              >
                 <div className="flex items-start justify-between mb-3">
                   <p className="text-white font-semibold text-sm flex-1 pr-4">{pos.question}</p>
                   <span className={`text-xs font-bold px-2 py-1 rounded ${pos.direction === 'yes' ? 'bg-cyan-900 text-cyan-400' : 'bg-pink-900 text-pink-400'}`}>
@@ -186,7 +265,7 @@ export default function Portfolio() {
                 </div>
                 <div className="flex items-center justify-between text-sm mb-3">
                   <span className="text-slate-400">Stake: <span className="text-white font-bold">${pos.amount}</span></span>
-                  <span className="text-slate-500 font-bold">P&L: --</span>
+                  <span className="text-slate-500 text-xs">tap to view</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="w-full bg-slate-700 rounded-full h-1.5 mr-4">
@@ -202,7 +281,11 @@ export default function Portfolio() {
             {history.length === 0 ? (
               <div className="text-center py-16 text-slate-400">no history yet</div>
             ) : sortPositions(history).map(pos => (
-              <div key={pos.id} className="bg-slate-900 border border-slate-700 rounded-2xl p-5">
+              <div
+                key={pos.id}
+                className="bg-slate-900 border border-slate-700 rounded-2xl p-5 cursor-pointer active:opacity-70"
+                onClick={() => setSelectedPosition(pos)}
+              >
                 <div className="flex items-start justify-between mb-3">
                   <p className="text-white font-semibold text-sm flex-1 pr-4">{pos.question}</p>
                   <span className={`text-xs font-bold px-2 py-1 rounded ${pos.direction === 'yes' ? 'bg-cyan-900 text-cyan-400' : 'bg-pink-900 text-pink-400'}`}>
@@ -211,7 +294,7 @@ export default function Portfolio() {
                 </div>
                 <div className="flex items-center justify-between text-sm mb-2">
                   <span className="text-slate-400">Stake: <span className="text-white font-bold">${pos.amount}</span></span>
-                  <span className="text-slate-500 font-bold">P&L: --</span>
+                  <span className="text-slate-500 text-xs">tap to view</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500 text-xs">{formatDate(pos.created_at)}</span>
