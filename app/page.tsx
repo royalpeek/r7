@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Wallet, RefreshCw, PlusCircle, Send, QrCode, Filter } from 'lucide-react'
+import { X, Wallet, RefreshCw, PlusCircle, Send, QrCode, Filter, Lock, MapPin, Zap } from 'lucide-react'
 import PollCard from './components/PollCard'
 import { usePolls } from './hooks/usePolls'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
@@ -12,42 +12,28 @@ const CATEGORIES = ['Trending', 'New', 'Politics', 'Crypto', 'Sports', 'Tech']
 export default function Home() {
   const [showWallet, setShowWallet] = useState(false)
   const [showFilter, setShowFilter] = useState(false)
+  const [showCreatePoll, setShowCreatePoll] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState('Trending')
   const [filterStatus, setFilterStatus] = useState('active')
   const [sortBy, setSortBy] = useState('oldest')
   const [isCreator, setIsCreator] = useState(false)
-  const [logs, setLogs] = useState<string[]>([])
+
+  // create poll form state
+  const [pollTitle, setPollTitle] = useState('')
+  const [pollDescription, setPollDescription] = useState('')
+  const [isPrivate, setIsPrivate] = useState(false)
+  const [isLocal, setIsLocal] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
 
   const { userId, loading: userLoading } = useTelegramUser()
-  const { polls, loading: pollsLoading } = usePolls(userId)
-
-  // capture console logs
-  useEffect(() => {
-    const originalLog = console.log
-    const originalError = console.error
-
-    console.log = (...args) => {
-      originalLog(...args)
-      setLogs(prev => [...prev, 'LOG: ' + args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ')])
-    }
-
-    console.error = (...args) => {
-      originalError(...args)
-      setLogs(prev => [...prev, 'ERROR: ' + args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ')])
-    }
-
-    return () => {
-      console.log = originalLog
-      console.error = originalError
-    }
-  }, [])
+  const { polls, loading: pollsLoading, refetch } = usePolls(userId)
 
   // fetch user's creator status
   useEffect(() => {
     const fetchCreatorStatus = async () => {
       if (!userId) return
       try {
-        console.log('fetching creator status for user:', userId)
         const { data, error } = await supabase
           .from('users')
           .select('is_creator')
@@ -55,10 +41,8 @@ export default function Home() {
           .single()
 
         if (error) throw error
-        console.log('creator status:', data?.is_creator)
         setIsCreator(data?.is_creator || false)
       } catch (err) {
-        console.error('fetch creator status error:', err)
         setIsCreator(false)
       }
     }
@@ -68,6 +52,48 @@ export default function Home() {
 
   const handleCopy = () => {
     navigator.clipboard.writeText('3wbjCZ...kDdM')
+  }
+
+  const handleCreatePoll = async () => {
+    if (!pollTitle.trim()) {
+      setCreateError('please enter a title')
+      return
+    }
+    if (!userId) {
+      setCreateError('user not found')
+      return
+    }
+
+    setCreating(true)
+    setCreateError(null)
+
+    try {
+      const response = await fetch('/api/polls', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: pollTitle,
+          description: pollDescription,
+          category: 'general',
+          is_private: isPrivate,
+          created_by: userId,
+        }),
+      })
+
+      if (!response.ok) throw new Error('failed to create poll')
+
+      // reset form and close modal
+      setPollTitle('')
+      setPollDescription('')
+      setIsPrivate(false)
+      setIsLocal(false)
+      setShowCreatePoll(false)
+      refetch()
+    } catch (err) {
+      setCreateError('failed to create poll. try again.')
+    } finally {
+      setCreating(false)
+    }
   }
 
   const loading = userLoading || pollsLoading
@@ -102,21 +128,9 @@ export default function Home() {
 
   return (
     <div className="bg-slate-950 h-screen overflow-hidden flex flex-col">
-      {/* debug logs */}
-      <div className="fixed top-0 left-0 right-0 bg-red-900 text-red-400 text-xs p-2 z-50 max-h-32 overflow-y-auto">
-        <div className="font-bold mb-1">DEBUG:</div>
-        <div>userId: {userId || 'loading...'}</div>
-        <div>isCreator: {isCreator.toString()}</div>
-        <div>userLoading: {userLoading.toString()}</div>
-        <div className="border-t border-red-700 mt-2 pt-2">
-          {logs.slice(-8).map((log, i) => (
-            <div key={i} className="text-xs break-words">{log}</div>
-          ))}
-        </div>
-      </div>
 
-      {/* header - moved down to avoid debug box */}
-      <div className="flex items-center justify-between px-4 pt-36 pb-2 flex-shrink-0">
+      {/* header */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-2 flex-shrink-0">
         <h1 className="text-2xl font-bold text-white">r7</h1>
         <button
           onClick={() => setShowWallet(true)}
@@ -137,7 +151,10 @@ export default function Home() {
         </button>
 
         {isCreator && (
-          <button className="ml-auto flex items-center gap-2 bg-cyan-400 text-black px-4 py-2 rounded-xl font-bold hover:bg-cyan-500 transition">
+          <button
+            onClick={() => setShowCreatePoll(true)}
+            className="ml-auto flex items-center gap-2 bg-cyan-400 text-black px-4 py-2 rounded-xl font-bold hover:bg-cyan-500 transition"
+          >
             <PlusCircle size={18} />
             Create
           </button>
@@ -175,6 +192,123 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* create poll modal */}
+      {showCreatePoll && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-slate-950 overflow-y-auto">
+          <div className="flex-1 p-6 pb-12">
+            {/* back button */}
+            <button
+              onClick={() => {
+                setShowCreatePoll(false)
+                setCreateError(null)
+                setPollTitle('')
+                setPollDescription('')
+                setIsPrivate(false)
+                setIsLocal(false)
+              }}
+              className="text-slate-400 text-sm mb-6 flex items-center gap-1"
+            >
+              ← Back
+            </button>
+
+            <h2 className="text-white text-3xl font-bold mb-4">Create Poll</h2>
+
+            {/* polls remaining badge */}
+            <div className="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 mb-6 flex items-center gap-2">
+              <Zap size={16} className="text-pink-400" />
+              <span className="text-pink-400 text-sm font-medium">2/2 polls remaining today</span>
+            </div>
+
+            {/* title input */}
+            <div className="mb-5">
+              <p className="text-white text-sm font-medium mb-2">
+                Title <span className="text-slate-500">{pollTitle.length}/64</span>
+              </p>
+              <input
+                type="text"
+                maxLength={64}
+                value={pollTitle}
+                onChange={e => setPollTitle(e.target.value)}
+                placeholder="Is Solana better than Ethereum?"
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+              />
+            </div>
+
+            {/* description input */}
+            <div className="mb-5">
+              <p className="text-white text-sm font-medium mb-2">
+                Description <span className="text-slate-500">{pollDescription.length}/256</span>
+              </p>
+              <textarea
+                maxLength={256}
+                value={pollDescription}
+                onChange={e => setPollDescription(e.target.value)}
+                placeholder="Optional description for your market..."
+                rows={3}
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 resize-none"
+              />
+            </div>
+
+            {/* private poll toggle */}
+            <div className="bg-slate-900 border border-slate-700 rounded-xl px-4 py-4 mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Lock size={18} className="text-slate-400" />
+                <span className="text-white font-medium">Private Poll</span>
+              </div>
+              <button
+                onClick={() => setIsPrivate(prev => !prev)}
+                className={`w-12 h-6 rounded-full transition-colors ${isPrivate ? 'bg-cyan-400' : 'bg-slate-700'}`}
+              >
+                <div className={`w-5 h-5 bg-white rounded-full mx-0.5 transition-transform ${isPrivate ? 'translate-x-6' : 'translate-x-0'}`} />
+              </button>
+            </div>
+
+            {/* local poll toggle */}
+            <div className="bg-slate-900 border border-slate-700 rounded-xl px-4 py-4 mb-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <MapPin size={18} className="text-slate-400" />
+                <span className="text-white font-medium">Local Poll</span>
+              </div>
+              <button
+                onClick={() => setIsLocal(prev => !prev)}
+                className={`w-12 h-6 rounded-full transition-colors ${isLocal ? 'bg-cyan-400' : 'bg-slate-700'}`}
+              >
+                <div className={`w-5 h-5 bg-white rounded-full mx-0.5 transition-transform ${isLocal ? 'translate-x-6' : 'translate-x-0'}`} />
+              </button>
+            </div>
+
+            {/* creator earnings info */}
+            <div className="bg-slate-900 border border-slate-700 rounded-xl px-4 py-4 mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg">💰</span>
+                <span className="text-white font-bold">Creator Earnings</span>
+              </div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-slate-400 text-sm">Your cut</span>
+                <span className="text-cyan-400 text-sm font-medium">0.25% win · 0.5% lose</span>
+              </div>
+              <p className="text-slate-500 text-xs">
+                When your poll resolves, you earn 0.25% of the winning pool and 0.5% of the losing pool, paid directly in USDC.
+              </p>
+            </div>
+
+            {/* error message */}
+            {createError && (
+              <p className="text-pink-400 text-sm mb-4">{createError}</p>
+            )}
+
+            {/* create button */}
+            <button
+              onClick={handleCreatePoll}
+              disabled={creating || !pollTitle.trim()}
+              className="w-full bg-cyan-400 text-black font-bold py-4 rounded-2xl text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-cyan-500 transition"
+            >
+              {creating ? 'Creating...' : 'Create Poll'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* filter modal */}
       {showFilter && (

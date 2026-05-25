@@ -17,3 +17,43 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch polls' }, { status: 400 })
   }
 }
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { question, description, category, is_private, created_by } = body
+
+    if (!question || question.trim().length === 0) {
+      return NextResponse.json({ error: 'Question is required' }, { status: 400 })
+    }
+
+    // set poll to expire 24 hours from now
+    const ends_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+
+    const { data, error } = await supabase
+      .from('polls')
+      .insert({
+        question: question.trim(),
+        description: description?.trim() || null,
+        category: category || 'general',
+        status: 'active',
+        is_private: is_private || false,
+        created_by: created_by || null,
+        yes_pool: 0,
+        no_pool: 0,
+        yes_votes: 0,
+        no_votes: 0,
+        volume: 0,
+        ends_at,
+      })
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return NextResponse.json({ poll: data })
+  } catch (error) {
+    console.error('Error creating poll:', error)
+    return NextResponse.json({ error: 'Failed to create poll' }, { status: 400 })
+  }
+}
