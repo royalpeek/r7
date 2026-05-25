@@ -1,10 +1,41 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Gift, Users, LogOut, Copy, Check, Ticket } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 export default function Profile() {
   const [copied, setCopied] = useState(false)
+  const [username, setUsername] = useState<string | null>(null)
+  const [firstName, setFirstName] = useState<string | null>(null)
+  const [totalVotes, setTotalVotes] = useState<number | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const WebApp = require('@twa-dev/sdk').default
+    const user = WebApp.initDataUnsafe.user
+
+    if (user) {
+      setUsername(user.username || user.first_name || 'unknown')
+      setFirstName(user.first_name || null)
+      setUserId(user.id.toString())
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!userId) return
+
+    const fetchVotes = async () => {
+      const { count } = await supabase
+        .from('votes')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+
+      setTotalVotes(count ?? 0)
+    }
+
+    fetchVotes()
+  }, [userId])
 
   const handleCopy = () => {
     navigator.clipboard.writeText('3wbjCZ...kDdM')
@@ -12,46 +43,37 @@ export default function Profile() {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const avatarLetter = (firstName || username || '?')[0].toUpperCase()
+
   return (
     <div className="bg-slate-950 min-h-screen p-4 pb-32">
 
       {/* avatar and username */}
       <div className="flex flex-col items-center mb-8 pt-4">
         <div className="w-20 h-20 rounded-full bg-cyan-400 flex items-center justify-center mb-3">
-          <span className="text-black text-3xl font-bold">R</span>
+          <span className="text-black text-3xl font-bold">{avatarLetter}</span>
         </div>
-        <p className="text-white font-bold text-xl">@royalpossible</p>
+        <p className="text-white font-bold text-xl">
+          {username ? `@${username}` : 'loading...'}
+        </p>
         <p className="text-slate-400 text-sm mt-1">Opinion Staker</p>
       </div>
 
       {/* stats row */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 text-center">
-          <p className="text-white font-bold text-xl">62%</p>
+          <p className="text-slate-500 font-bold text-xl">--</p>
           <p className="text-slate-400 text-xs mt-1">Win Rate</p>
         </div>
         <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 text-center">
-          <p className="text-cyan-400 font-bold text-xl">$1,204</p>
+          <p className="text-slate-500 font-bold text-xl">--</p>
           <p className="text-slate-400 text-xs mt-1">Earnings</p>
         </div>
         <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 text-center">
-          <p className="text-white font-bold text-xl">175</p>
+          <p className="text-white font-bold text-xl">
+            {totalVotes === null ? '...' : totalVotes}
+          </p>
           <p className="text-slate-400 text-xs mt-1">Total Votes</p>
-        </div>
-      </div>
-
-      {/* wallet address */}
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 mb-4">
-        <p className="text-slate-400 text-xs mb-2">Wallet Address</p>
-        <div className="flex items-center justify-between">
-          <p className="text-white font-mono text-sm">3wbjCZ...kDdM</p>
-          <button
-            onClick={handleCopy}
-            className="text-cyan-400 text-xs bg-slate-800 px-3 py-1 rounded-lg flex items-center gap-1"
-          >
-            {copied ? <Check size={12} /> : <Copy size={12} />}
-            {copied ? 'Copied!' : 'Copy'}
-          </button>
         </div>
       </div>
 
@@ -61,19 +83,19 @@ export default function Profile() {
         <div className="flex gap-3">
           <div className="flex flex-col items-center gap-1">
             <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center">
-              <span className="text-cyan-400 text-lg font-bold">🔥</span>
+              <span className="text-lg">🔥</span>
             </div>
             <p className="text-slate-400 text-xs">On Fire</p>
           </div>
           <div className="flex flex-col items-center gap-1">
             <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center">
-              <span className="text-cyan-400 text-lg font-bold">🎯</span>
+              <span className="text-lg">🎯</span>
             </div>
             <p className="text-slate-400 text-xs">Sharp</p>
           </div>
           <div className="flex flex-col items-center gap-1">
             <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center">
-              <span className="text-cyan-400 text-lg font-bold">⚡</span>
+              <span className="text-lg">⚡</span>
             </div>
             <p className="text-slate-400 text-xs">Early</p>
           </div>
@@ -116,7 +138,6 @@ export default function Profile() {
         Sign Out
       </button>
 
-      {/* version */}
       <p className="text-center text-slate-600 text-xs mt-6">v1.0.0</p>
     </div>
   )
