@@ -100,10 +100,9 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
     }
   }
 
-  // main deck swipe handlers - disabled when market ended
+  // main deck swipe handlers
   const onTouchStart = (e: React.TouchEvent) => {
     if (showStakingModal || showDetail) return
-    if (currentCard && new Date(currentCard.ends_at) < new Date()) return // don't swipe on ended market
     if (e.touches.length > 1) return
     startPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
     setDragging(true)
@@ -141,13 +140,16 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
     const dy = deltaY
     resetDrag()
 
+    const marketEnded = currentCard && new Date(currentCard.ends_at) < new Date()
+
     if (axis === 'y' && Math.abs(dy) > 110) {
       if (dy < 0) setCurrentIndex(i => Math.min(i + 1, polls.length - 1))
       else setCurrentIndex(i => Math.max(i - 1, 0))
       return
     }
 
-    if (axis === 'x' && Math.abs(dx) > 110) {
+    // only allow horizontal swipe if market is active
+    if (axis === 'x' && Math.abs(dx) > 110 && !marketEnded) {
       setStakingDirection(dx > 0 ? 'yes' : 'no')
       setShowStakingModal(true)
       return
@@ -277,7 +279,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
     if (marketEnded) {
       return (
         <div className="h-full w-full bg-slate-950 flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between px-5 pt-5 pb-4">
+          <div className="flex items-center justify-between px-5 pt-5 pb-4 flex-shrink-0">
             <button
               onClick={() => setShowDetail(false)}
               className="text-slate-400 text-lg"
@@ -289,7 +291,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-5 pb-4">
+          <div className="flex-1 overflow-y-auto px-5 pb-8">
             <p className="text-white font-bold text-2xl leading-tight mb-6">{currentCard.question}</p>
 
             <div className="bg-slate-800 rounded-xl p-4 mb-6 flex items-center gap-3">
@@ -317,7 +319,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
               </div>
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex gap-4 mb-6">
               <div className="flex-1 bg-slate-800 rounded-xl p-4 text-center">
                 <p className="text-cyan-400 font-bold text-2xl">${currentCard.yes_pool.toFixed(2)}</p>
                 <p className="text-cyan-400 text-xs mt-1">YES Pool</p>
@@ -327,6 +329,21 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
                 <p className="text-pink-500 font-bold text-2xl">${currentCard.no_pool.toFixed(2)}</p>
                 <p className="text-pink-500 text-xs mt-1">NO Pool</p>
                 <p className="text-slate-400 text-xs mt-2">{noPercent}%</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-800 rounded-xl p-4 mb-6">
+              <p className="text-slate-400 text-xs mb-2">FINAL OUTCOME</p>
+              <div className="flex items-center gap-3">
+                <div className="text-2xl">🏁</div>
+                <div>
+                  <p className="text-white font-bold">
+                    {currentCard.no_pool > currentCard.yes_pool ? 'NO Won' : currentCard.yes_pool > currentCard.no_pool ? 'YES Won' : 'Tie'}
+                  </p>
+                  <p className="text-slate-400 text-sm">
+                    Market ended with {currentCard.no_pool > currentCard.yes_pool ? 'NO' : 'YES'} as the winning outcome
+                  </p>
+                </div>
               </div>
             </div>
           </div>
