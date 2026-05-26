@@ -34,7 +34,7 @@ export default function Search() {
   const [polls, setPolls] = useState<Poll[]>([])
   const [selectedPoll, setSelectedPoll] = useState<Poll | null>(null)
   const [userVote, setUserVote] = useState<UserVote | null>(null)
-  const { userId } = useTelegramUser()
+  const { userId, initData } = useTelegramUser()
   const [showStakingModal, setShowStakingModal] = useState(false)
   const [stakingDirection, setStakingDirection] = useState<'yes' | 'no' | null>(null)
 
@@ -81,7 +81,7 @@ export default function Search() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: userId,
+          initData,
           poll_id: selectedPoll.id,
           direction: stakingDirection,
           amount,
