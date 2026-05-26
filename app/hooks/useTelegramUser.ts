@@ -6,6 +6,12 @@ interface TelegramUser {
   username?: string
 }
 
+interface AppUser {
+  id: string
+  username: string
+  is_creator?: boolean
+}
+
 interface TelegramInitDataUnsafe {
   user?: TelegramUser
 }
@@ -32,6 +38,7 @@ declare global {
 export function useTelegramUser() {
   const [userId, setUserId] = useState<string | null>(null)
   const [user, setUser] = useState<TelegramUser | null>(null)
+  const [appUser, setAppUser] = useState<AppUser | null>(null)
   const [initData, setInitData] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -50,11 +57,15 @@ export function useTelegramUser() {
             username: 'test-user',
           })
           setUserId('123')
-          await fetch('/api/auth/telegram', {
+          const response = await fetch('/api/auth/telegram', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ initData: '' }),
           })
+          if (response.ok) {
+            const data = await response.json()
+            setAppUser(data.user)
+          }
           setLoading(false)
           return
         }
@@ -82,17 +93,21 @@ export function useTelegramUser() {
           if (!response.ok) {
             throw new Error('telegram auth failed')
           }
+          const data = await response.json()
+          setAppUser(data.user)
 
           console.log('success! set userid to:', telegramId)
           setUserId(telegramId)
         } else {
           console.log('no user id found, using test id')
           setUser(null)
+          setAppUser(null)
           setUserId('123')
         }
       } catch (error) {
         console.error('error:', error)
         setUser(null)
+        setAppUser(null)
         setUserId('123')
       } finally {
         setLoading(false)
@@ -102,5 +117,5 @@ export function useTelegramUser() {
     initTelegram()
   }, [])
 
-  return { userId, user, initData, loading }
+  return { userId, user, appUser, initData, loading }
 }

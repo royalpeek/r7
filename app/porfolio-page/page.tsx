@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import ResultsPage from '../components/ResultsPage'
 import StakingModal from '../components/StakingModal'
 import { createPortal } from 'react-dom'
@@ -38,44 +37,21 @@ export default function Portfolio() {
     try {
       if (!userId) return
       setLoading(true)
-      const { data: votes, error: votesError } = await supabase
-        .from('votes')
-        .select('*')
-        .eq('user_id', userId)
-
-      if (votesError) throw votesError
-      if (!votes || votes.length === 0) { setLoading(false); return }
-
-      const pollIds = votes.map(v => v.poll_id)
-      const { data: polls, error: pollsError } = await supabase
-        .from('polls')
-        .select('id, question, ends_at, yes_pool, no_pool')
-        .in('id', pollIds)
-
-      if (pollsError) throw pollsError
-
-      const merged = votes.map(vote => {
-        const poll = polls?.find(p => p.id === vote.poll_id)
-        return {
-          id: vote.id,
-          poll_id: vote.poll_id,
-          question: poll?.question || 'unknown poll',
-          direction: vote.direction,
-          amount: vote.amount,
-          ends_at: poll?.ends_at || '',
-          created_at: vote.created_at,
-          yes_pool: poll?.yes_pool || 0,
-          no_pool: poll?.no_pool || 0,
-        }
+      const response = await fetch('/api/me/positions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData }),
       })
+      const data = await response.json()
 
-      setPositions(merged)
+      if (!response.ok) throw new Error(data.error || 'failed to fetch positions')
+      setPositions((data.positions || []) as Position[])
     } catch (err) {
       console.error('fetch error:', err)
     } finally {
       setLoading(false)
     }
-  }, [userId])
+  }, [initData, userId])
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
