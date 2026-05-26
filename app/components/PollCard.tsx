@@ -24,9 +24,10 @@ type Poll = {
 type PollCardProps = {
   polls: Poll[]
   onDetailChange?: (showDetail: boolean) => void
+  onPollsChange?: () => void | Promise<void>
 }
 
-export default function PollCard({ polls, onDetailChange }: PollCardProps) {
+export default function PollCard({ polls, onDetailChange, onPollsChange }: PollCardProps) {
   const haptics = useHapticFeedback()
   const [currentIndex, setCurrentIndex] = useState(0)
   const currentCard = polls && polls.length > 0 ? polls[currentIndex] : null
@@ -205,7 +206,10 @@ export default function PollCard({ polls, onDetailChange }: PollCardProps) {
 
       await new Promise(resolve => setTimeout(resolve, 1000))
 
-      await refetch()
+      await Promise.all([
+        refetch(),
+        onPollsChange?.(),
+      ])
       haptics.notification('success')
       setShowStakingModal(false)
       setStakingDirection(null)

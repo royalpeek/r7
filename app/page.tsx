@@ -178,7 +178,7 @@ export default function Home() {
             <p className="text-slate-400">loading polls...</p>
           </div>
         ) : filteredPolls.length > 0 ? (
-          <PollCard polls={filteredPolls} onDetailChange={setShowDetail} />
+          <PollCard polls={filteredPolls} onDetailChange={setShowDetail} onPollsChange={refetch} />
         ) : (
           <div className="flex items-center justify-center h-full">
             <p className="text-slate-400">no polls yet</p>
