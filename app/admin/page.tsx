@@ -19,7 +19,7 @@ type AdminUser = {
 type AdminPoll = {
   id: string
   question: string
-  status: string | null
+  status: 'active' | 'paused' | 'closed' | string | null
   yes_pool: number
   no_pool: number
   yes_votes: number
@@ -47,6 +47,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null)
+  const [updatingPollId, setUpdatingPollId] = useState<string | null>(null)
 
   const isAdmin = appUser?.role === 'admin'
 
@@ -113,6 +114,64 @@ export default function AdminPage() {
     }
   }
 
+  const updatePoll = async (pollId: string, action: 'pause' | 'resume' | 'close' | 'delete') => {
+    if (action === 'delete') {
+      const confirmed = window.confirm('Delete this market permanently? This also removes its votes and chart history.')
+      if (!confirmed) return
+    }
+
+    try {
+      haptics.selection()
+      setUpdatingPollId(pollId)
+      setError(null)
+
+      const response = await fetch('/api/admin/polls/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData, pollId, action }),
+      })
+      const data = await response.json()
+
+      if (!response.ok) throw new Error(data.error || 'failed to update market')
+
+      setOverview(prev => {
+        if (!prev) return prev
+
+        if (action === 'delete') {
+          const deletedPoll = prev.polls.find(poll => poll.id === pollId)
+          const deletedVolume = deletedPoll
+            ? Number(deletedPoll.yes_pool || 0) + Number(deletedPoll.no_pool || 0)
+            : 0
+          const deletedVotes = deletedPoll
+            ? Number(deletedPoll.yes_votes || 0) + Number(deletedPoll.no_votes || 0)
+            : 0
+
+          return {
+            ...prev,
+            stats: {
+              ...prev.stats,
+              totalPolls: Math.max(0, prev.stats.totalPolls - 1),
+              totalVotes: Math.max(0, prev.stats.totalVotes - deletedVotes),
+              totalVolume: Math.max(0, prev.stats.totalVolume - deletedVolume),
+            },
+            polls: prev.polls.filter(poll => poll.id !== pollId),
+          }
+        }
+
+        return {
+          ...prev,
+          polls: prev.polls.map(poll => poll.id === pollId ? data.poll : poll),
+        }
+      })
+      haptics.notification('success')
+    } catch (error) {
+      haptics.notification('error')
+      setError(error instanceof Error ? error.message : 'failed to update market')
+    } finally {
+      setUpdatingPollId(null)
+    }
+  }
+
   if (userLoading || loading) {
     return (
       <div className="min-h-screen bg-slate-950 px-4 pb-28 pt-5">
@@ -171,7 +230,7 @@ export default function AdminPage() {
       <section className="mb-6">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-bold text-white">Users</h2>
-          <p className="text-xs text-slate-500">recent 25</p>
+          <p className="text-xs text-slate-500">recent 50</p>
         </div>
         <div className="space-y-3">
           {(overview?.users || []).map(user => (
@@ -215,12 +274,20 @@ export default function AdminPage() {
           {(overview?.polls || []).map(poll => {
             const totalPool = Number(poll.yes_pool || 0) + Number(poll.no_pool || 0)
             const ended = new Date(poll.ends_at) <= new Date()
+            const status = poll.status || 'active'
+            const isBusy = updatingPollId === poll.id
 
             return (
               <div key={poll.id} className="rounded-xl border border-slate-800 bg-slate-900 p-4">
                 <div className="mb-3 flex items-center justify-between gap-3">
-                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${ended ? 'bg-slate-800 text-slate-400' : 'bg-cyan-400 text-black'}`}>
-                    {ended ? 'ended' : poll.status || 'active'}
+                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${
+                    status === 'paused'
+                      ? 'bg-amber-500/15 text-amber-300'
+                      : status === 'closed' || ended
+                        ? 'bg-slate-800 text-slate-400'
+                        : 'bg-cyan-400 text-black'
+                  }`}>
+                    {status === 'closed' || ended ? 'closed' : status}
                   </span>
                   <span className="text-xs text-slate-500">${totalPool.toFixed(2)} vol</span>
                 </div>
@@ -228,6 +295,39 @@ export default function AdminPage() {
                 <div className="flex justify-between text-xs">
                   <span className="text-cyan-400">{poll.yes_votes} YES</span>
                   <span className="text-pink-500">{poll.no_votes} NO</span>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  {status === 'paused' ? (
+                    <button
+                      disabled={isBusy || ended}
+                      onClick={() => updatePoll(poll.id, 'resume')}
+                      className="rounded-lg bg-cyan-400 px-3 py-2 text-xs font-bold text-black transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Resume
+                    </button>
+                  ) : (
+                    <button
+                      disabled={isBusy || status === 'closed' || ended}
+                      onClick={() => updatePoll(poll.id, 'pause')}
+                      className="rounded-lg bg-slate-800 px-3 py-2 text-xs font-bold text-slate-300 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Pause
+                    </button>
+                  )}
+                  <button
+                    disabled={isBusy || status === 'closed' || ended}
+                    onClick={() => updatePoll(poll.id, 'close')}
+                    className="rounded-lg bg-slate-800 px-3 py-2 text-xs font-bold text-slate-300 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Close
+                  </button>
+                  <button
+                    disabled={isBusy}
+                    onClick={() => updatePoll(poll.id, 'delete')}
+                    className="col-span-2 rounded-lg border border-pink-500/50 bg-pink-500/10 px-3 py-2 text-xs font-bold text-pink-200 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Delete Market
+                  </button>
                 </div>
               </div>
             )

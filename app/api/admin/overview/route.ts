@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
         .from('polls')
         .select('id, question, status, yes_pool, no_pool, yes_votes, no_votes, ends_at, created_at')
         .order('created_at', { ascending: false })
-        .limit(25),
+        .limit(50),
       supabase
         .from('polls')
         .select('yes_pool, no_pool'),

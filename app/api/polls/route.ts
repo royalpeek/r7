@@ -8,6 +8,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from('polls')
       .select('*')
+      .neq('status', 'paused')
       .order('created_at', { ascending: false })
       .limit(50)
 

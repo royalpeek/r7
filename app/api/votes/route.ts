@@ -43,11 +43,17 @@ export async function POST(request: NextRequest) {
     // fetch current poll
     const { data: poll, error: fetchError } = await supabase
       .from('polls')
-      .select('yes_pool, no_pool, yes_votes, no_votes, volume, ends_at')
+      .select('yes_pool, no_pool, yes_votes, no_votes, volume, ends_at, status')
       .eq('id', poll_id)
       .single()
 
     if (fetchError) throw fetchError
+    if (poll.status === 'paused') {
+      return NextResponse.json({ error: 'market is paused' }, { status: 400 })
+    }
+    if (poll.status === 'closed') {
+      return NextResponse.json({ error: 'market is closed' }, { status: 400 })
+    }
     if (poll.ends_at && new Date(poll.ends_at) <= new Date()) {
       return NextResponse.json({ error: 'market has ended' }, { status: 400 })
     }
