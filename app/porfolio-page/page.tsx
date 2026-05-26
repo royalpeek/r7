@@ -170,22 +170,22 @@ export default function Portfolio() {
 
   return (
     <div className="bg-slate-950 h-screen flex flex-col overflow-hidden">
-      <div className="flex-shrink-0 bg-slate-950 px-4 pt-4 pb-0 space-y-4">
-        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6">
-          <p className="text-slate-400 text-sm mb-2">Total Staked</p>
-          <p className="text-white text-4xl font-bold">
+      <div className="flex-shrink-0 bg-slate-950 px-4 pt-2 pb-0 space-y-2.5">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <p className="text-slate-400 text-xs mb-1">Total Staked</p>
+          <p className="text-white text-3xl font-bold">
             {loading ? '...' : `$${totalStaked.toLocaleString()}`}
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5">
-            <p className="text-slate-400 text-sm mb-1">P&L</p>
-            <p className="text-slate-500 text-2xl font-bold">--</p>
+        <div className="grid grid-cols-2 gap-2.5">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5">
+            <p className="text-slate-400 text-xs mb-1">P&L</p>
+            <p className="text-slate-500 text-xl font-bold">--</p>
           </div>
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5">
-            <p className="text-slate-400 text-sm mb-1">Claimable</p>
-            <p className="text-slate-500 text-2xl font-bold">--</p>
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5">
+            <p className="text-slate-400 text-xs mb-1">Claimable</p>
+            <p className="text-slate-500 text-xl font-bold">--</p>
           </div>
         </div>
 
@@ -196,7 +196,7 @@ export default function Portfolio() {
                 haptics.selection()
                 setActiveTab('active')
               }}
-              className={`pb-4 font-semibold ${activeTab === 'active' ? 'text-white border-b-2 border-cyan-400' : 'text-slate-400'}`}
+              className={`pb-3 text-sm font-semibold ${activeTab === 'active' ? 'text-white border-b-2 border-cyan-400' : 'text-slate-400'}`}
             >
               Active ({loading ? '...' : active.length})
             </button>
@@ -205,13 +205,13 @@ export default function Portfolio() {
                 haptics.selection()
                 setActiveTab('history')
               }}
-              className={`pb-4 font-semibold ${activeTab === 'history' ? 'text-white border-b-2 border-cyan-400' : 'text-slate-400'}`}
+              className={`pb-3 text-sm font-semibold ${activeTab === 'history' ? 'text-white border-b-2 border-cyan-400' : 'text-slate-400'}`}
             >
               History ({loading ? '...' : history.length})
             </button>
           </div>
 
-          <div className="relative pb-4">
+          <div className="relative pb-3">
             <button
               onClick={() => {
                 haptics.selection()
@@ -242,7 +242,7 @@ export default function Portfolio() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-48">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-32">
         {loading ? (
           <div className="flex flex-col items-center gap-3 py-16 text-center">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-cyan-400" />
@@ -272,7 +272,7 @@ export default function Portfolio() {
             ) : sortPositions(active).map(pos => (
               <div
                 key={pos.id}
-                className="bg-slate-900 border border-slate-700 rounded-2xl p-5 cursor-pointer active:opacity-70"
+                className="bg-slate-900 border border-slate-800 rounded-xl p-4 cursor-pointer active:opacity-70"
                 onClick={() => {
                   haptics.selection()
                   setSelectedPosition(pos)
@@ -307,7 +307,7 @@ export default function Portfolio() {
             ) : sortPositions(history).map(pos => (
               <div
                 key={pos.id}
-                className="bg-slate-900 border border-slate-700 rounded-2xl p-5 cursor-pointer active:opacity-70"
+                className="bg-slate-900 border border-slate-800 rounded-xl p-4 cursor-pointer active:opacity-70"
                 onClick={() => {
                   haptics.selection()
                   setSelectedPosition(pos)

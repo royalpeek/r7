@@ -42,12 +42,12 @@ export default function Profile() {
   }, [initData, userId])
 
   return (
-    <div className="bg-slate-950 min-h-screen p-4 pb-32">
+    <div className="bg-slate-950 min-h-screen p-4 pb-28">
 
       {/* avatar and username */}
-      <div className="flex flex-col items-center mb-8 pt-4">
-        <div className="w-20 h-20 rounded-full bg-cyan-400 flex items-center justify-center mb-3">
-          <span className="text-black text-3xl font-bold">{avatarLetter}</span>
+      <div className="flex flex-col items-center mb-6 pt-2">
+        <div className="w-16 h-16 rounded-full bg-cyan-400 flex items-center justify-center mb-3">
+          <span className="text-black text-2xl font-bold">{avatarLetter}</span>
         </div>
         <p className="text-white font-bold text-xl">
           {username ? `@${username}` : loading ? 'loading...' : '@unknown'}
@@ -57,16 +57,16 @@ export default function Profile() {
 
       {/* stats row */}
       <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 text-center">
-          <p className="text-slate-500 font-bold text-xl">--</p>
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
+          <p className="text-slate-500 font-bold text-lg">--</p>
           <p className="text-slate-400 text-xs mt-1">Win Rate</p>
         </div>
-        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 text-center">
-          <p className="text-slate-500 font-bold text-xl">--</p>
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
+          <p className="text-slate-500 font-bold text-lg">--</p>
           <p className="text-slate-400 text-xs mt-1">Earnings</p>
         </div>
-        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 text-center">
-          <p className="text-white font-bold text-xl">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
+          <p className="text-white font-bold text-lg">
             {totalVotes === null ? '...' : totalVotes}
           </p>
           <p className="text-slate-400 text-xs mt-1">Total Votes</p>

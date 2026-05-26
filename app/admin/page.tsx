@@ -137,8 +137,8 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 px-4 pb-32 pt-5">
-      <div className="mb-5 flex items-center justify-between">
+    <div className="min-h-screen bg-slate-950 px-4 pb-28 pt-4">
+      <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-wide text-cyan-400">Owner</p>
           <h1 className="text-2xl font-bold text-white">Admin</h1>
@@ -161,7 +161,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      <div className="mb-5 grid grid-cols-2 gap-3">
+      <div className="mb-5 grid grid-cols-2 gap-2.5">
         <StatCard icon={<Users size={18} />} label="Users" value={overview?.stats.totalUsers ?? 0} />
         <StatCard icon={<BarChart3 size={18} />} label="Polls" value={overview?.stats.totalPolls ?? 0} />
         <StatCard icon={<Vote size={18} />} label="Votes" value={overview?.stats.totalVotes ?? 0} />
@@ -175,7 +175,7 @@ export default function AdminPage() {
         </div>
         <div className="space-y-3">
           {(overview?.users || []).map(user => (
-            <div key={user.id} className="rounded-2xl border border-slate-700 bg-slate-900 p-4">
+            <div key={user.id} className="rounded-xl border border-slate-800 bg-slate-900 p-4">
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div>
                   <p className="font-semibold text-white">@{user.username || 'unknown'}</p>
@@ -217,7 +217,7 @@ export default function AdminPage() {
             const ended = new Date(poll.ends_at) <= new Date()
 
             return (
-              <div key={poll.id} className="rounded-2xl border border-slate-700 bg-slate-900 p-4">
+              <div key={poll.id} className="rounded-xl border border-slate-800 bg-slate-900 p-4">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <span className={`rounded-full px-3 py-1 text-xs font-bold ${ended ? 'bg-slate-800 text-slate-400' : 'bg-cyan-400 text-black'}`}>
                     {ended ? 'ended' : poll.status || 'active'}
@@ -240,11 +240,11 @@ export default function AdminPage() {
 
 function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | number }) {
   return (
-    <div className="rounded-2xl border border-slate-700 bg-slate-900 p-4">
-      <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800 text-cyan-400">
+    <div className="rounded-xl border border-slate-800 bg-slate-900 p-3.5">
+      <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800 text-cyan-400">
         {icon}
       </div>
-      <p className="text-2xl font-bold text-white">{value}</p>
+      <p className="text-xl font-bold text-white">{value}</p>
       <p className="text-xs text-slate-500">{label}</p>
     </div>
   )
