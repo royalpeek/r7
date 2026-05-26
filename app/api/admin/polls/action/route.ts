@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
 
-const actions = ['pause', 'resume', 'close', 'delete'] as const
+const actions = ['pause', 'resume', 'close', 'archive', 'delete'] as const
 type PollAction = (typeof actions)[number]
 
 async function requireAdmin(initData: string) {
@@ -63,7 +63,9 @@ export async function POST(request: NextRequest) {
         ? { status: 'paused' }
         : action === 'resume'
           ? { status: 'active' }
-          : { status: 'closed', ends_at: new Date().toISOString() }
+          : action === 'archive'
+            ? { status: 'archived' }
+            : { status: 'closed', ends_at: new Date().toISOString() }
 
     const { data, error } = await supabase
       .from('polls')

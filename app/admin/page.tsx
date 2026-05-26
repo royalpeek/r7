@@ -19,7 +19,7 @@ type AdminUser = {
 type AdminPoll = {
   id: string
   question: string
-  status: 'active' | 'paused' | 'closed' | string | null
+  status: 'active' | 'paused' | 'closed' | 'archived' | string | null
   yes_pool: number
   no_pool: number
   yes_votes: number
@@ -114,7 +114,7 @@ export default function AdminPage() {
     }
   }
 
-  const updatePoll = async (pollId: string, action: 'pause' | 'resume' | 'close' | 'delete') => {
+  const updatePoll = async (pollId: string, action: 'pause' | 'resume' | 'close' | 'archive' | 'delete') => {
     if (action === 'delete') {
       const confirmed = window.confirm('Delete this market permanently? This also removes its votes and chart history.')
       if (!confirmed) return
@@ -281,7 +281,9 @@ export default function AdminPage() {
               <div key={poll.id} className="rounded-xl border border-slate-800 bg-slate-900 p-4">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <span className={`rounded-full px-3 py-1 text-xs font-bold ${
-                    status === 'paused'
+                    status === 'archived'
+                      ? 'bg-violet-500/15 text-violet-300'
+                      : status === 'paused'
                       ? 'bg-amber-500/15 text-amber-300'
                       : status === 'closed' || ended
                         ? 'bg-slate-800 text-slate-400'
@@ -297,7 +299,7 @@ export default function AdminPage() {
                   <span className="text-pink-500">{poll.no_votes} NO</span>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-2">
-                  {status === 'paused' ? (
+                  {status === 'paused' || status === 'archived' ? (
                     <button
                       disabled={isBusy || ended}
                       onClick={() => updatePoll(poll.id, 'resume')}
@@ -315,18 +317,25 @@ export default function AdminPage() {
                     </button>
                   )}
                   <button
-                    disabled={isBusy || status === 'closed' || ended}
+                    disabled={isBusy || status === 'closed' || status === 'archived' || ended}
                     onClick={() => updatePoll(poll.id, 'close')}
                     className="rounded-lg bg-slate-800 px-3 py-2 text-xs font-bold text-slate-300 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Close
                   </button>
                   <button
+                    disabled={isBusy || status === 'archived'}
+                    onClick={() => updatePoll(poll.id, 'archive')}
+                    className="col-span-2 rounded-lg bg-violet-500/15 px-3 py-2 text-xs font-bold text-violet-200 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Archive / Hide
+                  </button>
+                  <button
                     disabled={isBusy}
                     onClick={() => updatePoll(poll.id, 'delete')}
                     className="col-span-2 rounded-lg border border-pink-500/50 bg-pink-500/10 px-3 py-2 text-xs font-bold text-pink-200 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Delete Market
+                    Delete Test Market
                   </button>
                 </div>
               </div>

@@ -54,6 +54,9 @@ export async function POST(request: NextRequest) {
     if (poll.status === 'closed') {
       return NextResponse.json({ error: 'market is closed' }, { status: 400 })
     }
+    if (poll.status === 'archived') {
+      return NextResponse.json({ error: 'market is archived' }, { status: 400 })
+    }
     if (poll.ends_at && new Date(poll.ends_at) <= new Date()) {
       return NextResponse.json({ error: 'market has ended' }, { status: 400 })
     }

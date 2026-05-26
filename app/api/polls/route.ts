@@ -9,6 +9,7 @@ export async function GET() {
       .from('polls')
       .select('*')
       .neq('status', 'paused')
+      .neq('status', 'archived')
       .order('created_at', { ascending: false })
       .limit(50)
 
