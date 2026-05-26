@@ -159,7 +159,7 @@ export default function Search() {
 
             <div className="mb-6">
               <p className="text-slate-400 text-xs mb-2">POOL HISTORY</p>
-              <PoolHistoryChart pollId={selectedPoll.id} />
+              <PoolHistoryChart pollId={selectedPoll.id} yesPool={selectedPoll.yes_pool} noPool={selectedPoll.no_pool} />
             </div>
 
             <div className="bg-slate-800 rounded-xl p-4 mb-6 flex items-center gap-3">

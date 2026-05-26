@@ -337,7 +337,7 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
 
             <div className="mb-6">
               <p className="text-slate-400 text-xs mb-2">POOL HISTORY</p>
-              <PoolHistoryChart pollId={currentCard.id} />
+              <PoolHistoryChart pollId={currentCard.id} yesPool={currentCard.yes_pool} noPool={currentCard.no_pool} />
             </div>
 
             <div className="bg-slate-800 rounded-xl p-4 mb-6 flex items-center gap-3">
@@ -519,7 +519,7 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
                       </div>
 
                       <div className="flex-1 mx-4 mb-4 bg-slate-800 rounded-xl overflow-hidden">
-                        <PoolHistoryChart pollId={poll.id} />
+                        <PoolHistoryChart pollId={poll.id} yesPool={poll.yes_pool} noPool={poll.no_pool} />
                       </div>
 
                       <div className="px-5 pb-3 flex justify-between text-lg font-bold">

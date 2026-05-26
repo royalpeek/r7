@@ -68,7 +68,7 @@ export default function MarketEnded({
         {/* final price chart */}
         <div className="mb-6">
           <p className="text-slate-400 text-xs mb-2">POOL HISTORY</p>
-          <PoolHistoryChart pollId={pollId} />
+          <PoolHistoryChart pollId={pollId} yesPool={yesPool} noPool={noPool} />
         </div>
 
         {/* pool breakdown */}

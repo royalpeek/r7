@@ -9,7 +9,13 @@ interface HistoryData {
   no_pool: number
 }
 
-export default function PoolHistoryChart({ pollId }: { pollId: string }) {
+type PoolHistoryChartProps = {
+  pollId: string
+  yesPool?: number
+  noPool?: number
+}
+
+export default function PoolHistoryChart({ pollId, yesPool = 0, noPool = 0 }: PoolHistoryChartProps) {
   const [history, setHistory] = useState<HistoryData[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -39,7 +45,7 @@ export default function PoolHistoryChart({ pollId }: { pollId: string }) {
     return () => window.clearTimeout(timeout)
   }, [fetchHistory])
 
-  if (loading || history.length === 0) {
+  if (loading) {
     return (
       <div className="w-full h-48 flex items-center justify-center bg-slate-800 rounded-xl">
         <p className="text-slate-500 text-sm">loading chart...</p>
@@ -47,10 +53,17 @@ export default function PoolHistoryChart({ pollId }: { pollId: string }) {
     )
   }
 
+  const chartHistory = history.length > 0
+    ? history
+    : [
+        { created_at: 'start', yes_pool: 0, no_pool: 0 },
+        { created_at: 'current', yes_pool: yesPool, no_pool: noPool },
+      ]
+
   // calculate scale for chart
   const maxPool = Math.max(
     1,
-    ...history.map(h => Math.max(h.yes_pool, h.no_pool))
+    ...chartHistory.map(h => Math.max(h.yes_pool, h.no_pool))
   )
   const chartWidth = 320
   const chartHeight = 180
@@ -60,8 +73,8 @@ export default function PoolHistoryChart({ pollId }: { pollId: string }) {
 
   // generate SVG path for line
   const generatePath = (key: 'yes_pool' | 'no_pool') => {
-    const points = history.map((h, i) => {
-      const x = padding.left + (history.length === 1 ? graphWidth / 2 : (i / (history.length - 1)) * graphWidth)
+    const points = chartHistory.map((h, i) => {
+      const x = padding.left + (chartHistory.length === 1 ? graphWidth / 2 : (i / (chartHistory.length - 1)) * graphWidth)
       const y = padding.top + graphHeight - (h[key] / maxPool) * graphHeight
       return `${x},${y}`
     })

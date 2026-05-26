@@ -164,6 +164,18 @@ export async function POST(request: NextRequest) {
 
     if (updateError) throw updateError
 
+    const { error: historyError } = await supabase
+      .from('poll_history')
+      .insert({
+        poll_id,
+        yes_pool: newYesPool,
+        no_pool: newNoPool,
+      })
+
+    if (historyError) {
+      console.error('poll history insert error:', historyError)
+    }
+
     const { error: balanceError } = await supabase
       .from('users')
       .update({ balance: currentBalance - totalCost })

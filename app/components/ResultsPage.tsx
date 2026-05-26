@@ -116,7 +116,7 @@ export default function ResultsPage({
 
           <div className="mb-8">
             <p className="text-slate-400 text-xs mb-2">POOL HISTORY</p>
-            <PoolHistoryChart pollId={pollId} />
+            <PoolHistoryChart pollId={pollId} yesPool={yesPool} noPool={noPool} />
           </div>
 
           <div className="bg-slate-800 rounded-xl p-4 mb-8">
