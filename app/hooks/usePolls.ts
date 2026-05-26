@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
+
 export type Poll = {
   id: string
   question: string
@@ -62,23 +64,34 @@ export function usePolls(userId?: string | null, initData = '') {
     }
   }, [initData, userId])
 
+  const refetch = useCallback(async () => {
+    await Promise.all([
+      fetchPolls(),
+      fetchUserVotes(),
+    ])
+  }, [fetchPolls, fetchUserVotes])
+
   useEffect(() => {
     const timeout = window.setTimeout(() => {
-      fetchPolls()
-      fetchUserVotes()
+      refetch()
     }, 0)
 
-    // refetch polls and votes every 1 second
-    const interval = setInterval(() => {
-      fetchPolls()
-      fetchUserVotes()
-    }, 1000)
+    const channel = supabase
+      .channel('polls-feed')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'polls' },
+        () => {
+          refetch()
+        }
+      )
+      .subscribe()
 
     return () => {
       window.clearTimeout(timeout)
-      clearInterval(interval)
+      supabase.removeChannel(channel)
     }
-  }, [fetchPolls, fetchUserVotes])
+  }, [refetch])
 
-  return { polls, userVotes, loading, error, refetch: fetchPolls }
+  return { polls, userVotes, loading, error, refetch }
 }

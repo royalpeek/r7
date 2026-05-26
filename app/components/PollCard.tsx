@@ -32,7 +32,7 @@ export default function PollCard({ polls, onDetailChange }: PollCardProps) {
   const currentCard = polls && polls.length > 0 ? polls[currentIndex] : null
 
   const { userId, initData } = useTelegramUser()
-  const { userVotes } = usePolls(userId, initData)
+  const { userVotes, refetch } = usePolls(userId, initData)
 
   const userVote = currentCard ? userVotes.find(v => v.poll_id === currentCard.id) : null
 
@@ -205,6 +205,7 @@ export default function PollCard({ polls, onDetailChange }: PollCardProps) {
 
       await new Promise(resolve => setTimeout(resolve, 1000))
 
+      await refetch()
       haptics.notification('success')
       setShowStakingModal(false)
       setStakingDirection(null)
