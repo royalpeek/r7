@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { AiOutlineHome } from 'react-icons/ai'
 import { BiChart } from 'react-icons/bi'
 import { AiOutlineSearch } from 'react-icons/ai'
-import { AiOutlineTrophy } from 'react-icons/ai'
+import { AiOutlineUser } from 'react-icons/ai'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 
 export default function Navigation() {
@@ -66,7 +66,7 @@ export default function Navigation() {
           onClick={() => haptics.selection()}
           className={navItemClass('/profile')}
         >
-          <AiOutlineTrophy size={24} />
+          <AiOutlineUser size={24} />
           <span className={labelClass('/profile')}>Profile</span>
         </Link>
       </div>
