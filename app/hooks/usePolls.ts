@@ -22,11 +22,17 @@ export type UserVote = {
   updated_at?: string
 }
 
+let cachedPolls: Poll[] | null = null
+let cachedUserVotes: UserVote[] = []
+let cachedVotesUserId: string | null = null
+
 export function usePolls(userId?: string | null, initData = '') {
   const channelName = `polls-feed-${useId().replace(/:/g, '')}`
-  const [polls, setPolls] = useState<Poll[]>([])
-  const [userVotes, setUserVotes] = useState<UserVote[]>([])
-  const [loading, setLoading] = useState(true)
+  const [polls, setPolls] = useState<Poll[]>(() => cachedPolls || [])
+  const [userVotes, setUserVotes] = useState<UserVote[]>(() => (
+    userId && cachedVotesUserId === userId ? cachedUserVotes : []
+  ))
+  const [loading, setLoading] = useState(() => !cachedPolls)
   const [error, setError] = useState<string | null>(null)
 
   const fetchPolls = useCallback(async (showLoading = false) => {
@@ -37,7 +43,9 @@ export function usePolls(userId?: string | null, initData = '') {
       const data = await response.json()
 
       if (!response.ok) throw new Error(data.error || 'failed to fetch polls')
-      setPolls((data.polls || []) as Poll[])
+      const nextPolls = (data.polls || []) as Poll[]
+      cachedPolls = nextPolls
+      setPolls(nextPolls)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'failed to fetch polls')
@@ -61,7 +69,10 @@ export function usePolls(userId?: string | null, initData = '') {
       const data = await response.json()
 
       if (!response.ok) throw new Error(data.error || 'failed to fetch votes')
-      setUserVotes((data.votes || []) as UserVote[])
+      const nextVotes = (data.votes || []) as UserVote[]
+      cachedUserVotes = nextVotes
+      cachedVotesUserId = userId
+      setUserVotes(nextVotes)
     } catch (err) {
       console.error('fetch votes error:', err)
     }
@@ -76,7 +87,10 @@ export function usePolls(userId?: string | null, initData = '') {
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
-      refetch(true)
+      if (userId && cachedVotesUserId === userId) {
+        setUserVotes(cachedUserVotes)
+      }
+      refetch(!cachedPolls)
     }, 0)
 
     const channel = supabase
@@ -94,7 +108,7 @@ export function usePolls(userId?: string | null, initData = '') {
       window.clearTimeout(timeout)
       supabase.removeChannel(channel)
     }
-  }, [channelName, refetch])
+  }, [channelName, refetch, userId])
 
   return { polls, userVotes, loading, error, refetch }
 }
