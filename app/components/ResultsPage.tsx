@@ -83,6 +83,7 @@ export default function ResultsPage({
             <p className={`text-sm font-bold mb-2 ${voteDirection === 'YES' ? 'text-cyan-400' : 'text-pink-500'}`}>
               You voted {voteDirection}
             </p>
+            <p className="text-slate-400 text-sm mb-4">${amount.toFixed(2)} USDT staked</p>
             <h2 className="text-white font-bold text-xl mb-4">{question}</h2>
 
             <div className="space-y-4 mb-6">
@@ -142,17 +143,19 @@ export default function ResultsPage({
         <div className="flex gap-3 max-w-sm mx-auto">
           <button
             onClick={onAddMore}
+            disabled={marketEnded}
             className={`flex-1 text-black font-bold py-4 rounded-2xl ${
               voteDirection === 'YES' ? 'bg-cyan-400 hover:bg-cyan-500' : 'bg-pink-500 hover:bg-pink-600'
-            }`}
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             ADD {voteDirection}
           </button>
           <button
             onClick={onChangeVote}
+            disabled={marketEnded}
             className={`flex-1 text-black font-bold py-4 rounded-2xl ${
               voteDirection === 'YES' ? 'bg-pink-500 hover:bg-pink-600' : 'bg-cyan-400 hover:bg-cyan-500'
-            }`}
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             CHANGE {voteDirection === 'YES' ? 'NO' : 'YES'}
           </button>

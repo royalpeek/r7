@@ -26,6 +26,7 @@ declare global {
 
 export function useTelegramUser() {
   const [userId, setUserId] = useState<string | null>(null)
+  const [user, setUser] = useState<TelegramUser | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -53,6 +54,7 @@ export function useTelegramUser() {
 
         if (user?.id) {
           const telegramId = String(user.id)
+          setUser(user)
           console.log('checking if user exists:', telegramId)
 
           // check if user already exists
@@ -103,10 +105,12 @@ export function useTelegramUser() {
           setUserId(telegramId)
         } else {
           console.log('no user id found, using test id')
+          setUser(null)
           setUserId('test-user-123')
         }
       } catch (error) {
         console.error('error:', error)
+        setUser(null)
         setUserId('test-user-123')
       } finally {
         setLoading(false)
@@ -116,5 +120,5 @@ export function useTelegramUser() {
     initTelegram()
   }, [])
 
-  return { userId, loading }
+  return { userId, user, loading }
 }

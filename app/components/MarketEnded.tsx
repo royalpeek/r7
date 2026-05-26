@@ -1,7 +1,5 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import PoolHistoryChart from './PoolHistoryChart'
 
 interface MarketEndedProps {

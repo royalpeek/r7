@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { X, Wallet, RefreshCw, PlusCircle, Send, QrCode, Filter, Lock, MapPin, Zap } from 'lucide-react'
 import PollCard from './components/PollCard'
 import { usePolls } from './hooks/usePolls'
@@ -17,6 +18,7 @@ export default function Home() {
   const [filterStatus, setFilterStatus] = useState('active')
   const [sortBy, setSortBy] = useState('oldest')
   const [isCreator, setIsCreator] = useState(false)
+  const [showDetail, setShowDetail] = useState(false)
 
   // create poll form state
   const [pollTitle, setPollTitle] = useState('')
@@ -42,7 +44,7 @@ export default function Home() {
 
         if (error) throw error
         setIsCreator(data?.is_creator || false)
-      } catch (err) {
+      } catch {
         setIsCreator(false)
       }
     }
@@ -89,7 +91,7 @@ export default function Home() {
       setIsLocal(false)
       setShowCreatePoll(false)
       refetch()
-    } catch (err) {
+    } catch {
       setCreateError('failed to create poll. try again.')
     } finally {
       setCreating(false)
@@ -129,12 +131,18 @@ export default function Home() {
   return (
     <div className="bg-slate-950 h-screen overflow-hidden flex flex-col">
 
-      {/* header */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-2 flex-shrink-0">
-        <img src="/logo.png" alt="r7" className="h-10" />
+      {/* header - logo and wallet on same line */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-2 flex-shrink-0 gap-3">
+        {/* logo - left side, smaller and aligned with filter */}
+        <Image src="/logo.png" alt="r7" width={64} height={32} className="h-8 w-auto" priority />
+
+        {/* spacer - pushes wallet to right */}
+        <div className="flex-1"></div>
+
+        {/* wallet button - right side */}
         <button
           onClick={() => setShowWallet(true)}
-          className="bg-slate-800 text-slate-400 px-4 py-2 rounded text-sm flex items-center gap-2"
+          className="bg-slate-800 text-slate-400 px-4 py-2 rounded text-sm flex items-center gap-2 whitespace-nowrap"
         >
           $64.167 USDT
         </button>
@@ -161,22 +169,24 @@ export default function Home() {
         )}
       </div>
 
-      {/* category tabs */}
-      <div className="flex gap-4 px-4 pb-4 overflow-x-auto flex-shrink-0 scrollbar-hide">
-        {CATEGORIES.map(cat => (
-          <button
-            key={cat}
-            onClick={() => setSelectedCategory(cat)}
-            className={`whitespace-nowrap pb-2 text-sm font-medium transition border-b-2 ${
-              selectedCategory === cat
-                ? 'text-cyan-400 border-cyan-400'
-                : 'text-slate-400 border-transparent'
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
+      {/* category tabs - ONLY show on home page, NOT on detail page */}
+      {!showDetail && (
+        <div className="flex gap-4 px-4 pb-3 overflow-x-auto flex-shrink-0 scrollbar-hide">
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`whitespace-nowrap pb-2 text-sm font-medium transition border-b-2 ${
+                selectedCategory === cat
+                  ? 'text-cyan-400 border-cyan-400'
+                  : 'text-slate-400 border-transparent'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* poll card fills remaining space */}
       <div className="flex-1 overflow-hidden">
@@ -185,7 +195,7 @@ export default function Home() {
             <p className="text-slate-400">loading polls...</p>
           </div>
         ) : filteredPolls.length > 0 ? (
-          <PollCard polls={filteredPolls} />
+          <PollCard polls={filteredPolls} onDetailChange={setShowDetail} />
         ) : (
           <div className="flex items-center justify-center h-full">
             <p className="text-slate-400">no polls yet</p>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
 interface HistoryData {
@@ -13,12 +13,9 @@ export default function PoolHistoryChart({ pollId }: { pollId: string }) {
   const [history, setHistory] = useState<HistoryData[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchHistory()
-  }, [pollId])
-
-  const fetchHistory = async () => {
+  const fetchHistory = useCallback(async () => {
     try {
+      setLoading(true)
       const { data, error } = await supabase
         .from('poll_history')
         .select('created_at, yes_pool, no_pool')
@@ -32,7 +29,15 @@ export default function PoolHistoryChart({ pollId }: { pollId: string }) {
       console.error('fetch history error:', err)
       setLoading(false)
     }
-  }
+  }, [pollId])
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      fetchHistory()
+    }, 0)
+
+    return () => window.clearTimeout(timeout)
+  }, [fetchHistory])
 
   if (loading || history.length === 0) {
     return (
@@ -44,6 +49,7 @@ export default function PoolHistoryChart({ pollId }: { pollId: string }) {
 
   // calculate scale for chart
   const maxPool = Math.max(
+    1,
     ...history.map(h => Math.max(h.yes_pool, h.no_pool))
   )
   const chartWidth = 320
@@ -55,7 +61,7 @@ export default function PoolHistoryChart({ pollId }: { pollId: string }) {
   // generate SVG path for line
   const generatePath = (key: 'yes_pool' | 'no_pool') => {
     const points = history.map((h, i) => {
-      const x = padding.left + (i / (history.length - 1)) * graphWidth
+      const x = padding.left + (history.length === 1 ? graphWidth / 2 : (i / (history.length - 1)) * graphWidth)
       const y = padding.top + graphHeight - (h[key] / maxPool) * graphHeight
       return `${x},${y}`
     })

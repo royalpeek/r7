@@ -4,7 +4,8 @@ import { supabase } from '@/lib/supabase'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    let { user_id, poll_id, direction, amount } = body
+    const { user_id } = body
+    let { poll_id, direction, amount } = body
 
     if (!poll_id || !direction || !amount) {
       return NextResponse.json({ error: 'missing required fields' }, { status: 400 })

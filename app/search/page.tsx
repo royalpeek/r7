@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { createPortal } from 'react-dom'
 import ResultsPage from '../components/ResultsPage'
@@ -8,6 +8,7 @@ import StakingModal from '../components/StakingModal'
 import MarketEnded from '../components/MarketEnded'
 import PoolHistoryChart from '../components/PoolHistoryChart'
 import Timer from '../components/Timer'
+import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 
 type Poll = {
   id: string
@@ -29,31 +30,30 @@ type UserVote = {
 export default function Search() {
   const [searchTerm, setSearchTerm] = useState('')
   const [polls, setPolls] = useState<Poll[]>([])
-  const [filteredPolls, setFilteredPolls] = useState<Poll[]>([])
   const [selectedPoll, setSelectedPoll] = useState<Poll | null>(null)
   const [userVote, setUserVote] = useState<UserVote | null>(null)
-  const [userId, setUserId] = useState<string | null>(null)
+  const { userId } = useTelegramUser()
   const [showStakingModal, setShowStakingModal] = useState(false)
   const [stakingDirection, setStakingDirection] = useState<'yes' | 'no' | null>(null)
-  const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    const WebApp = require('@twa-dev/sdk').default
-    const user = WebApp.initDataUnsafe.user
-    if (user) setUserId(user.id.toString())
-    fetchPolls()
+  const fetchPolls = useCallback(async () => {
+    const { data, error } = await supabase.from('polls').select('*')
+    if (!error && data) setPolls(data as Poll[])
   }, [])
 
   useEffect(() => {
-    const term = searchTerm.trim().toLowerCase()
-    if (!term) { setFilteredPolls([]); return }
-    setFilteredPolls(polls.filter(p => p.question.toLowerCase().includes(term)))
-  }, [searchTerm, polls])
+    const timeout = window.setTimeout(() => {
+      fetchPolls()
+    }, 0)
 
-  const fetchPolls = async () => {
-    const { data, error } = await supabase.from('polls').select('*')
-    if (!error && data) setPolls(data)
-  }
+    return () => window.clearTimeout(timeout)
+  }, [fetchPolls])
+
+  const filteredPolls = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase()
+    if (!term) return []
+    return polls.filter(p => p.question.toLowerCase().includes(term))
+  }, [searchTerm, polls])
 
   const fetchUserVote = async (pollId: string, uid: string) => {
     const { data } = await supabase
@@ -143,7 +143,7 @@ export default function Search() {
               <div className="text-2xl">🔒</div>
               <div>
                 <p className="text-white font-bold">Market Ended</p>
-                <p className="text-slate-400 text-sm">you didn't participate in this market</p>
+                <p className="text-slate-400 text-sm">you did not participate in this market</p>
               </div>
             </div>
 

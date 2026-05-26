@@ -1,26 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Gift, Users, LogOut, Copy, Check, Ticket } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Gift, Users, LogOut, Ticket } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 
 export default function Profile() {
-  const [copied, setCopied] = useState(false)
-  const [username, setUsername] = useState<string | null>(null)
-  const [firstName, setFirstName] = useState<string | null>(null)
   const [totalVotes, setTotalVotes] = useState<number | null>(null)
-  const [userId, setUserId] = useState<string | null>(null)
-
-  useEffect(() => {
-    const WebApp = require('@twa-dev/sdk').default
-    const user = WebApp.initDataUnsafe.user
-
-    if (user) {
-      setUsername(user.username || user.first_name || 'unknown')
-      setFirstName(user.first_name || null)
-      setUserId(user.id.toString())
-    }
-  }, [])
+  const { userId, user, loading } = useTelegramUser()
+  const username = user?.username || user?.first_name || null
+  const avatarLetter = useMemo(() => (user?.first_name || username || '?')[0].toUpperCase(), [user?.first_name, username])
 
   useEffect(() => {
     if (!userId) return
@@ -37,14 +26,6 @@ export default function Profile() {
     fetchVotes()
   }, [userId])
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText('3wbjCZ...kDdM')
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  const avatarLetter = (firstName || username || '?')[0].toUpperCase()
-
   return (
     <div className="bg-slate-950 min-h-screen p-4 pb-32">
 
@@ -54,7 +35,7 @@ export default function Profile() {
           <span className="text-black text-3xl font-bold">{avatarLetter}</span>
         </div>
         <p className="text-white font-bold text-xl">
-          {username ? `@${username}` : 'loading...'}
+          {username ? `@${username}` : loading ? 'loading...' : '@unknown'}
         </p>
         <p className="text-slate-400 text-sm mt-1">Opinion Staker</p>
       </div>

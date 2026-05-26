@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import ResultsPage from '../components/ResultsPage'
 import StakingModal from '../components/StakingModal'
 import { createPortal } from 'react-dom'
+import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 
 type Position = {
   id: string
@@ -26,24 +27,15 @@ export default function Portfolio() {
   const [showSortMenu, setShowSortMenu] = useState(false)
   const [positions, setPositions] = useState<Position[]>([])
   const [loading, setLoading] = useState(true)
-  const [userId, setUserId] = useState<string | null>(null)
+  const { userId } = useTelegramUser()
   const [selectedPosition, setSelectedPosition] = useState<Position | null>(null)
   const [showStakingModal, setShowStakingModal] = useState(false)
   const [stakingDirection, setStakingDirection] = useState<'yes' | 'no' | null>(null)
 
-  useEffect(() => {
-    const WebApp = require('@twa-dev/sdk').default
-    const user = WebApp.initDataUnsafe.user
-    if (user) setUserId(user.id.toString())
-  }, [])
-
-  useEffect(() => {
-    if (!userId) return
-    fetchPositions()
-  }, [userId])
-
-  const fetchPositions = async () => {
+  const fetchPositions = useCallback(async () => {
     try {
+      if (!userId) return
+      setLoading(true)
       const { data: votes, error: votesError } = await supabase
         .from('votes')
         .select('*')
@@ -81,7 +73,15 @@ export default function Portfolio() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [userId])
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      fetchPositions()
+    }, 0)
+
+    return () => window.clearTimeout(timeout)
+  }, [fetchPositions])
 
   const handleConfirmVote = async (amount: number) => {
     if (!stakingDirection || !selectedPosition || !userId) return
@@ -100,7 +100,7 @@ export default function Portfolio() {
       await new Promise(resolve => setTimeout(resolve, 1000))
       setShowStakingModal(false)
       setStakingDirection(null)
-      fetchPositions()
+      await fetchPositions()
     } catch (error) {
       console.error('vote error:', error)
       alert('vote failed. try again.')

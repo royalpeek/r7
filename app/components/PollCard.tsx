@@ -10,7 +10,6 @@ import Timer from './Timer'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { usePolls } from '@/app/hooks/usePolls'
 
-type Vote = { pollId: string; vote: 'yes' | 'no'; amount: number }
 type Poll = {
   id: string
   question: string
@@ -21,7 +20,12 @@ type Poll = {
   ends_at: string
 }
 
-export default function PollCard({ polls }: { polls: Poll[] }) {
+type PollCardProps = {
+  polls: Poll[]
+  onDetailChange?: (showDetail: boolean) => void
+}
+
+export default function PollCard({ polls, onDetailChange }: PollCardProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const currentCard = polls && polls.length > 0 ? polls[currentIndex] : null
 
@@ -33,6 +37,11 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
   const [showStakingModal, setShowStakingModal] = useState(false)
   const [stakingDirection, setStakingDirection] = useState<'yes' | 'no' | null>(null)
   const [showDetail, setShowDetail] = useState(false)
+
+  const updateShowDetail = (nextShowDetail: boolean) => {
+    setShowDetail(nextShowDetail)
+    onDetailChange?.(nextShowDetail)
+  }
 
   // detail page swipe state
   const detailStartPos = useRef({ x: 0, y: 0 })
@@ -224,7 +233,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
           noPool={currentCard.no_pool}
           yesVotes={currentCard.yes_votes}
           noVotes={currentCard.no_votes}
-          onBack={() => setShowDetail(false)}
+          onBack={() => updateShowDetail(false)}
         />
       )
     }
@@ -244,7 +253,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
             yesPool={currentCard.yes_pool}
             noPool={currentCard.no_pool}
             marketEnded={marketEnded}
-            onBack={() => setShowDetail(false)}
+            onBack={() => updateShowDetail(false)}
             onAddMore={() => {
               if (!marketEnded) {
                 setStakingDirection(userVote.direction === 'yes' ? 'yes' : 'no')
@@ -281,7 +290,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
         <div className="h-full w-full bg-slate-950 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-5 pt-5 pb-4 flex-shrink-0">
             <button
-              onClick={() => setShowDetail(false)}
+              onClick={() => updateShowDetail(false)}
               className="text-slate-400 text-lg"
             >
               ← Back
@@ -298,7 +307,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
               <div className="text-2xl">🔒</div>
               <div>
                 <p className="text-white font-bold">Market Ended</p>
-                <p className="text-slate-400 text-sm">You didn't participate in this market</p>
+                <p className="text-slate-400 text-sm">You did not participate in this market</p>
               </div>
             </div>
 
@@ -367,7 +376,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
           >
             <div className="flex items-center justify-between mb-4">
               <button
-                onClick={() => setShowDetail(false)}
+                onClick={() => updateShowDetail(false)}
                 className="text-slate-400 text-lg"
               >
                 ← Back
@@ -510,7 +519,7 @@ export default function PollCard({ polls }: { polls: Poll[] }) {
                   <div className="flex items-center justify-between px-5 py-4">
                     <p className="text-slate-500 text-xs">← NO · swipe · YES →</p>
                     <button
-                      onClick={() => setShowDetail(true)}
+                      onClick={() => updateShowDetail(true)}
                       className="bg-cyan-400 text-black rounded-full w-9 h-9 flex items-center justify-center font-bold text-lg"
                     >
                       →
