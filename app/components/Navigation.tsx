@@ -6,11 +6,15 @@ import { AiOutlineHome } from 'react-icons/ai'
 import { BiChart } from 'react-icons/bi'
 import { AiOutlineSearch } from 'react-icons/ai'
 import { AiOutlineUser } from 'react-icons/ai'
+import { AiOutlineSetting } from 'react-icons/ai'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
+import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 
 export default function Navigation() {
   const haptics = useHapticFeedback()
   const pathname = usePathname()
+  const { appUser } = useTelegramUser()
+  const isAdmin = appUser?.role === 'admin'
 
   const isActive = (path: string) => pathname === path
   const navItemClass = (path: string) => {
@@ -69,6 +73,17 @@ export default function Navigation() {
           <AiOutlineUser size={24} />
           <span className={labelClass('/profile')}>Profile</span>
         </Link>
+
+        {isAdmin && (
+          <Link
+            href="/admin"
+            onClick={() => haptics.selection()}
+            className={navItemClass('/admin')}
+          >
+            <AiOutlineSetting size={24} />
+            <span className={labelClass('/admin')}>Admin</span>
+          </Link>
+        )}
       </div>
     </nav>
   )
