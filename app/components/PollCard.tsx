@@ -493,7 +493,7 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
             const pollUserVote = userVotes.find(v => v.poll_id === poll.id)
 
             return (
-              <div key={poll.id} className="h-full w-full flex flex-col px-4 pt-2 pb-24">
+              <div key={poll.id} className="h-full w-full flex flex-col px-3 pt-1 pb-20">
                 <div
                   className="flex-1 bg-slate-900 rounded-2xl border border-slate-700 flex flex-col overflow-hidden"
                   style={{
@@ -501,12 +501,12 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
                     transition: isActive && dragging && axis === 'x' ? 'none' : 'transform 200ms ease-out',
                   }}
                 >
-                  <div className="flex items-center justify-between px-5 pt-5 pb-3">
+                  <div className="flex items-center justify-between px-5 pt-4 pb-2">
                     <Timer endsAt={poll.ends_at} />
                     <div className="text-slate-400 text-sm">${(poll.yes_pool + poll.no_pool).toFixed(2)} USDT</div>
                   </div>
 
-                  <div className="px-5 pt-2 pb-3">
+                  <div className="px-5 pt-1 pb-2">
                     <p className="text-white font-bold text-3xl leading-tight text-left">{poll.question}</p>
                   </div>
 
@@ -518,11 +518,11 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
                         </p>
                       </div>
 
-                      <div className="flex-1 mx-4 mb-4 bg-slate-800 rounded-xl overflow-hidden">
+                      <div className="flex-1 mx-4 mb-3 bg-slate-800 rounded-xl overflow-hidden">
                         <PoolHistoryChart pollId={poll.id} yesPool={poll.yes_pool} noPool={poll.no_pool} />
                       </div>
 
-                      <div className="px-5 pb-3 flex justify-between text-lg font-bold">
+                      <div className="px-5 pb-2 flex justify-between text-lg font-bold">
                         <div className="text-center">
                           <p className="text-cyan-400">{Math.round((poll.yes_pool / (poll.yes_pool + poll.no_pool)) * 100)}%</p>
                           <p className="text-cyan-400 text-xs">YES</p>
@@ -534,14 +534,14 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
                       </div>
                     </>
                   ) : (
-                    <div className="flex-1 mx-4 mb-4 bg-slate-800 rounded-xl flex flex-col items-center justify-center gap-4">
+                    <div className="flex-1 mx-4 mb-3 bg-slate-800 rounded-xl flex flex-col items-center justify-center gap-4">
                       <div className="text-7xl">🗳️</div>
                       <p className="text-white font-semibold text-base">Vote to see results</p>
                       <p className="text-slate-400 text-sm">Swipe right for YES, left for NO</p>
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between px-5 py-4">
+                  <div className="flex items-center justify-between px-5 py-3">
                     <p className="text-slate-500 text-xs">← NO · swipe · YES →</p>
                     <button
                       onClick={() => updateShowDetail(true)}
@@ -552,7 +552,7 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
                   </div>
                 </div>
 
-                <div className="text-center py-3 text-slate-600 text-xs">
+                <div className="text-center py-2 text-slate-600 text-xs">
                   1% fee · 24h consensus ·
                 </div>
               </div>

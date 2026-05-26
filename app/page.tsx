@@ -114,31 +114,26 @@ export default function Home() {
   return (
     <div className="bg-slate-950 h-screen overflow-hidden flex flex-col">
 
-      {/* header - logo and wallet on same line */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-2 flex-shrink-0 gap-3">
-        {/* logo - left side, smaller and aligned with filter */}
-        <Image src="/logo.png" alt="r7" width={64} height={32} className="h-8 w-auto" priority />
+      {/* top controls */}
+      <div className="flex items-center justify-between gap-2 px-3 pt-3 pb-2 flex-shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <button
+            onClick={() => setShowFilter(true)}
+            className="h-10 w-10 flex-shrink-0 rounded-xl border border-slate-700 bg-slate-800 text-slate-400 hover:text-slate-300 active:scale-95 transition"
+            title="Filter"
+          >
+            <Filter size={19} className="mx-auto" />
+          </button>
 
-        {/* spacer - pushes wallet to right */}
-        <div className="flex-1"></div>
+          <Image src="/logo.png" alt="r7" width={58} height={29} className="h-7 w-auto flex-shrink-0" priority />
+        </div>
 
-        {/* wallet button - right side */}
+        <div className="flex items-center gap-2">
         <button
           onClick={() => setShowWallet(true)}
-          className="bg-slate-800 text-slate-400 px-4 py-2 rounded text-sm flex items-center gap-2 whitespace-nowrap"
+          className="h-10 rounded-xl bg-slate-800 px-3 text-xs font-medium text-slate-300 whitespace-nowrap active:scale-95 transition"
         >
           ${balance.toFixed(2)} USDT
-        </button>
-      </div>
-
-      {/* filter and create section */}
-      <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0">
-        <button
-          onClick={() => setShowFilter(true)}
-          className="bg-slate-800 text-slate-400 p-2 rounded border border-slate-700 hover:text-slate-300 transition"
-          title="Filter"
-        >
-          <Filter size={20} />
         </button>
 
         {canCreatePoll && (
@@ -147,22 +142,23 @@ export default function Home() {
               haptics.impact('medium')
               setShowCreatePoll(true)
             }}
-            className="ml-auto flex items-center gap-2 bg-cyan-400 text-black px-4 py-2 rounded-xl font-bold hover:bg-cyan-500 transition"
+            className="h-10 flex items-center gap-1.5 rounded-xl bg-cyan-400 px-3 text-sm font-bold text-black hover:bg-cyan-500 active:scale-95 transition"
           >
-            <PlusCircle size={18} />
+            <PlusCircle size={16} />
             Create
           </button>
         )}
+        </div>
       </div>
 
       {/* category tabs - ONLY show on home page, NOT on detail page */}
       {!showDetail && (
-        <div className="flex gap-4 px-4 pb-3 overflow-x-auto flex-shrink-0 scrollbar-hide">
+        <div className="flex gap-5 px-3 pt-1 pb-2 overflow-x-auto flex-shrink-0 scrollbar-hide">
           {CATEGORIES.map(cat => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`whitespace-nowrap pb-2 text-sm font-medium transition border-b-2 ${
+              className={`whitespace-nowrap pb-2 text-sm font-semibold transition border-b-2 ${
                 selectedCategory === cat
                   ? 'text-cyan-400 border-cyan-400'
                   : 'text-slate-400 border-transparent'
