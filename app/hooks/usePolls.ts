@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useId, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
 export type Poll = {
@@ -23,6 +23,7 @@ export type UserVote = {
 }
 
 export function usePolls(userId?: string | null, initData = '') {
+  const channelName = `polls-feed-${useId().replace(/:/g, '')}`
   const [polls, setPolls] = useState<Poll[]>([])
   const [userVotes, setUserVotes] = useState<UserVote[]>([])
   const [loading, setLoading] = useState(true)
@@ -45,7 +46,7 @@ export function usePolls(userId?: string | null, initData = '') {
 
   const fetchUserVotes = useCallback(async () => {
     try {
-      if (!userId) {
+      if (!userId || (!initData && process.env.NODE_ENV === 'production')) {
         setUserVotes([])
         return
       }
@@ -77,7 +78,7 @@ export function usePolls(userId?: string | null, initData = '') {
     }, 0)
 
     const channel = supabase
-      .channel('polls-feed')
+      .channel(channelName)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'polls' },
@@ -91,7 +92,7 @@ export function usePolls(userId?: string | null, initData = '') {
       window.clearTimeout(timeout)
       supabase.removeChannel(channel)
     }
-  }, [refetch])
+  }, [channelName, refetch])
 
   return { polls, userVotes, loading, error, refetch }
 }
