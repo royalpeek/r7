@@ -39,12 +39,14 @@ export async function POST(request: NextRequest) {
 
     const { data: creator, error: creatorError } = await admin
       .from('users')
-      .select('is_creator')
+      .select('*')
       .eq('id', userId)
       .single()
 
     if (creatorError) throw creatorError
-    if (!creator?.is_creator) {
+    const role = creator?.role || (creator?.is_creator ? 'creator' : 'user')
+
+    if (role !== 'creator' && role !== 'admin') {
       return NextResponse.json({ error: 'Creator access required' }, { status: 403 })
     }
 

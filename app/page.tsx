@@ -30,7 +30,8 @@ export default function Home() {
 
   const { userId, appUser, initData, loading: userLoading } = useTelegramUser()
   const { polls, loading: pollsLoading, error: pollsError, refetch } = usePolls(userId, initData)
-  const isCreator = appUser?.is_creator || false
+  const userRole = appUser?.role || (appUser?.is_creator ? 'creator' : 'user')
+  const canCreatePoll = userRole === 'creator' || userRole === 'admin'
   const [balanceOverride, setBalanceOverride] = useState<number | null>(null)
   const balance = balanceOverride ?? Number(appUser?.balance ?? 0)
 
@@ -140,7 +141,7 @@ export default function Home() {
           <Filter size={20} />
         </button>
 
-        {isCreator && (
+        {canCreatePoll && (
           <button
             onClick={() => {
               haptics.impact('medium')

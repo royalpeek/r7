@@ -11,6 +11,7 @@ interface AppUser {
   username: string
   balance?: number | null
   is_creator?: boolean
+  role?: 'user' | 'creator' | 'admin' | null
 }
 
 interface TelegramInitDataUnsafe {
