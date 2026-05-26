@@ -418,12 +418,12 @@ export default function Home() {
 
       {/* wallet sheet overlay */}
       {showWallet && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+        <div className="fixed inset-0 z-[70] flex flex-col justify-end">
           <div
             className="absolute inset-0 bg-black/60"
             onClick={() => setShowWallet(false)}
           />
-          <div className="relative z-10 max-h-[88dvh] overflow-y-auto rounded-t-3xl bg-slate-950 px-6 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+          <div className="relative z-10 max-h-[86dvh] overflow-y-auto rounded-t-3xl bg-slate-950 px-6 pt-5 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
             <div className="w-10 h-1 bg-slate-700 rounded-full mx-auto mb-6" />
             <button
               onClick={() => setShowWallet(false)}
@@ -451,7 +451,7 @@ export default function Home() {
                 </button>
               </div>
             </div>
-            <div className="flex gap-3 mb-6">
+            <div className="flex gap-3">
               <button disabled className="flex-1 bg-slate-800 text-slate-500 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 cursor-not-allowed">
                 <PlusCircle size={18} />
                 Add Funds Soon
