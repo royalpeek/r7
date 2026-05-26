@@ -23,16 +23,17 @@ type Poll = {
 
 type PollCardProps = {
   polls: Poll[]
+  availableBalance?: number
   onDetailChange?: (showDetail: boolean) => void
   onPollsChange?: () => void | Promise<void>
 }
 
-export default function PollCard({ polls, onDetailChange, onPollsChange }: PollCardProps) {
+export default function PollCard({ polls, availableBalance = 0, onDetailChange, onPollsChange }: PollCardProps) {
   const haptics = useHapticFeedback()
   const [currentIndex, setCurrentIndex] = useState(0)
   const currentCard = polls && polls.length > 0 ? polls[currentIndex] : null
 
-  const { userId, initData } = useTelegramUser()
+  const { userId, initData, updateBalance } = useTelegramUser()
   const { userVotes, refetch } = usePolls(userId, initData)
 
   const userVote = currentCard ? userVotes.find(v => v.poll_id === currentCard.id) : null
@@ -210,6 +211,7 @@ export default function PollCard({ polls, onDetailChange, onPollsChange }: PollC
         refetch(),
         onPollsChange?.(),
       ])
+      if (typeof responseData.balance === 'number') updateBalance(responseData.balance)
       haptics.notification('success')
       setShowStakingModal(false)
       setStakingDirection(null)
@@ -289,6 +291,7 @@ export default function PollCard({ polls, onDetailChange, onPollsChange }: PollC
               <StakingModal
                 question={currentCard.question}
                 voteDirection={stakingDirection === 'yes' ? 'YES' : 'NO'}
+                availableBalance={availableBalance}
                 onConfirm={handleConfirmVote}
                 onCancel={() => {
                   setShowStakingModal(false)
@@ -446,6 +449,7 @@ export default function PollCard({ polls, onDetailChange, onPollsChange }: PollC
             <StakingModal
               question={currentCard.question}
               voteDirection={stakingDirection === 'yes' ? 'YES' : 'NO'}
+              availableBalance={availableBalance}
               onConfirm={handleConfirmVote}
               onCancel={() => {
                 setShowStakingModal(false)
@@ -558,6 +562,7 @@ export default function PollCard({ polls, onDetailChange, onPollsChange }: PollC
           <StakingModal
             question={currentCard.question}
             voteDirection={stakingDirection === 'yes' ? 'YES' : 'NO'}
+            availableBalance={availableBalance}
             onConfirm={handleConfirmVote}
             onCancel={() => {
               setShowStakingModal(false)

@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
         .insert({
           id: userId,
           username,
+          balance: 100,
           is_creator: false,
         })
         .select()

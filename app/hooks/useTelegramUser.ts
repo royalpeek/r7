@@ -9,6 +9,7 @@ interface TelegramUser {
 interface AppUser {
   id: string
   username: string
+  balance?: number | null
   is_creator?: boolean
 }
 
@@ -117,5 +118,9 @@ export function useTelegramUser() {
     initTelegram()
   }, [])
 
-  return { userId, user, appUser, initData, loading }
+  const updateBalance = (balance: number) => {
+    setAppUser(prev => prev ? { ...prev, balance } : prev)
+  }
+
+  return { userId, user, appUser, initData, loading, updateBalance }
 }

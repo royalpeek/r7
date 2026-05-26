@@ -6,11 +6,12 @@ import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 interface StakingModalProps {
   question: string
   voteDirection: 'YES' | 'NO'
+  availableBalance?: number
   onConfirm: (amount: number) => void
   onCancel: () => void
 }
 
-export default function StakingModal({ question, voteDirection, onConfirm, onCancel }: StakingModalProps) {
+export default function StakingModal({ question, voteDirection, availableBalance = 0, onConfirm, onCancel }: StakingModalProps) {
   const haptics = useHapticFeedback()
   const [amount, setAmount] = useState(5)
   const [vh, setVh] = useState(0)
@@ -19,6 +20,7 @@ export default function StakingModal({ question, voteDirection, onConfirm, onCan
   const fee = amount * 0.01
   const total = amount + fee
   const estimatedPayout = (amount * 0.95).toFixed(2)
+  const hasEnoughBalance = total <= availableBalance
   const isYes = voteDirection === 'YES'
   const buttonColor = isYes ? 'bg-cyan-400' : 'bg-pink-500'
   const textColor = isYes ? 'text-cyan-400' : 'text-pink-500'
@@ -59,11 +61,14 @@ export default function StakingModal({ question, voteDirection, onConfirm, onCan
               <span className={`text-6xl font-bold ${textColor}`}>${amount}</span>
               <span className="text-slate-400 ml-3">USDT</span>
             </div>
+            <p className="text-center text-slate-400 text-sm mb-6">
+              Available: ${availableBalance.toFixed(2)} USDT
+            </p>
 
             <input
               type="range"
               min="1"
-              max="1000"
+              max={Math.max(1, Math.floor(availableBalance))}
               value={amount}
               onChange={(e) => setAmount(Number(e.target.value))}
               className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer"
@@ -118,13 +123,14 @@ export default function StakingModal({ question, voteDirection, onConfirm, onCan
               Cancel
             </button>
             <button
+              disabled={!hasEnoughBalance}
               onClick={() => {
                 haptics.impact('medium')
                 onConfirm(amount)
               }}
-              className={`flex-1 ${buttonColor} text-black font-bold py-3 rounded-lg hover:opacity-90`}
+              className={`flex-1 ${buttonColor} text-black font-bold py-3 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              Confirm {voteDirection} · ${total.toFixed(2)}
+              {hasEnoughBalance ? `Confirm ${voteDirection} · $${total.toFixed(2)}` : 'Insufficient balance'}
             </button>
           </div>
         </div>

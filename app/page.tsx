@@ -31,6 +31,7 @@ export default function Home() {
   const { userId, appUser, initData, loading: userLoading } = useTelegramUser()
   const { polls, loading: pollsLoading, refetch } = usePolls(userId, initData)
   const isCreator = appUser?.is_creator || false
+  const balance = Number(appUser?.balance ?? 0)
 
   const handleCopy = () => {
     navigator.clipboard.writeText('3wbjCZ...kDdM')
@@ -124,7 +125,7 @@ export default function Home() {
           onClick={() => setShowWallet(true)}
           className="bg-slate-800 text-slate-400 px-4 py-2 rounded text-sm flex items-center gap-2 whitespace-nowrap"
         >
-          $64.167 USDT
+          ${balance.toFixed(2)} USDT
         </button>
       </div>
 
@@ -178,7 +179,12 @@ export default function Home() {
             <p className="text-slate-400">loading polls...</p>
           </div>
         ) : filteredPolls.length > 0 ? (
-          <PollCard polls={filteredPolls} onDetailChange={setShowDetail} onPollsChange={refetch} />
+          <PollCard
+            polls={filteredPolls}
+            availableBalance={balance}
+            onDetailChange={setShowDetail}
+            onPollsChange={refetch}
+          />
         ) : (
           <div className="flex items-center justify-center h-full">
             <p className="text-slate-400">no polls yet</p>
@@ -282,7 +288,7 @@ export default function Home() {
                 <span className="text-cyan-400 text-sm font-medium">0.25% win · 0.5% lose</span>
               </div>
               <p className="text-slate-500 text-xs">
-                When your poll resolves, you earn 0.25% of the winning pool and 0.5% of the losing pool, paid directly in USDC.
+                When your poll resolves, you earn 0.25% of the winning pool and 0.5% of the losing pool, paid directly in USDT.
               </p>
             </div>
 
@@ -409,20 +415,20 @@ export default function Home() {
             <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 mb-6">
               <p className="text-slate-400 text-xs mb-2">USDT Balance</p>
               <div className="flex items-center justify-between">
-                <p className="text-white text-3xl font-bold">$64.167</p>
+              <p className="text-white text-3xl font-bold">${balance.toFixed(2)}</p>
                 <button className="bg-slate-800 p-2 rounded-full">
                   <RefreshCw size={16} className="text-slate-400" />
                 </button>
               </div>
             </div>
             <div className="flex gap-3 mb-6">
-              <button className="flex-1 bg-cyan-400 text-black font-bold py-4 rounded-2xl flex items-center justify-center gap-2">
+              <button disabled className="flex-1 bg-slate-800 text-slate-500 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 cursor-not-allowed">
                 <PlusCircle size={18} />
-                Add Funds
+                Add Funds Soon
               </button>
-              <button className="flex-1 bg-slate-900 border border-slate-700 text-cyan-400 font-bold py-4 rounded-2xl flex items-center justify-center gap-2">
+              <button disabled className="flex-1 bg-slate-900 border border-slate-700 text-slate-500 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 cursor-not-allowed">
                 <Send size={18} />
-                Send USDT
+                Send Soon
               </button>
             </div>
             <button className="w-full flex items-center justify-center gap-2 text-slate-400 text-sm py-2">

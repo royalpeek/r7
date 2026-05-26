@@ -52,6 +52,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'market has ended' }, { status: 400 })
     }
 
+    const fee = amount * 0.01
+    const totalCost = amount + fee
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('balance')
+      .eq('id', userId)
+      .single()
+
+    if (userError) throw userError
+    const currentBalance = Number(userData.balance ?? 0)
+    if (!Number.isFinite(currentBalance)) throw new Error('invalid user balance')
+    if (currentBalance < totalCost) {
+      return NextResponse.json({ error: 'insufficient balance' }, { status: 400 })
+    }
+
     let newYesPool = poll.yes_pool || 0
     let newNoPool = poll.no_pool || 0
     let newYesVotes = poll.yes_votes || 0
@@ -149,11 +164,19 @@ export async function POST(request: NextRequest) {
 
     if (updateError) throw updateError
 
+    const { error: balanceError } = await supabase
+      .from('users')
+      .update({ balance: currentBalance - totalCost })
+      .eq('id', userId)
+
+    if (balanceError) throw balanceError
+
     console.log('poll updated successfully')
     return NextResponse.json({ 
       success: true,
       vote_id: voteId,
-      pools: { yes_pool: newYesPool, no_pool: newNoPool }
+      pools: { yes_pool: newYesPool, no_pool: newNoPool },
+      balance: currentBalance - totalCost,
     })
   } catch (error) {
     console.error('error:', error)

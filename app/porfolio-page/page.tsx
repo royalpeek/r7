@@ -29,7 +29,8 @@ export default function Portfolio() {
   const [showSortMenu, setShowSortMenu] = useState(false)
   const [positions, setPositions] = useState<Position[]>([])
   const [loading, setLoading] = useState(true)
-  const { userId, initData } = useTelegramUser()
+  const { userId, appUser, initData, updateBalance } = useTelegramUser()
+  const balance = Number(appUser?.balance ?? 0)
   const [selectedPosition, setSelectedPosition] = useState<Position | null>(null)
   const [showStakingModal, setShowStakingModal] = useState(false)
   const [stakingDirection, setStakingDirection] = useState<'yes' | 'no' | null>(null)
@@ -75,8 +76,10 @@ export default function Portfolio() {
           amount,
         }),
       })
-      if (!response.ok) throw new Error('vote failed')
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'vote failed')
       await new Promise(resolve => setTimeout(resolve, 1000))
+      if (typeof data.balance === 'number') updateBalance(data.balance)
       haptics.notification('success')
       setShowStakingModal(false)
       setStakingDirection(null)
@@ -152,6 +155,7 @@ export default function Portfolio() {
             <StakingModal
               question={selectedPosition.question}
               voteDirection={stakingDirection === 'yes' ? 'YES' : 'NO'}
+              availableBalance={balance}
               onConfirm={handleConfirmVote}
               onCancel={() => { setShowStakingModal(false); setStakingDirection(null) }}
             />,
