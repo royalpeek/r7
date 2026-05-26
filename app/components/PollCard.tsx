@@ -26,9 +26,10 @@ type PollCardProps = {
   availableBalance?: number
   onDetailChange?: (showDetail: boolean) => void
   onPollsChange?: () => void | Promise<void>
+  onBalanceChange?: (balance: number) => void
 }
 
-export default function PollCard({ polls, availableBalance = 0, onDetailChange, onPollsChange }: PollCardProps) {
+export default function PollCard({ polls, availableBalance = 0, onDetailChange, onPollsChange, onBalanceChange }: PollCardProps) {
   const haptics = useHapticFeedback()
   const [currentIndex, setCurrentIndex] = useState(0)
   const currentCard = polls && polls.length > 0 ? polls[currentIndex] : null
@@ -211,7 +212,10 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
         refetch(),
         onPollsChange?.(),
       ])
-      if (typeof responseData.balance === 'number') updateBalance(responseData.balance)
+      if (typeof responseData.balance === 'number') {
+        updateBalance(responseData.balance)
+        onBalanceChange?.(responseData.balance)
+      }
       haptics.notification('success')
       setShowStakingModal(false)
       setStakingDirection(null)

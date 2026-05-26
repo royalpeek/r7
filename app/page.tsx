@@ -31,7 +31,8 @@ export default function Home() {
   const { userId, appUser, initData, loading: userLoading } = useTelegramUser()
   const { polls, loading: pollsLoading, refetch } = usePolls(userId, initData)
   const isCreator = appUser?.is_creator || false
-  const balance = Number(appUser?.balance ?? 0)
+  const [balanceOverride, setBalanceOverride] = useState<number | null>(null)
+  const balance = balanceOverride ?? Number(appUser?.balance ?? 0)
 
   const handleCopy = () => {
     navigator.clipboard.writeText('3wbjCZ...kDdM')
@@ -184,6 +185,7 @@ export default function Home() {
             availableBalance={balance}
             onDetailChange={setShowDetail}
             onPollsChange={refetch}
+            onBalanceChange={setBalanceOverride}
           />
         ) : (
           <div className="flex items-center justify-center h-full">
