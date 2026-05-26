@@ -29,7 +29,7 @@ export default function Portfolio() {
   const [showSortMenu, setShowSortMenu] = useState(false)
   const [positions, setPositions] = useState<Position[]>([])
   const [loading, setLoading] = useState(true)
-  const { userId } = useTelegramUser()
+  const { userId, initData } = useTelegramUser()
   const [selectedPosition, setSelectedPosition] = useState<Position | null>(null)
   const [showStakingModal, setShowStakingModal] = useState(false)
   const [stakingDirection, setStakingDirection] = useState<'yes' | 'no' | null>(null)
@@ -92,7 +92,7 @@ export default function Portfolio() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: userId,
+          initData,
           poll_id: selectedPosition.poll_id,
           direction: stakingDirection,
           amount,

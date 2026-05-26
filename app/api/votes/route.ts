@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { getRequestTelegramUser } from '@/lib/telegramAuth'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { user_id } = body
+    const user = getRequestTelegramUser(body.initData)
+    const userId = String(user.id)
     let { poll_id, direction, amount } = body
 
     if (!poll_id || !direction || !amount) {
@@ -15,13 +17,21 @@ export async function POST(request: NextRequest) {
     amount = Number(amount)
     direction = String(direction).toLowerCase()
 
-    console.log('vote request:', { user_id, poll_id, direction, amount })
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return NextResponse.json({ error: 'invalid amount' }, { status: 400 })
+    }
+
+    if (direction !== 'yes' && direction !== 'no') {
+      return NextResponse.json({ error: 'invalid vote direction' }, { status: 400 })
+    }
+
+    console.log('vote request:', { userId, poll_id, direction, amount })
 
     // check if user already voted on this poll
     const { data: existingVote, error: fetchVoteError } = await supabase
       .from('votes')
       .select('*')
-      .eq('user_id', user_id ? String(user_id).trim() : 'anonymous')
+      .eq('user_id', userId)
       .eq('poll_id', poll_id)
       .single()
 
@@ -32,11 +42,14 @@ export async function POST(request: NextRequest) {
     // fetch current poll
     const { data: poll, error: fetchError } = await supabase
       .from('polls')
-      .select('yes_pool, no_pool, yes_votes, no_votes, volume')
+      .select('yes_pool, no_pool, yes_votes, no_votes, volume, ends_at')
       .eq('id', poll_id)
       .single()
 
     if (fetchError) throw fetchError
+    if (poll.ends_at && new Date(poll.ends_at) <= new Date()) {
+      return NextResponse.json({ error: 'market has ended' }, { status: 400 })
+    }
 
     let newYesPool = poll.yes_pool || 0
     let newNoPool = poll.no_pool || 0
@@ -98,7 +111,7 @@ export async function POST(request: NextRequest) {
       const { data: vote, error: voteError } = await supabase
         .from('votes')
         .insert([{
-          user_id: user_id ? String(user_id).trim() : 'anonymous',
+          user_id: userId,
           poll_id,
           direction,
           amount,

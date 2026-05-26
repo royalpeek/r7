@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { getRequestTelegramUser } from '@/lib/telegramAuth'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { user_id, poll_id, old_direction, new_direction, new_amount } = body
+    const user = getRequestTelegramUser(body.initData)
+    const userId = String(user.id)
+    const { poll_id, old_direction, new_direction, new_amount } = body
 
-    if (!user_id || !poll_id || !old_direction || !new_direction || !new_amount) {
+    if (!poll_id || !old_direction || !new_direction || !new_amount) {
       return NextResponse.json({ error: 'missing required fields' }, { status: 400 })
     }
 
@@ -18,7 +21,7 @@ export async function POST(request: NextRequest) {
     const { data: oldVote, error: oldVoteError } = await supabase
       .from('votes')
       .select('amount')
-      .eq('user_id', user_id)
+      .eq('user_id', userId)
       .eq('poll_id', poll_id)
       .eq('direction', old_direction)
       .single()
@@ -30,7 +33,7 @@ export async function POST(request: NextRequest) {
     const { error: deleteError } = await supabase
       .from('votes')
       .delete()
-      .eq('user_id', user_id)
+      .eq('user_id', userId)
       .eq('poll_id', poll_id)
       .eq('direction', old_direction)
 
@@ -40,7 +43,7 @@ export async function POST(request: NextRequest) {
     const { error: createVoteError } = await supabase
       .from('votes')
       .insert([{
-        user_id,
+        user_id: userId,
         poll_id,
         direction: new_direction,
         amount: stakeAmount,
@@ -106,7 +109,7 @@ export async function POST(request: NextRequest) {
     const { data: userData, error: userDataError } = await supabase
       .from('users')
       .select('balance')
-      .eq('id', user_id)
+      .eq('id', userId)
       .single()
 
     if (userDataError) throw userDataError
@@ -116,7 +119,7 @@ export async function POST(request: NextRequest) {
     const { error: userUpdateError } = await supabase
       .from('users')
       .update({ balance: currentUserBalance + refundAmount })
-      .eq('id', user_id)
+      .eq('id', userId)
 
     if (userUpdateError) throw userUpdateError
 

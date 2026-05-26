@@ -31,7 +31,7 @@ export default function PollCard({ polls, onDetailChange }: PollCardProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const currentCard = polls && polls.length > 0 ? polls[currentIndex] : null
 
-  const { userId } = useTelegramUser()
+  const { userId, initData } = useTelegramUser()
   const { userVotes } = usePolls(userId)
 
   const userVote = currentCard ? userVotes.find(v => v.poll_id === currentCard.id) : null
@@ -183,13 +183,13 @@ export default function PollCard({ polls, onDetailChange }: PollCardProps) {
     }
 
     try {
-      console.log('sending vote:', { user_id: userId, poll_id: currentCard.id, direction: stakingDirection, amount })
+      console.log('sending vote:', { userId, poll_id: currentCard.id, direction: stakingDirection, amount })
 
       const response = await fetch('/api/votes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: userId,
+          initData,
           poll_id: currentCard.id,
           direction: stakingDirection,
           amount: amount,
