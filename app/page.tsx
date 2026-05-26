@@ -1,13 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Image from 'next/image'
 import { X, Wallet, RefreshCw, PlusCircle, Send, QrCode, Filter, Lock, MapPin, Zap } from 'lucide-react'
 import PollCard from './components/PollCard'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { usePolls } from './hooks/usePolls'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
-import { supabase } from '@/lib/supabase'
 
 const CATEGORIES = ['Trending', 'New', 'Politics', 'Crypto', 'Sports', 'Tech']
 
@@ -19,7 +18,6 @@ export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState('Trending')
   const [filterStatus, setFilterStatus] = useState('active')
   const [sortBy, setSortBy] = useState('oldest')
-  const [isCreator, setIsCreator] = useState(false)
   const [showDetail, setShowDetail] = useState(false)
 
   // create poll form state
@@ -30,29 +28,9 @@ export default function Home() {
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
 
-  const { userId, loading: userLoading } = useTelegramUser()
-  const { polls, loading: pollsLoading, refetch } = usePolls(userId)
-
-  // fetch user's creator status
-  useEffect(() => {
-    const fetchCreatorStatus = async () => {
-      if (!userId) return
-      try {
-        const { data, error } = await supabase
-          .from('users')
-          .select('is_creator')
-          .eq('id', userId)
-          .single()
-
-        if (error) throw error
-        setIsCreator(data?.is_creator || false)
-      } catch {
-        setIsCreator(false)
-      }
-    }
-
-    fetchCreatorStatus()
-  }, [userId])
+  const { userId, appUser, initData, loading: userLoading } = useTelegramUser()
+  const { polls, loading: pollsLoading, refetch } = usePolls(userId, initData)
+  const isCreator = appUser?.is_creator || false
 
   const handleCopy = () => {
     navigator.clipboard.writeText('3wbjCZ...kDdM')
@@ -77,10 +55,10 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           question: pollTitle,
+          initData,
           description: pollDescription,
           category: 'general',
           is_private: isPrivate,
-          created_by: userId,
         }),
       })
 

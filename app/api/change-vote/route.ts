@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
 
 export async function POST(request: NextRequest) {
@@ -8,6 +8,7 @@ export async function POST(request: NextRequest) {
     const user = getRequestTelegramUser(body.initData)
     const userId = String(user.id)
     const { poll_id, old_direction, new_direction, new_amount } = body
+    const supabase = getSupabaseAdmin()
 
     if (!poll_id || !old_direction || !new_direction || !new_amount) {
       return NextResponse.json({ error: 'missing required fields' }, { status: 400 })

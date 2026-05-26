@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { createPortal } from 'react-dom'
 import ResultsPage from '../components/ResultsPage'
 import StakingModal from '../components/StakingModal'
@@ -39,8 +38,9 @@ export default function Search() {
   const [stakingDirection, setStakingDirection] = useState<'yes' | 'no' | null>(null)
 
   const fetchPolls = useCallback(async () => {
-    const { data, error } = await supabase.from('polls').select('*')
-    if (!error && data) setPolls(data as Poll[])
+    const response = await fetch('/api/polls')
+    const data = await response.json()
+    if (response.ok) setPolls(data.polls as Poll[])
   }, [])
 
   useEffect(() => {
@@ -57,21 +57,22 @@ export default function Search() {
     return polls.filter(p => p.question.toLowerCase().includes(term))
   }, [searchTerm, polls])
 
-  const fetchUserVote = async (pollId: string, uid: string) => {
-    const { data } = await supabase
-      .from('votes')
-      .select('*')
-      .eq('poll_id', pollId)
-      .eq('user_id', uid)
-      .single()
-    setUserVote(data || null)
+  const fetchUserVote = async (pollId: string) => {
+    const response = await fetch('/api/me/votes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData }),
+    })
+    const data = await response.json()
+    const votes = response.ok ? (data.votes as UserVote[]) : []
+    setUserVote(votes.find(vote => vote.poll_id === pollId) || null)
   }
 
   const handleSelectPoll = async (poll: Poll) => {
     haptics.selection()
     setSelectedPoll(poll)
     setUserVote(null)
-    if (userId) await fetchUserVote(poll.id, userId)
+    if (userId) await fetchUserVote(poll.id)
   }
 
   const handleConfirmVote = async (amount: number) => {
@@ -92,7 +93,7 @@ export default function Search() {
       haptics.notification('success')
       setShowStakingModal(false)
       setStakingDirection(null)
-      await fetchUserVote(selectedPoll.id, userId)
+      await fetchUserVote(selectedPoll.id)
       await fetchPolls()
     } catch (error) {
       haptics.notification('error')

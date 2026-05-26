@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import PoolHistoryChart from './PoolHistoryChart'
 
 interface ResultsPageProps {
@@ -39,17 +38,11 @@ export default function ResultsPage({
   useEffect(() => {
     const fetchStakers = async () => {
       try {
-        // count unique users who voted on this poll
-        const { data, error } = await supabase
-          .from('votes')
-          .select('user_id')
-          .eq('poll_id', pollId)
+        const response = await fetch(`/api/polls/${pollId}/stats`)
+        const data = await response.json()
 
-        if (error) throw error
-
-        // get unique count
-        const uniqueUsers = new Set(data?.map(v => v.user_id) || [])
-        setStakerCount(uniqueUsers.size)
+        if (!response.ok) throw new Error(data.error || 'failed to fetch poll stats')
+        setStakerCount(data.stakerCount || 0)
       } catch (err) {
         console.error('fetch stakers error:', err)
         setStakerCount(0)

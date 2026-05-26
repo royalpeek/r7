@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
-
 export type Poll = {
   id: string
   question: string
@@ -22,7 +20,7 @@ export type UserVote = {
   updated_at?: string
 }
 
-export function usePolls(userId?: string | null) {
+export function usePolls(userId?: string | null, initData = '') {
   const [polls, setPolls] = useState<Poll[]>([])
   const [userVotes, setUserVotes] = useState<UserVote[]>([])
   const [loading, setLoading] = useState(true)
@@ -30,13 +28,11 @@ export function usePolls(userId?: string | null) {
 
   const fetchPolls = useCallback(async () => {
     try {
-      const { data: pollsData, error: pollsError } = await supabase
-        .from('polls')
-        .select('*')
-        .order('created_at', { ascending: false })
+      const response = await fetch('/api/polls')
+      const data = await response.json()
 
-      if (pollsError) throw pollsError
-      setPolls((pollsData || []) as Poll[])
+      if (!response.ok) throw new Error(data.error || 'failed to fetch polls')
+      setPolls((data.polls || []) as Poll[])
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'failed to fetch polls')
@@ -52,17 +48,19 @@ export function usePolls(userId?: string | null) {
         return
       }
 
-      const { data: votesData, error: votesError } = await supabase
-        .from('votes')
-        .select('*')
-        .eq('user_id', userId)
+      const response = await fetch('/api/me/votes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData }),
+      })
+      const data = await response.json()
 
-      if (votesError) throw votesError
-      setUserVotes((votesData || []) as UserVote[])
+      if (!response.ok) throw new Error(data.error || 'failed to fetch votes')
+      setUserVotes((data.votes || []) as UserVote[])
     } catch (err) {
       console.error('fetch votes error:', err)
     }
-  }, [userId])
+  }, [initData, userId])
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {

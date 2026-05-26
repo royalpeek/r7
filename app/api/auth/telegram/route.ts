@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
 
 export async function POST(request: NextRequest) {
@@ -9,6 +9,7 @@ export async function POST(request: NextRequest) {
     const telegramUser = getRequestTelegramUser(initData)
     const userId = String(telegramUser.id)
     const username = telegramUser.username || telegramUser.first_name || 'user'
+    const supabase = getSupabaseAdmin()
 
     const { data: existingUser, error: checkError } = await supabase
       .from('users')

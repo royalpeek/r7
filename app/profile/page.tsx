@@ -2,12 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Gift, Users, LogOut, Ticket } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 
 export default function Profile() {
   const [totalVotes, setTotalVotes] = useState<number | null>(null)
-  const { userId, user, loading } = useTelegramUser()
+  const { userId, user, initData, loading } = useTelegramUser()
   const username = user?.username || user?.first_name || null
   const avatarLetter = useMemo(() => (user?.first_name || username || '?')[0].toUpperCase(), [user?.first_name, username])
 
@@ -15,16 +14,18 @@ export default function Profile() {
     if (!userId) return
 
     const fetchVotes = async () => {
-      const { count } = await supabase
-        .from('votes')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
+      const response = await fetch('/api/me/stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData }),
+      })
+      const data = await response.json()
 
-      setTotalVotes(count ?? 0)
+      setTotalVotes(response.ok ? data.totalVotes : 0)
     }
 
     fetchVotes()
-  }, [userId])
+  }, [initData, userId])
 
   return (
     <div className="bg-slate-950 min-h-screen p-4 pb-32">
