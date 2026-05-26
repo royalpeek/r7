@@ -216,6 +216,7 @@ export default function Search() {
             noPercent={noPercent}
             yesPool={selectedPoll.yes_pool}
             noPool={selectedPoll.no_pool}
+            endsAt={selectedPoll.ends_at}
             marketEnded={marketEnded}
             onBack={handleBack}
             onAddMore={() => {

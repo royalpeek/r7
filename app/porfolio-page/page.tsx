@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import ResultsPage from '../components/ResultsPage'
 import StakingModal from '../components/StakingModal'
+import Timer from '../components/Timer'
 import { createPortal } from 'react-dom'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
@@ -111,15 +112,6 @@ export default function Portfolio() {
     month: 'short', day: 'numeric', year: 'numeric'
   })
 
-  const getTimeLeft = (endsAt: string) => {
-    const diff = new Date(endsAt).getTime() - now.getTime()
-    if (diff <= 0) return '00:00:00'
-    const h = Math.floor(diff / 3600000)
-    const m = Math.floor((diff % 3600000) / 60000)
-    const s = Math.floor((diff % 60000) / 1000)
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-  }
-
   // show results page when a card is tapped
   if (selectedPosition) {
     const totalPool = selectedPosition.yes_pool + selectedPosition.no_pool
@@ -138,6 +130,7 @@ export default function Portfolio() {
           noPercent={noPercent}
           yesPool={selectedPosition.yes_pool}
           noPool={selectedPosition.no_pool}
+          endsAt={selectedPosition.ends_at}
           marketEnded={marketEnded}
           onBack={() => {
             haptics.selection()
@@ -272,7 +265,7 @@ export default function Portfolio() {
                   <div className="w-full bg-slate-700 rounded-full h-1.5 mr-4">
                     <div className="bg-cyan-400 h-1.5 rounded-full w-1/2" />
                   </div>
-                  <span className="text-cyan-400 text-xs font-mono whitespace-nowrap">{getTimeLeft(pos.ends_at)}</span>
+                  <Timer endsAt={pos.ends_at} />
                 </div>
               </div>
             ))}

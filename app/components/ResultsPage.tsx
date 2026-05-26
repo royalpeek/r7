@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import PoolHistoryChart from './PoolHistoryChart'
+import Timer from './Timer'
 
 interface ResultsPageProps {
   question: string
@@ -12,6 +13,7 @@ interface ResultsPageProps {
   noPercent: number
   yesPool: number
   noPool: number
+  endsAt: string
   marketEnded?: boolean
   onBack: () => void
   onAddMore: () => void
@@ -27,6 +29,7 @@ export default function ResultsPage({
   noPercent,
   yesPool,
   noPool,
+  endsAt,
   marketEnded = false,
   onBack,
   onAddMore,
@@ -67,9 +70,7 @@ export default function ResultsPage({
             >
               ← Back
             </button>
-            <div className="text-cyan-400 bg-cyan-900 px-3 py-1 rounded text-sm font-mono">
-              00:04:31
-            </div>
+            <Timer endsAt={endsAt} />
           </div>
 
           <div className="bg-slate-800 rounded-xl p-6 mb-8">

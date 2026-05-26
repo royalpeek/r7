@@ -270,6 +270,7 @@ export default function PollCard({ polls, onDetailChange, onPollsChange }: PollC
             noPercent={noPercent}
             yesPool={currentCard.yes_pool}
             noPool={currentCard.no_pool}
+            endsAt={currentCard.ends_at}
             marketEnded={marketEnded}
             onBack={() => updateShowDetail(false)}
             onAddMore={() => {
