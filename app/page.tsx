@@ -423,7 +423,7 @@ export default function Home() {
             className="absolute inset-0 bg-black/60"
             onClick={() => setShowWallet(false)}
           />
-          <div className="relative bg-slate-950 rounded-t-3xl p-6 pb-12 z-10">
+          <div className="relative z-10 max-h-[88dvh] overflow-y-auto rounded-t-3xl bg-slate-950 px-6 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
             <div className="w-10 h-1 bg-slate-700 rounded-full mx-auto mb-6" />
             <button
               onClick={() => setShowWallet(false)}
@@ -461,9 +461,9 @@ export default function Home() {
                 Send Soon
               </button>
             </div>
-            <button className="w-full flex items-center justify-center gap-2 text-slate-400 text-sm py-2">
+            <button className="w-full min-h-11 flex items-center justify-center gap-2 rounded-xl text-slate-400 text-sm">
               <span>🎟️</span>
-              Have a referral code?
+              <span>Have a referral code?</span>
             </button>
           </div>
         </div>
