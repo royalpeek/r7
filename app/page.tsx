@@ -461,10 +461,6 @@ export default function Home() {
                 Send Soon
               </button>
             </div>
-            <button className="w-full min-h-11 flex items-center justify-center gap-2 rounded-xl text-slate-400 text-sm">
-              <span>🎟️</span>
-              <span>Have a referral code?</span>
-            </button>
           </div>
         </div>
       )}
