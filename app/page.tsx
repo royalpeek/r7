@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { X, Wallet, RefreshCw, PlusCircle, Send, QrCode, Filter, Lock, MapPin, Zap } from 'lucide-react'
 import PollCard from './components/PollCard'
+import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { usePolls } from './hooks/usePolls'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { supabase } from '@/lib/supabase'
@@ -11,6 +12,7 @@ import { supabase } from '@/lib/supabase'
 const CATEGORIES = ['Trending', 'New', 'Politics', 'Crypto', 'Sports', 'Tech']
 
 export default function Home() {
+  const haptics = useHapticFeedback()
   const [showWallet, setShowWallet] = useState(false)
   const [showFilter, setShowFilter] = useState(false)
   const [showCreatePoll, setShowCreatePoll] = useState(false)
@@ -160,7 +162,10 @@ export default function Home() {
 
         {isCreator && (
           <button
-            onClick={() => setShowCreatePoll(true)}
+            onClick={() => {
+              haptics.impact('medium')
+              setShowCreatePoll(true)
+            }}
             className="ml-auto flex items-center gap-2 bg-cyan-400 text-black px-4 py-2 rounded-xl font-bold hover:bg-cyan-500 transition"
           >
             <PlusCircle size={18} />

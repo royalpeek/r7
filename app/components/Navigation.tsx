@@ -13,6 +13,23 @@ export default function Navigation() {
   const pathname = usePathname()
 
   const isActive = (path: string) => pathname === path
+  const navItemClass = (path: string) => {
+    const active = isActive(path)
+
+    return `h-12 px-3 rounded-full flex items-center justify-center gap-2 transition-all duration-300 ease-out ${
+      active
+        ? 'min-w-28 bg-cyan-400 text-black shadow-lg shadow-cyan-950/40'
+        : 'min-w-12 text-slate-400 hover:text-slate-300 active:scale-95'
+    }`
+  }
+
+  const labelClass = (path: string) => {
+    const active = isActive(path)
+
+    return `overflow-hidden whitespace-nowrap text-xs font-bold transition-all duration-300 ease-out ${
+      active ? 'max-w-20 opacity-100 translate-x-0' : 'max-w-0 opacity-0 -translate-x-1'
+    }`
+  }
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-slate-950 border-t border-slate-700 p-4">
@@ -20,45 +37,37 @@ export default function Navigation() {
         <Link
           href="/"
           onClick={() => haptics.selection()}
-          className={`flex flex-col items-center gap-2 ${
-            isActive('/') ? 'text-cyan-400' : 'text-slate-400'
-          }`}
+          className={navItemClass('/')}
         >
           <AiOutlineHome size={24} />
-          <span className="text-xs">Home</span>
+          <span className={labelClass('/')}>Home</span>
         </Link>
 
         <Link
           href="/porfolio-page"
           onClick={() => haptics.selection()}
-          className={`flex flex-col items-center gap-2 ${
-            isActive('/porfolio-page') ? 'text-cyan-400' : 'text-slate-400'
-          }`}
+          className={navItemClass('/porfolio-page')}
         >
           <BiChart size={24} />
-          <span className="text-xs">Portfolio</span>
+          <span className={labelClass('/porfolio-page')}>Portfolio</span>
         </Link>
 
         <Link
           href="/search"
           onClick={() => haptics.selection()}
-          className={`flex flex-col items-center gap-2 ${
-            isActive('/search') ? 'text-cyan-400' : 'text-slate-400'
-          }`}
+          className={navItemClass('/search')}
         >
           <AiOutlineSearch size={24} />
-          <span className="text-xs">Search</span>
+          <span className={labelClass('/search')}>Search</span>
         </Link>
 
         <Link
           href="/profile"
           onClick={() => haptics.selection()}
-          className={`flex flex-col items-center gap-2 ${
-            isActive('/profile') ? 'text-cyan-400' : 'text-slate-400'
-          }`}
+          className={navItemClass('/profile')}
         >
           <AiOutlineTrophy size={24} />
-          <span className="text-xs">Profile</span>
+          <span className={labelClass('/profile')}>Profile</span>
         </Link>
       </div>
     </nav>

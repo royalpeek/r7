@@ -41,7 +41,8 @@ export default function PollCard({ polls, onDetailChange }: PollCardProps) {
   const [showDetail, setShowDetail] = useState(false)
 
   const updateShowDetail = (nextShowDetail: boolean) => {
-    haptics.selection()
+    if (nextShowDetail) haptics.impact('light')
+    else haptics.selection()
     setShowDetail(nextShowDetail)
     onDetailChange?.(nextShowDetail)
   }
