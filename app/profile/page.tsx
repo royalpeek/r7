@@ -6,6 +6,7 @@ import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 
 export default function Profile() {
   const [totalVotes, setTotalVotes] = useState<number | null>(null)
+  const [statsError, setStatsError] = useState(false)
   const { userId, user, initData, loading } = useTelegramUser()
   const username = user?.username || user?.first_name || null
   const avatarLetter = useMemo(() => (user?.first_name || username || '?')[0].toUpperCase(), [user?.first_name, username])
@@ -14,14 +15,27 @@ export default function Profile() {
     if (!userId) return
 
     const fetchVotes = async () => {
-      const response = await fetch('/api/me/stats', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData }),
-      })
-      const data = await response.json()
+      try {
+        const response = await fetch('/api/me/stats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ initData }),
+        })
+        const data = await response.json()
 
-      setTotalVotes(response.ok ? data.totalVotes : 0)
+        if (!response.ok) {
+          setStatsError(true)
+          setTotalVotes(0)
+          return
+        }
+
+        setStatsError(false)
+        setTotalVotes(data.totalVotes)
+      } catch (error) {
+        console.error('fetch stats error:', error)
+        setStatsError(true)
+        setTotalVotes(0)
+      }
     }
 
     fetchVotes()
@@ -58,6 +72,12 @@ export default function Profile() {
           <p className="text-slate-400 text-xs mt-1">Total Votes</p>
         </div>
       </div>
+
+      {statsError && (
+        <div className="mb-4 rounded-xl border border-pink-500/40 bg-pink-500/10 px-4 py-3 text-center">
+          <p className="text-pink-200 text-sm">Could not refresh profile stats.</p>
+        </div>
+      )}
 
       {/* badges */}
       <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 mb-4">

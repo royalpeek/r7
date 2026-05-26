@@ -29,6 +29,7 @@ export default function Portfolio() {
   const [showSortMenu, setShowSortMenu] = useState(false)
   const [positions, setPositions] = useState<Position[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const { userId, appUser, initData, updateBalance } = useTelegramUser()
   const balance = Number(appUser?.balance ?? 0)
   const [selectedPosition, setSelectedPosition] = useState<Position | null>(null)
@@ -39,6 +40,7 @@ export default function Portfolio() {
     try {
       if (!userId) return
       setLoading(true)
+      setError(null)
       const response = await fetch('/api/me/positions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -50,6 +52,7 @@ export default function Portfolio() {
       setPositions((data.positions || []) as Position[])
     } catch (err) {
       console.error('fetch error:', err)
+      setError(err instanceof Error ? err.message : 'failed to fetch positions')
     } finally {
       setLoading(false)
     }
@@ -241,11 +244,31 @@ export default function Portfolio() {
 
       <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-48">
         {loading ? (
-          <div className="text-center py-16 text-slate-400">loading...</div>
+          <div className="flex flex-col items-center gap-3 py-16 text-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-cyan-400" />
+            <p className="text-slate-500 text-sm">loading portfolio...</p>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center gap-4 py-16 text-center">
+            <p className="text-white font-semibold">Could not load portfolio</p>
+            <p className="text-slate-500 text-sm">Your positions did not load.</p>
+            <button
+              onClick={() => {
+                haptics.selection()
+                fetchPositions()
+              }}
+              className="rounded-xl bg-cyan-400 px-5 py-3 text-sm font-bold text-black active:scale-95 transition"
+            >
+              Retry
+            </button>
+          </div>
         ) : activeTab === 'active' ? (
           <div className="space-y-4">
             {active.length === 0 ? (
-              <div className="text-center py-16 text-slate-400">no active positions</div>
+              <div className="text-center py-16">
+                <p className="text-white font-semibold">No active positions</p>
+                <p className="text-slate-500 text-sm mt-2">Votes you place on live markets will appear here.</p>
+              </div>
             ) : sortPositions(active).map(pos => (
               <div
                 key={pos.id}
@@ -277,7 +300,10 @@ export default function Portfolio() {
         ) : (
           <div className="space-y-4">
             {history.length === 0 ? (
-              <div className="text-center py-16 text-slate-400">no history yet</div>
+              <div className="text-center py-16">
+                <p className="text-white font-semibold">No history yet</p>
+                <p className="text-slate-500 text-sm mt-2">Ended markets you joined will appear here.</p>
+              </div>
             ) : sortPositions(history).map(pos => (
               <div
                 key={pos.id}

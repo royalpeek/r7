@@ -33,15 +33,27 @@ export default function Search() {
   const [polls, setPolls] = useState<Poll[]>([])
   const [selectedPoll, setSelectedPoll] = useState<Poll | null>(null)
   const [userVote, setUserVote] = useState<UserVote | null>(null)
+  const [loadingPolls, setLoadingPolls] = useState(true)
+  const [pollsError, setPollsError] = useState<string | null>(null)
+  const [voteError, setVoteError] = useState<string | null>(null)
   const { userId, appUser, initData, updateBalance } = useTelegramUser()
   const balance = Number(appUser?.balance ?? 0)
   const [showStakingModal, setShowStakingModal] = useState(false)
   const [stakingDirection, setStakingDirection] = useState<'yes' | 'no' | null>(null)
 
   const fetchPolls = useCallback(async () => {
-    const response = await fetch('/api/polls')
-    const data = await response.json()
-    if (response.ok) setPolls(data.polls as Poll[])
+    try {
+      setLoadingPolls(true)
+      setPollsError(null)
+      const response = await fetch('/api/polls')
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'failed to fetch polls')
+      setPolls(data.polls as Poll[])
+    } catch (error) {
+      setPollsError(error instanceof Error ? error.message : 'failed to fetch polls')
+    } finally {
+      setLoadingPolls(false)
+    }
   }, [])
 
   useEffect(() => {
@@ -59,26 +71,35 @@ export default function Search() {
   }, [searchTerm, polls])
 
   const fetchUserVote = async (pollId: string) => {
-    const response = await fetch('/api/me/votes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ initData }),
-    })
-    const data = await response.json()
-    const votes = response.ok ? (data.votes as UserVote[]) : []
-    setUserVote(votes.find(vote => vote.poll_id === pollId) || null)
+    try {
+      const response = await fetch('/api/me/votes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'failed to fetch your vote')
+      const votes = data.votes as UserVote[]
+      setUserVote(votes.find(vote => vote.poll_id === pollId) || null)
+    } catch (error) {
+      console.error('fetch vote error:', error)
+      setUserVote(null)
+      haptics.notification('warning')
+    }
   }
 
   const handleSelectPoll = async (poll: Poll) => {
     haptics.selection()
     setSelectedPoll(poll)
     setUserVote(null)
+    setVoteError(null)
     if (userId) await fetchUserVote(poll.id)
   }
 
   const handleConfirmVote = async (amount: number) => {
     if (!stakingDirection || !selectedPoll || !userId) return
     try {
+      setVoteError(null)
       const response = await fetch('/api/votes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -101,7 +122,7 @@ export default function Search() {
     } catch (error) {
       haptics.notification('error')
       console.error('vote error:', error)
-      alert('vote failed. try again.')
+      setVoteError(error instanceof Error ? error.message : 'vote failed. try again.')
     }
   }
 
@@ -270,6 +291,11 @@ export default function Search() {
           </div>
 
           <div className="p-4 pb-8">
+            {voteError && (
+              <p className="mb-3 rounded-xl border border-pink-500/40 bg-pink-500/10 px-4 py-3 text-center text-sm text-pink-200">
+                {voteError}
+              </p>
+            )}
             <div className="flex gap-3">
               <button
                 onClick={() => {
@@ -327,11 +353,38 @@ export default function Search() {
       </div>
 
       <div className="space-y-3">
-        {filteredPolls.length === 0 && searchTerm.trim() !== '' && (
-          <p className="text-slate-500 text-center mt-8">no polls found</p>
+        {loadingPolls && (
+          <div className="flex flex-col items-center gap-3 py-16 text-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-cyan-400" />
+            <p className="text-slate-500 text-sm">loading markets...</p>
+          </div>
         )}
 
-        {filteredPolls.map(poll => {
+        {!loadingPolls && pollsError && (
+          <div className="flex flex-col items-center gap-4 py-16 text-center">
+            <p className="text-white font-semibold">Could not search markets</p>
+            <p className="text-slate-500 text-sm">The market list did not load.</p>
+            <button
+              onClick={() => {
+                haptics.selection()
+                fetchPolls()
+              }}
+              className="rounded-xl bg-cyan-400 px-5 py-3 text-sm font-bold text-black active:scale-95 transition"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {!loadingPolls && !pollsError && searchTerm.trim() === '' && (
+          <p className="text-slate-500 text-center mt-8">Search by market title.</p>
+        )}
+
+        {!loadingPolls && !pollsError && filteredPolls.length === 0 && searchTerm.trim() !== '' && (
+          <p className="text-slate-500 text-center mt-8">No matching markets found.</p>
+        )}
+
+        {!loadingPolls && !pollsError && filteredPolls.map(poll => {
           const ended = new Date(poll.ends_at) <= new Date()
           const total = poll.yes_pool + poll.no_pool
           const yp = total > 0 ? Math.round((poll.yes_pool / total) * 100) : 50

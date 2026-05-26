@@ -133,6 +133,12 @@ export default function StakingModal({ question, voteDirection, availableBalance
               {hasEnoughBalance ? `Confirm ${voteDirection} · $${total.toFixed(2)}` : 'Insufficient balance'}
             </button>
           </div>
+
+          {!hasEnoughBalance && (
+            <p className="text-center text-xs text-pink-300">
+              You need ${total.toFixed(2)} USDT including fee. Available balance is ${availableBalance.toFixed(2)} USDT.
+            </p>
+          )}
         </div>
       </div>
     </div>

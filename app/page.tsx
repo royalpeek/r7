@@ -29,7 +29,7 @@ export default function Home() {
   const [createError, setCreateError] = useState<string | null>(null)
 
   const { userId, appUser, initData, loading: userLoading } = useTelegramUser()
-  const { polls, loading: pollsLoading, refetch } = usePolls(userId, initData)
+  const { polls, loading: pollsLoading, error: pollsError, refetch } = usePolls(userId, initData)
   const isCreator = appUser?.is_creator || false
   const [balanceOverride, setBalanceOverride] = useState<number | null>(null)
   const balance = balanceOverride ?? Number(appUser?.balance ?? 0)
@@ -176,8 +176,28 @@ export default function Home() {
       {/* poll card fills remaining space */}
       <div className="flex-1 overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-slate-400">loading polls...</p>
+          <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
+            <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-700 border-t-cyan-400" />
+            <div>
+              <p className="text-white font-semibold">Loading markets</p>
+              <p className="text-slate-500 text-sm mt-1">Getting the latest polls ready.</p>
+            </div>
+          </div>
+        ) : pollsError ? (
+          <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
+            <div className="rounded-2xl border border-pink-500/40 bg-pink-500/10 px-5 py-4">
+              <p className="text-white font-semibold">Could not load markets</p>
+              <p className="text-slate-400 text-sm mt-1">Check your connection and try again.</p>
+            </div>
+            <button
+              onClick={() => {
+                haptics.selection()
+                refetch(true)
+              }}
+              className="rounded-xl bg-cyan-400 px-5 py-3 text-sm font-bold text-black active:scale-95 transition"
+            >
+              Retry
+            </button>
           </div>
         ) : filteredPolls.length > 0 ? (
           <PollCard
@@ -188,8 +208,15 @@ export default function Home() {
             onBalanceChange={setBalanceOverride}
           />
         ) : (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-slate-400">no polls yet</p>
+          <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+            <p className="text-white font-semibold">
+              {filterStatus === 'active' ? 'No active markets' : 'No ended markets'}
+            </p>
+            <p className="text-slate-500 text-sm mt-2">
+              {filterStatus === 'active'
+                ? 'New polls will appear here when they are created.'
+                : 'Finished polls will appear here after they close.'}
+            </p>
           </div>
         )}
       </div>

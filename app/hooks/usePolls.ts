@@ -29,8 +29,10 @@ export function usePolls(userId?: string | null, initData = '') {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchPolls = useCallback(async () => {
+  const fetchPolls = useCallback(async (showLoading = false) => {
     try {
+      if (showLoading) setLoading(true)
+      setError(null)
       const response = await fetch('/api/polls')
       const data = await response.json()
 
@@ -65,16 +67,16 @@ export function usePolls(userId?: string | null, initData = '') {
     }
   }, [initData, userId])
 
-  const refetch = useCallback(async () => {
+  const refetch = useCallback(async (showLoading = false) => {
     await Promise.all([
-      fetchPolls(),
+      fetchPolls(showLoading),
       fetchUserVotes(),
     ])
   }, [fetchPolls, fetchUserVotes])
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
-      refetch()
+      refetch(true)
     }, 0)
 
     const channel = supabase
