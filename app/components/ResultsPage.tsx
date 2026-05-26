@@ -60,7 +60,7 @@ export default function ResultsPage({
   const totalVolume = yesPool + noPool
 
   return (
-    <div className="fixed inset-0 bg-slate-950 z-40 flex flex-col">
+    <div className="fixed inset-0 bg-slate-950 z-[60] flex flex-col">
       <div className="flex-1 overflow-y-auto p-4">
         <div className="max-w-sm mx-auto">
           <div className="flex items-center justify-between mb-6">
@@ -133,12 +133,12 @@ export default function ResultsPage({
         </div>
       </div>
 
-      <div className="p-4 pb-8 bg-slate-950">
+      <div className="border-t border-slate-800 bg-slate-950 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         <div className="flex gap-3 max-w-sm mx-auto">
           <button
             onClick={onAddMore}
             disabled={marketEnded}
-            className={`flex-1 text-black font-bold py-4 rounded-2xl ${
+            className={`flex-1 text-black font-bold py-3.5 rounded-2xl ${
               voteDirection === 'YES' ? 'bg-cyan-400 hover:bg-cyan-500' : 'bg-pink-500 hover:bg-pink-600'
             } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
@@ -147,7 +147,7 @@ export default function ResultsPage({
           <button
             onClick={onChangeVote}
             disabled={marketEnded}
-            className={`flex-1 text-black font-bold py-4 rounded-2xl ${
+            className={`flex-1 text-black font-bold py-3.5 rounded-2xl ${
               voteDirection === 'YES' ? 'bg-pink-500 hover:bg-pink-600' : 'bg-cyan-400 hover:bg-cyan-500'
             } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
