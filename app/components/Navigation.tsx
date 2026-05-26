@@ -6,8 +6,10 @@ import { AiOutlineHome } from 'react-icons/ai'
 import { BiChart } from 'react-icons/bi'
 import { AiOutlineSearch } from 'react-icons/ai'
 import { AiOutlineTrophy } from 'react-icons/ai'
+import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 
 export default function Navigation() {
+  const haptics = useHapticFeedback()
   const pathname = usePathname()
 
   const isActive = (path: string) => pathname === path
@@ -17,6 +19,7 @@ export default function Navigation() {
       <div className="max-w-md mx-auto flex items-center justify-around">
         <Link
           href="/"
+          onClick={() => haptics.selection()}
           className={`flex flex-col items-center gap-2 ${
             isActive('/') ? 'text-cyan-400' : 'text-slate-400'
           }`}
@@ -27,6 +30,7 @@ export default function Navigation() {
 
         <Link
           href="/porfolio-page"
+          onClick={() => haptics.selection()}
           className={`flex flex-col items-center gap-2 ${
             isActive('/porfolio-page') ? 'text-cyan-400' : 'text-slate-400'
           }`}
@@ -37,6 +41,7 @@ export default function Navigation() {
 
         <Link
           href="/search"
+          onClick={() => haptics.selection()}
           className={`flex flex-col items-center gap-2 ${
             isActive('/search') ? 'text-cyan-400' : 'text-slate-400'
           }`}
@@ -47,6 +52,7 @@ export default function Navigation() {
 
         <Link
           href="/profile"
+          onClick={() => haptics.selection()}
           className={`flex flex-col items-center gap-2 ${
             isActive('/profile') ? 'text-cyan-400' : 'text-slate-400'
           }`}

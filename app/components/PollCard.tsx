@@ -7,6 +7,7 @@ import ResultsPage from './ResultsPage'
 import MarketEnded from './MarketEnded'
 import PoolHistoryChart from './PoolHistoryChart'
 import Timer from './Timer'
+import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { usePolls } from '@/app/hooks/usePolls'
 
@@ -26,6 +27,7 @@ type PollCardProps = {
 }
 
 export default function PollCard({ polls, onDetailChange }: PollCardProps) {
+  const haptics = useHapticFeedback()
   const [currentIndex, setCurrentIndex] = useState(0)
   const currentCard = polls && polls.length > 0 ? polls[currentIndex] : null
 
@@ -39,8 +41,15 @@ export default function PollCard({ polls, onDetailChange }: PollCardProps) {
   const [showDetail, setShowDetail] = useState(false)
 
   const updateShowDetail = (nextShowDetail: boolean) => {
+    haptics.selection()
     setShowDetail(nextShowDetail)
     onDetailChange?.(nextShowDetail)
+  }
+
+  const openStakingModal = (direction: 'yes' | 'no') => {
+    haptics.impact('medium')
+    setStakingDirection(direction)
+    setShowStakingModal(true)
   }
 
   // detail page swipe state
@@ -104,8 +113,7 @@ export default function PollCard({ polls, onDetailChange }: PollCardProps) {
     resetDetailDrag()
 
     if (detailAxis === 'x' && Math.abs(dx) > 110) {
-      setStakingDirection(dx > 0 ? 'yes' : 'no')
-      setShowStakingModal(true)
+      openStakingModal(dx > 0 ? 'yes' : 'no')
     }
   }
 
@@ -152,15 +160,17 @@ export default function PollCard({ polls, onDetailChange }: PollCardProps) {
     const marketEnded = currentCard && new Date(currentCard.ends_at) < new Date()
 
     if (axis === 'y' && Math.abs(dy) > 110) {
-      if (dy < 0) setCurrentIndex(i => Math.min(i + 1, polls.length - 1))
-      else setCurrentIndex(i => Math.max(i - 1, 0))
+      setCurrentIndex(i => {
+        const nextIndex = dy < 0 ? Math.min(i + 1, polls.length - 1) : Math.max(i - 1, 0)
+        if (nextIndex !== i) haptics.selection()
+        return nextIndex
+      })
       return
     }
 
     // only allow horizontal swipe if market is active
     if (axis === 'x' && Math.abs(dx) > 110 && !marketEnded) {
-      setStakingDirection(dx > 0 ? 'yes' : 'no')
-      setShowStakingModal(true)
+      openStakingModal(dx > 0 ? 'yes' : 'no')
       return
     }
   }
@@ -194,9 +204,11 @@ export default function PollCard({ polls, onDetailChange }: PollCardProps) {
 
       await new Promise(resolve => setTimeout(resolve, 1000))
 
+      haptics.notification('success')
       setShowStakingModal(false)
       setStakingDirection(null)
     } catch (error) {
+      haptics.notification('error')
       console.error('vote error:', error)
       const errorMessage = error instanceof Error ? error.message : JSON.stringify(error)
       alert(`vote failed: ${errorMessage}`)
@@ -256,14 +268,12 @@ export default function PollCard({ polls, onDetailChange }: PollCardProps) {
             onBack={() => updateShowDetail(false)}
             onAddMore={() => {
               if (!marketEnded) {
-                setStakingDirection(userVote.direction === 'yes' ? 'yes' : 'no')
-                setShowStakingModal(true)
+                openStakingModal(userVote.direction === 'yes' ? 'yes' : 'no')
               }
             }}
             onChangeVote={() => {
               if (!marketEnded) {
-                setStakingDirection(userVote.direction === 'yes' ? 'no' : 'yes')
-                setShowStakingModal(true)
+                openStakingModal(userVote.direction === 'yes' ? 'no' : 'yes')
               }
             }}
           />
@@ -409,13 +419,13 @@ export default function PollCard({ polls, onDetailChange }: PollCardProps) {
           <div className="p-4 pb-24">
             <div className="flex gap-3">
               <button
-                onClick={() => { setStakingDirection('no'); setShowStakingModal(true) }}
+                onClick={() => openStakingModal('no')}
                 className="flex-1 bg-pink-500 text-black font-bold py-4 rounded-2xl"
               >
                 STAKE NO
               </button>
               <button
-                onClick={() => { setStakingDirection('yes'); setShowStakingModal(true) }}
+                onClick={() => openStakingModal('yes')}
                 className="flex-1 bg-cyan-400 text-black font-bold py-4 rounded-2xl"
               >
                 STAKE YES

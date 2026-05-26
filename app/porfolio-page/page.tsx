@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import ResultsPage from '../components/ResultsPage'
 import StakingModal from '../components/StakingModal'
 import { createPortal } from 'react-dom'
+import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 
 type Position = {
@@ -22,6 +23,7 @@ type Position = {
 type SortOption = 'newest' | 'oldest' | 'highest_stake' | 'lowest_stake'
 
 export default function Portfolio() {
+  const haptics = useHapticFeedback()
   const [activeTab, setActiveTab] = useState('active')
   const [sortBy, setSortBy] = useState<SortOption>('newest')
   const [showSortMenu, setShowSortMenu] = useState(false)
@@ -98,10 +100,12 @@ export default function Portfolio() {
       })
       if (!response.ok) throw new Error('vote failed')
       await new Promise(resolve => setTimeout(resolve, 1000))
+      haptics.notification('success')
       setShowStakingModal(false)
       setStakingDirection(null)
       await fetchPositions()
     } catch (error) {
+      haptics.notification('error')
       console.error('vote error:', error)
       alert('vote failed. try again.')
     }
@@ -159,12 +163,17 @@ export default function Portfolio() {
           yesPool={selectedPosition.yes_pool}
           noPool={selectedPosition.no_pool}
           marketEnded={marketEnded}
-          onBack={() => setSelectedPosition(null)}
+          onBack={() => {
+            haptics.selection()
+            setSelectedPosition(null)
+          }}
           onAddMore={() => {
+            haptics.impact('medium')
             setStakingDirection(selectedPosition.direction)
             setShowStakingModal(true)
           }}
           onChangeVote={() => {
+            haptics.impact('medium')
             setStakingDirection(selectedPosition.direction === 'yes' ? 'no' : 'yes')
             setShowStakingModal(true)
           }}
@@ -207,13 +216,19 @@ export default function Portfolio() {
         <div className="flex items-center justify-between border-b border-slate-700">
           <div className="flex gap-4">
             <button
-              onClick={() => setActiveTab('active')}
+              onClick={() => {
+                haptics.selection()
+                setActiveTab('active')
+              }}
               className={`pb-4 font-semibold ${activeTab === 'active' ? 'text-white border-b-2 border-cyan-400' : 'text-slate-400'}`}
             >
               Active ({loading ? '...' : active.length})
             </button>
             <button
-              onClick={() => setActiveTab('history')}
+              onClick={() => {
+                haptics.selection()
+                setActiveTab('history')
+              }}
               className={`pb-4 font-semibold ${activeTab === 'history' ? 'text-white border-b-2 border-cyan-400' : 'text-slate-400'}`}
             >
               History ({loading ? '...' : history.length})
@@ -222,7 +237,10 @@ export default function Portfolio() {
 
           <div className="relative pb-4">
             <button
-              onClick={() => setShowSortMenu(!showSortMenu)}
+              onClick={() => {
+                haptics.selection()
+                setShowSortMenu(!showSortMenu)
+              }}
               className="text-slate-400 text-sm flex items-center gap-1"
             >
               ↕ {sortLabel[sortBy]}
@@ -232,7 +250,11 @@ export default function Portfolio() {
                 {(Object.keys(sortLabel) as SortOption[]).map(option => (
                   <button
                     key={option}
-                    onClick={() => { setSortBy(option); setShowSortMenu(false) }}
+                    onClick={() => {
+                      haptics.selection()
+                      setSortBy(option)
+                      setShowSortMenu(false)
+                    }}
                     className={`w-full text-left px-4 py-3 text-sm ${sortBy === option ? 'text-cyan-400 bg-slate-700' : 'text-slate-300'}`}
                   >
                     {sortLabel[option]}
@@ -255,7 +277,10 @@ export default function Portfolio() {
               <div
                 key={pos.id}
                 className="bg-slate-900 border border-slate-700 rounded-2xl p-5 cursor-pointer active:opacity-70"
-                onClick={() => setSelectedPosition(pos)}
+                onClick={() => {
+                  haptics.selection()
+                  setSelectedPosition(pos)
+                }}
               >
                 <div className="flex items-start justify-between mb-3">
                   <p className="text-white font-semibold text-sm flex-1 pr-4">{pos.question}</p>
@@ -284,7 +309,10 @@ export default function Portfolio() {
               <div
                 key={pos.id}
                 className="bg-slate-900 border border-slate-700 rounded-2xl p-5 cursor-pointer active:opacity-70"
-                onClick={() => setSelectedPosition(pos)}
+                onClick={() => {
+                  haptics.selection()
+                  setSelectedPosition(pos)
+                }}
               >
                 <div className="flex items-start justify-between mb-3">
                   <p className="text-white font-semibold text-sm flex-1 pr-4">{pos.question}</p>

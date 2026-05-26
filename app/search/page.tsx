@@ -8,6 +8,7 @@ import StakingModal from '../components/StakingModal'
 import MarketEnded from '../components/MarketEnded'
 import PoolHistoryChart from '../components/PoolHistoryChart'
 import Timer from '../components/Timer'
+import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 
 type Poll = {
@@ -28,6 +29,7 @@ type UserVote = {
 }
 
 export default function Search() {
+  const haptics = useHapticFeedback()
   const [searchTerm, setSearchTerm] = useState('')
   const [polls, setPolls] = useState<Poll[]>([])
   const [selectedPoll, setSelectedPoll] = useState<Poll | null>(null)
@@ -66,6 +68,7 @@ export default function Search() {
   }
 
   const handleSelectPoll = async (poll: Poll) => {
+    haptics.selection()
     setSelectedPoll(poll)
     setUserVote(null)
     if (userId) await fetchUserVote(poll.id, userId)
@@ -86,17 +89,20 @@ export default function Search() {
       })
       if (!response.ok) throw new Error('vote failed')
       await new Promise(resolve => setTimeout(resolve, 1000))
+      haptics.notification('success')
       setShowStakingModal(false)
       setStakingDirection(null)
       await fetchUserVote(selectedPoll.id, userId)
       await fetchPolls()
     } catch (error) {
+      haptics.notification('error')
       console.error('vote error:', error)
       alert('vote failed. try again.')
     }
   }
 
   const handleBack = () => {
+    haptics.selection()
     setSelectedPoll(null)
     setUserVote(null)
     setShowStakingModal(false)
@@ -211,8 +217,16 @@ export default function Search() {
             noPool={selectedPoll.no_pool}
             marketEnded={marketEnded}
             onBack={handleBack}
-            onAddMore={() => { setStakingDirection(userVote.direction); setShowStakingModal(true) }}
-            onChangeVote={() => { setStakingDirection(userVote.direction === 'yes' ? 'no' : 'yes'); setShowStakingModal(true) }}
+            onAddMore={() => {
+              haptics.impact('medium')
+              setStakingDirection(userVote.direction)
+              setShowStakingModal(true)
+            }}
+            onChangeVote={() => {
+              haptics.impact('medium')
+              setStakingDirection(userVote.direction === 'yes' ? 'no' : 'yes')
+              setShowStakingModal(true)
+            }}
           />
           {showStakingModal && stakingDirection && typeof document !== 'undefined' &&
             createPortal(
@@ -252,13 +266,21 @@ export default function Search() {
           <div className="p-4 pb-8">
             <div className="flex gap-3">
               <button
-                onClick={() => { setStakingDirection('no'); setShowStakingModal(true) }}
+                onClick={() => {
+                  haptics.impact('medium')
+                  setStakingDirection('no')
+                  setShowStakingModal(true)
+                }}
                 className="flex-1 bg-pink-500 text-black font-bold py-4 rounded-2xl"
               >
                 STAKE NO
               </button>
               <button
-                onClick={() => { setStakingDirection('yes'); setShowStakingModal(true) }}
+                onClick={() => {
+                  haptics.impact('medium')
+                  setStakingDirection('yes')
+                  setShowStakingModal(true)
+                }}
                 className="flex-1 bg-cyan-400 text-black font-bold py-4 rounded-2xl"
               >
                 STAKE YES

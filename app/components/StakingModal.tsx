@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 
 interface StakingModalProps {
   question: string
@@ -10,6 +11,7 @@ interface StakingModalProps {
 }
 
 export default function StakingModal({ question, voteDirection, onConfirm, onCancel }: StakingModalProps) {
+  const haptics = useHapticFeedback()
   const [amount, setAmount] = useState(5)
   const [vh, setVh] = useState(0)
 
@@ -75,7 +77,10 @@ export default function StakingModal({ question, voteDirection, onConfirm, onCan
             {predefinedAmounts.map((preset) => (
               <button
                 key={preset}
-                onClick={() => setAmount(preset)}
+                onClick={() => {
+                  haptics.selection()
+                  setAmount(preset)
+                }}
                 className={`py-3 rounded-lg font-bold text-sm transition ${
                   amount === preset
                     ? `${buttonColor} text-black`
@@ -104,13 +109,19 @@ export default function StakingModal({ question, voteDirection, onConfirm, onCan
 
           <div className="flex gap-3 mb-4">
             <button
-              onClick={onCancel}
+              onClick={() => {
+                haptics.selection()
+                onCancel()
+              }}
               className="flex-1 bg-slate-800 text-white font-bold py-3 rounded-lg border border-slate-700 hover:bg-slate-700"
             >
               Cancel
             </button>
             <button
-              onClick={() => onConfirm(amount)}
+              onClick={() => {
+                haptics.impact('medium')
+                onConfirm(amount)
+              }}
               className={`flex-1 ${buttonColor} text-black font-bold py-3 rounded-lg hover:opacity-90`}
             >
               Confirm {voteDirection} · ${total.toFixed(2)}
