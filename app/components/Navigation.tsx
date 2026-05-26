@@ -20,10 +20,10 @@ export default function Navigation() {
   const navItemClass = (path: string) => {
     const active = isActive(path)
 
-    return `h-10 px-2.5 rounded-full flex items-center justify-center gap-1.5 transition-all duration-300 ease-out ${
+    return `h-10 flex-shrink-0 rounded-full flex items-center justify-center gap-1.5 transition-all duration-300 ease-out ${
       active
-        ? 'min-w-20 bg-cyan-400 text-black shadow-md shadow-cyan-950/30'
-        : 'min-w-10 text-slate-400 hover:text-slate-300 active:scale-95'
+        ? 'w-20 bg-cyan-400 text-black shadow-sm shadow-cyan-950/30'
+        : 'w-10 text-slate-400 hover:text-slate-300 active:scale-95'
     }`
   }
 
@@ -31,19 +31,19 @@ export default function Navigation() {
     const active = isActive(path)
 
     return `overflow-hidden whitespace-nowrap text-xs font-bold transition-all duration-300 ease-out ${
-      active ? 'max-w-16 opacity-100 translate-x-0' : 'max-w-0 opacity-0 -translate-x-1'
+      active ? 'max-w-14 opacity-100 translate-x-0' : 'max-w-0 opacity-0 -translate-x-1'
     }`
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-slate-950 border-t border-slate-800 px-3 py-3">
-      <div className="max-w-md mx-auto flex items-center justify-around">
+    <nav className="fixed inset-x-0 bottom-0 z-50 bg-slate-950 border-t border-slate-800 px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+      <div className="mx-auto flex h-12 max-w-md items-center justify-between gap-1">
         <Link
           href="/"
           onClick={() => haptics.selection()}
           className={navItemClass('/')}
         >
-          <AiOutlineHome size={24} />
+          <AiOutlineHome size={22} />
           <span className={labelClass('/')}>Home</span>
         </Link>
 
@@ -52,7 +52,7 @@ export default function Navigation() {
           onClick={() => haptics.selection()}
           className={navItemClass('/porfolio-page')}
         >
-          <BiChart size={24} />
+          <BiChart size={22} />
           <span className={labelClass('/porfolio-page')}>Portfolio</span>
         </Link>
 
@@ -61,7 +61,7 @@ export default function Navigation() {
           onClick={() => haptics.selection()}
           className={navItemClass('/search')}
         >
-          <AiOutlineSearch size={24} />
+          <AiOutlineSearch size={22} />
           <span className={labelClass('/search')}>Search</span>
         </Link>
 
@@ -70,7 +70,7 @@ export default function Navigation() {
           onClick={() => haptics.selection()}
           className={navItemClass('/profile')}
         >
-          <AiOutlineUser size={24} />
+          <AiOutlineUser size={22} />
           <span className={labelClass('/profile')}>Profile</span>
         </Link>
 
@@ -80,7 +80,7 @@ export default function Navigation() {
             onClick={() => haptics.selection()}
             className={navItemClass('/admin')}
           >
-            <AiOutlineSetting size={24} />
+            <AiOutlineSetting size={22} />
             <span className={labelClass('/admin')}>Admin</span>
           </Link>
         )}
