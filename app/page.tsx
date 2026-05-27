@@ -41,6 +41,9 @@ export default function Home() {
   const [isLocal, setIsLocal] = useState(false)
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
+  const [createReasons, setCreateReasons] = useState<string[]>([])
+  const [createSuggestion, setCreateSuggestion] = useState<string | null>(null)
+  const [suggestedTitle, setSuggestedTitle] = useState<string | null>(null)
   const [quotaLoading, setQuotaLoading] = useState(false)
   const [quota, setQuota] = useState<{
     canCreate: boolean
@@ -173,6 +176,9 @@ export default function Home() {
 
     setCreating(true)
     setCreateError(null)
+    setCreateReasons([])
+    setCreateSuggestion(null)
+    setSuggestedTitle(null)
 
     try {
       const response = await fetch('/api/polls', {
@@ -187,7 +193,13 @@ export default function Home() {
       })
       const data = await response.json()
 
-      if (!response.ok) throw new Error(data.error || 'failed to create poll')
+      if (!response.ok) {
+        setCreateError(data.error || 'Market did not pass moderation.')
+        setCreateReasons(Array.isArray(data.reasons) ? data.reasons : [])
+        setCreateSuggestion(data.suggestion || null)
+        setSuggestedTitle(data.suggestedTitle || null)
+        return
+      }
 
       // reset form and close modal
       setPollTitle('')
@@ -195,12 +207,18 @@ export default function Home() {
       setIsPrivate(false)
       setIsLocal(false)
       setShowCreatePoll(false)
+      setCreateReasons([])
+      setCreateSuggestion(null)
+      setSuggestedTitle(null)
       await Promise.all([
         refetch(),
         fetchCreatorQuota(),
       ])
     } catch (error) {
       setCreateError(error instanceof Error ? error.message : 'failed to create poll. try again.')
+      setCreateReasons([])
+      setCreateSuggestion(null)
+      setSuggestedTitle(null)
     } finally {
       setCreating(false)
     }
@@ -366,6 +384,9 @@ export default function Home() {
               onClick={() => {
                 setShowCreatePoll(false)
                 setCreateError(null)
+                setCreateReasons([])
+                setCreateSuggestion(null)
+                setSuggestedTitle(null)
                 setPollTitle('')
                 setPollDescription('')
                 setIsPrivate(false)
@@ -485,6 +506,33 @@ export default function Home() {
             {createError && (
               <div className="mb-4 rounded-xl border border-pink-500/40 bg-pink-500/10 px-4 py-3">
                 <p className="text-sm font-semibold text-pink-100">{createError}</p>
+                {createReasons.length > 1 && (
+                  <div className="mt-3 space-y-1">
+                    {createReasons.slice(1).map(reason => (
+                      <p key={reason} className="text-xs font-medium text-pink-200">- {reason}</p>
+                    ))}
+                  </div>
+                )}
+                {createSuggestion && (
+                  <div className="mt-4 rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-3 py-2">
+                    <p className="text-xs font-bold uppercase tracking-wide text-cyan-300">Try this</p>
+                    <p className="mt-1 text-sm font-semibold text-cyan-50">{createSuggestion}</p>
+                    {suggestedTitle && (
+                      <button
+                        onClick={() => {
+                          setPollTitle(suggestedTitle)
+                          setCreateError(null)
+                          setCreateReasons([])
+                          setCreateSuggestion(null)
+                          setSuggestedTitle(null)
+                        }}
+                        className="mt-3 rounded-lg bg-cyan-400 px-3 py-2 text-xs font-bold text-black active:scale-95 transition"
+                      >
+                        Use suggestion
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             )}
             <button

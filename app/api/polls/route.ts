@@ -89,6 +89,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         error: moderation.reasons[0] || 'Market did not pass moderation',
         reasons: moderation.reasons,
+        suggestion: moderation.suggestion,
+        suggestedTitle: moderation.suggestedTitle,
         similarMarket: moderation.similarMarket,
       }, { status: 400 })
     }

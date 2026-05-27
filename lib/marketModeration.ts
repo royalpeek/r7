@@ -15,6 +15,8 @@ export type MarketModerationResult = {
   normalizedQuestion: string
   category: string
   reasons: string[]
+  suggestion?: string
+  suggestedTitle?: string
   similarMarket?: {
     id: string
     question: string
@@ -145,6 +147,63 @@ function detectCategory(question: string, description?: string) {
   return 'other'
 }
 
+function buildSuggestion(question: string, reasons: string[]) {
+  const lowerQuestion = question.toLowerCase()
+
+  if (reasons.some(reason => reason.includes('A-or-B'))) {
+    return {
+      suggestion: 'Try rephrasing with "over" or "more than". Example: "Should X focus on A over B?"',
+    }
+  }
+
+  if (/\b(reduce|lower)\b.*\b(cost|costs|prices)\b/i.test(question)) {
+    return {
+      suggestion: 'Try a cleaner opinion frame.',
+      suggestedTitle: 'Are prepaid meters better for household electricity budgeting?',
+    }
+  }
+
+  if (/\bfairer|fairness|fair\b/i.test(question)) {
+    return {
+      suggestion: 'Try asking the direct policy preference instead of predicting fairness.',
+      suggestedTitle: 'Should vote switching be limited in R7 markets?',
+    }
+  }
+
+  if (!allowedOpeners.includes(question.split(/\s+/)[0]?.replace(/[^a-z]/gi, '').toLowerCase())) {
+    const cleanedQuestion = question
+      .replace(/^\b(of|the|a|an)\b\s+/i, '')
+      .replace(/\?*$/, '')
+      .trim()
+
+    if (lowerQuestion.includes('crypto projects') && lowerQuestion.includes('scams')) {
+      return {
+        suggestion: 'Try adding a clear YES/NO opener.',
+        suggestedTitle: 'Are most new crypto projects copies or scams?',
+      }
+    }
+
+    return cleanedQuestion
+      ? {
+          suggestion: 'Try adding a clear YES/NO opener.',
+          suggestedTitle: `Is ${cleanedQuestion}?`,
+        }
+      : {
+          suggestion: 'Try starting with "Is", "Should", "Would", "Will", or "Can".',
+        }
+  }
+
+  if (reasons.some(reason => reason.includes('similar market'))) {
+    return {
+      suggestion: 'Try a more specific angle, time period, or audience so it is clearly different.',
+    }
+  }
+
+  return {
+    suggestion: 'Try making it a broad public opinion question that can be answered cleanly with YES or NO.',
+  }
+}
+
 export function moderateMarketQuestion({
   question,
   description,
@@ -200,12 +259,15 @@ export function moderateMarketQuestion({
   if (similarMarket && similarMarket.score >= 0.72) {
     reasons.push('A very similar market already exists.')
   }
+  const rewrite = reasons.length > 0 ? buildSuggestion(normalizedQuestion, reasons) : undefined
 
   return {
     approved: reasons.length === 0,
     normalizedQuestion,
     category: normalizedCategory,
     reasons,
+    suggestion: rewrite?.suggestion,
+    suggestedTitle: rewrite?.suggestedTitle,
     similarMarket: similarMarket && similarMarket.score >= 0.72 ? similarMarket : undefined,
   }
 }
