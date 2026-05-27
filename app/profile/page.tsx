@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Gift, Users, LogOut, Ticket } from 'lucide-react'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
+import { buildReferralStartParam } from '@/lib/marketDeepLink'
 
 export default function Profile() {
   const [totalVotes, setTotalVotes] = useState<number | null>(null)
@@ -64,9 +65,13 @@ export default function Profile() {
 
   const handleCopyReferralCode = async () => {
     if (!referralCode) return
-    await navigator.clipboard.writeText(referralCode)
+    const botUsername = (process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'r7_opinionsbot').replace(/^@/, '')
+    const miniAppShortName = process.env.NEXT_PUBLIC_TELEGRAM_APP_SHORT_NAME || 'r7app'
+    const inviteLink = `https://t.me/${botUsername}/${miniAppShortName}?startapp=${encodeURIComponent(buildReferralStartParam(referralCode))}`
+
+    await navigator.clipboard.writeText(inviteLink)
     setReferralError(null)
-    setReferralMessage('Referral code copied.')
+    setReferralMessage('Referral invite link copied.')
   }
 
   const handleApplyReferralCode = async () => {
@@ -181,7 +186,7 @@ export default function Profile() {
             disabled={!referralCode}
             className="text-cyan-400 text-xs font-bold disabled:text-slate-600"
           >
-            Copy Code
+            Copy Link
           </button>
         </div>
         <div className="rounded-xl bg-slate-800 border border-slate-700 px-3 py-2 mb-3">

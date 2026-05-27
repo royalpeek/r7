@@ -9,6 +9,7 @@ import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { usePolls } from './hooks/usePolls'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { getMarketLifecycleStatus } from '@/lib/marketLifecycle'
+import { parseMarketStartParam } from '@/lib/marketDeepLink'
 
 const CATEGORIES = ['Trending', 'New', 'Politics', 'Crypto', 'Sports', 'Tech']
 
@@ -31,6 +32,7 @@ export default function Home() {
   const [sortBy, setSortBy] = useState('oldest')
   const [showDetail, setShowDetail] = useState(false)
   const [deepLinkedMarketId, setDeepLinkedMarketId] = useState<string | null>(null)
+  const [deepLinkedReferralCode, setDeepLinkedReferralCode] = useState<string | null>(null)
 
   // create poll form state
   const [pollTitle, setPollTitle] = useState('')
@@ -120,16 +122,40 @@ export default function Home() {
       const telegramApp = window.Telegram?.WebApp
       const startParam = telegramApp?.startParam || telegramApp?.initDataUnsafe?.start_param
       const marketParam = new URLSearchParams(window.location.search).get('market')
-      const rawMarketId = startParam || marketParam
-      const marketId = rawMarketId?.startsWith('market_')
-        ? rawMarketId.replace(/^market_/, '')
-        : rawMarketId
+      const referralParam = new URLSearchParams(window.location.search).get('ref')
+      const parsedStartParam = parseMarketStartParam(startParam)
+      const parsedMarketParam = parseMarketStartParam(marketParam)
+      const marketId = parsedStartParam.marketId || parsedMarketParam.marketId
+      const referralCode = parsedStartParam.referralCode || referralParam
 
       if (marketId) setDeepLinkedMarketId(marketId)
+      if (referralCode) setDeepLinkedReferralCode(referralCode.toUpperCase())
     }, 0)
 
     return () => window.clearTimeout(timeout)
   }, [])
+
+  useEffect(() => {
+    if (!deepLinkedReferralCode || !userId || userLoading) return
+
+    const storageKey = `r7-referral-${deepLinkedReferralCode}`
+    if (window.sessionStorage.getItem(storageKey)) return
+
+    const timeout = window.setTimeout(async () => {
+      try {
+        window.sessionStorage.setItem(storageKey, '1')
+        await fetch('/api/referrals/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ initData, code: deepLinkedReferralCode }),
+        })
+      } catch (error) {
+        console.error('auto referral apply error:', error)
+      }
+    }, 0)
+
+    return () => window.clearTimeout(timeout)
+  }, [deepLinkedReferralCode, initData, userId, userLoading])
 
   const handleCopy = () => {
     navigator.clipboard.writeText('3wbjCZ...kDdM')

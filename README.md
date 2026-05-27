@@ -30,10 +30,16 @@ NEXT_PUBLIC_TELEGRAM_APP_SHORT_NAME=your_mini_app_short_name
 Shared links are generated like:
 
 ```text
-https://t.me/your_bot_username/your_mini_app_short_name?startapp=market_MARKET_ID
+https://t.me/your_bot_username/your_mini_app_short_name?startapp=market_MARKET_ID_ref_REFERRAL_CODE
 ```
 
-When that link opens, the app reads `market_MARKET_ID`, finds the market, and opens the live detail page or the ended result page.
+When that link opens, the app reads `market_MARKET_ID_ref_REFERRAL_CODE`, applies the referral code if the user has not already been referred, finds the market, and opens the live detail page or the ended result page.
+
+Profile invite links use this format:
+
+```text
+https://t.me/your_bot_username/your_mini_app_short_name?startapp=ref_REFERRAL_CODE
+```
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
