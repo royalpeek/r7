@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Script from 'next/script'
 import { Geist, Geist_Mono } from "next/font/google";
 import Navigation from "./components/Navigation";
+import ClaimRewardPrompt from "./components/ClaimRewardPrompt";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -38,6 +39,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
         {children}
+        <ClaimRewardPrompt />
         <Navigation />
       </body>
     </html>

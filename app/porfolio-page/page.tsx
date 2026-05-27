@@ -5,9 +5,11 @@ import ResultsPage from '../components/ResultsPage'
 import StakingModal from '../components/StakingModal'
 import Timer from '../components/Timer'
 import { createPortal } from 'react-dom'
+import { Gift } from 'lucide-react'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { getMarketLifecycleLabel, getMarketLifecycleStatus } from '@/lib/marketLifecycle'
+import { getClaimablePositions, getPositionClaimBreakdown } from '@/lib/positionClaims'
 
 type Position = {
   id: string
@@ -30,7 +32,11 @@ type SortOption = 'newest' | 'oldest' | 'highest_stake' | 'lowest_stake'
 
 export default function Portfolio() {
   const haptics = useHapticFeedback()
-  const [activeTab, setActiveTab] = useState('active')
+  const [activeTab, setActiveTab] = useState(() => (
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('claim') === '1'
+      ? 'history'
+      : 'active'
+  ))
   const [sortBy, setSortBy] = useState<SortOption>('newest')
   const [showSortMenu, setShowSortMenu] = useState(false)
   const [positions, setPositions] = useState<Position[]>([])
@@ -42,6 +48,7 @@ export default function Portfolio() {
   const [selectedPosition, setSelectedPosition] = useState<Position | null>(null)
   const [showStakingModal, setShowStakingModal] = useState(false)
   const [stakingDirection, setStakingDirection] = useState<'yes' | 'no' | null>(null)
+  const [claimingPositionId, setClaimingPositionId] = useState<string | null>(null)
 
   const fetchPositions = useCallback(async () => {
     try {
@@ -116,6 +123,35 @@ export default function Portfolio() {
     return status === 'ended' || status === 'closed' || status === 'archived'
   })
   const totalStaked = positions.reduce((sum, p) => sum + p.amount, 0)
+  const claimablePositions = getClaimablePositions(positions)
+  const totalClaimable = claimablePositions.reduce((sum, position) => {
+    return sum + getPositionClaimBreakdown(position).claimablePayout
+  }, 0)
+
+  const claimPosition = async (position: Position) => {
+    try {
+      haptics.impact('medium')
+      setClaimingPositionId(position.id)
+      setError(null)
+      const response = await fetch('/api/claims', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData, poll_id: position.poll_id }),
+      })
+      const data = await response.json()
+
+      if (!response.ok) throw new Error(data.error || 'claim failed')
+
+      if (typeof data.balance === 'number') updateBalance(data.balance)
+      haptics.notification('success')
+      await fetchPositions()
+    } catch (error) {
+      haptics.notification('error')
+      setError(error instanceof Error ? error.message : 'claim failed')
+    } finally {
+      setClaimingPositionId(null)
+    }
+  }
 
   const sortLabel: Record<SortOption, string> = {
     newest: 'Newest',
@@ -223,9 +259,27 @@ export default function Portfolio() {
           </div>
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5">
             <p className="text-slate-400 text-xs mb-1">Claimable</p>
-            <p className="text-slate-500 text-xl font-bold">--</p>
+            <p className={`text-xl font-bold ${totalClaimable > 0 ? 'text-cyan-400' : 'text-slate-500'}`}>
+              {loading ? '...' : `$${totalClaimable.toFixed(2)}`}
+            </p>
           </div>
         </div>
+
+        {!loading && totalClaimable > 0 && (
+          <button
+            onClick={() => {
+              haptics.selection()
+              setActiveTab('history')
+            }}
+            className="flex w-full items-center justify-between rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-left active:scale-[0.99] transition"
+          >
+            <span className="flex items-center gap-2 text-sm font-bold text-cyan-300">
+              <Gift size={16} />
+              {claimablePositions.length} reward{claimablePositions.length === 1 ? '' : 's'} ready
+            </span>
+            <span className="text-sm font-bold text-white">${totalClaimable.toFixed(2)}</span>
+          </button>
+        )}
 
         <div className="flex items-center justify-between border-b border-slate-700">
           <div className="flex gap-4">
@@ -352,6 +406,8 @@ export default function Portfolio() {
               </div>
             ) : sortPositions(history).map(pos => {
               const status = getMarketLifecycleStatus(pos.status, pos.ends_at, now)
+              const claimBreakdown = getPositionClaimBreakdown(pos)
+              const canClaim = claimablePositions.some(position => position.id === pos.id)
 
               return (
               <div
@@ -381,6 +437,21 @@ export default function Portfolio() {
                   <span className="text-slate-500 text-xs">{formatDate(pos.created_at)}</span>
                   <span className="text-slate-500 text-xs">{getMarketLifecycleLabel(status)}</span>
                 </div>
+                {canClaim && (
+                  <button
+                    disabled={claimingPositionId === pos.id}
+                    onClick={event => {
+                      event.stopPropagation()
+                      claimPosition(pos)
+                    }}
+                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-cyan-400 py-3 text-sm font-bold text-black active:scale-95 transition disabled:opacity-60"
+                  >
+                    <Gift size={16} />
+                    {claimingPositionId === pos.id
+                      ? 'Claiming...'
+                      : `Claim $${claimBreakdown.claimablePayout.toFixed(2)}`}
+                  </button>
+                )}
               </div>
             )})}
           </div>
