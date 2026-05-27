@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 interface TimerProps {
   endsAt: string
@@ -10,8 +10,11 @@ interface TimerProps {
 export default function Timer({ endsAt, onExpire }: TimerProps) {
   const [timeRemaining, setTimeRemaining] = useState('00:00:00')
   const [isExpired, setIsExpired] = useState(false)
+  const hasExpiredRef = useRef(false)
 
   useEffect(() => {
+    hasExpiredRef.current = false
+
     const calculateTimeRemaining = () => {
       const endTime = new Date(endsAt).getTime()
       const now = new Date().getTime()
@@ -20,7 +23,10 @@ export default function Timer({ endsAt, onExpire }: TimerProps) {
       if (difference <= 0) {
         setTimeRemaining('00:00:00')
         setIsExpired(true)
-        onExpire?.()
+        if (!hasExpiredRef.current) {
+          hasExpiredRef.current = true
+          onExpire?.()
+        }
         return
       }
 

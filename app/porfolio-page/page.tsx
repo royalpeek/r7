@@ -7,6 +7,7 @@ import Timer from '../components/Timer'
 import { createPortal } from 'react-dom'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
+import { getMarketLifecycleLabel, getMarketLifecycleStatus } from '@/lib/marketLifecycle'
 
 type Position = {
   id: string
@@ -14,6 +15,7 @@ type Position = {
   question: string
   direction: 'yes' | 'no'
   amount: number
+  status?: string | null
   ends_at: string
   created_at: string
   yes_pool: number
@@ -104,8 +106,11 @@ export default function Portfolio() {
   }
 
   const now = new Date()
-  const active = positions.filter(p => p.ends_at && new Date(p.ends_at) > now)
-  const history = positions.filter(p => p.ends_at && new Date(p.ends_at) <= now)
+  const active = positions.filter(p => getMarketLifecycleStatus(p.status, p.ends_at, now) === 'live')
+  const history = positions.filter(p => {
+    const status = getMarketLifecycleStatus(p.status, p.ends_at, now)
+    return status === 'ended' || status === 'closed' || status === 'archived'
+  })
   const totalStaked = positions.reduce((sum, p) => sum + p.amount, 0)
 
   const sortLabel: Record<SortOption, string> = {
@@ -132,7 +137,8 @@ export default function Portfolio() {
     const totalPool = selectedPosition.yes_pool + selectedPosition.no_pool
     const yesPercent = totalPool > 0 ? Math.round((selectedPosition.yes_pool / totalPool) * 100) : 50
     const noPercent = 100 - yesPercent
-    const marketEnded = new Date(selectedPosition.ends_at) <= now
+    const selectedStatus = getMarketLifecycleStatus(selectedPosition.status, selectedPosition.ends_at, now)
+    const marketEnded = selectedStatus !== 'live'
 
     return (
       <>
@@ -152,12 +158,14 @@ export default function Portfolio() {
             setSelectedPosition(null)
           }}
             onAddMore={() => {
+              if (marketEnded) return
               haptics.impact('medium')
               setVoteError(null)
               setStakingDirection(selectedPosition.direction)
               setShowStakingModal(true)
             }}
             onChangeVote={() => {
+              if (marketEnded) return
               haptics.impact('medium')
               setVoteError(null)
               setStakingDirection(selectedPosition.direction === 'yes' ? 'no' : 'yes')
@@ -285,7 +293,10 @@ export default function Portfolio() {
                 <p className="text-white font-semibold">No active positions</p>
                 <p className="text-slate-500 text-sm mt-2">Votes you place on live markets will appear here.</p>
               </div>
-            ) : sortPositions(active).map(pos => (
+            ) : sortPositions(active).map(pos => {
+              const status = getMarketLifecycleStatus(pos.status, pos.ends_at, now)
+
+              return (
               <div
                 key={pos.id}
                 className="bg-slate-900 border border-slate-800 rounded-xl p-4 cursor-pointer active:opacity-70"
@@ -296,9 +307,14 @@ export default function Portfolio() {
               >
                 <div className="flex items-start justify-between mb-3">
                   <p className="text-white font-semibold text-sm flex-1 pr-4">{pos.question}</p>
-                  <span className={`text-xs font-bold px-2 py-1 rounded ${pos.direction === 'yes' ? 'bg-cyan-900 text-cyan-400' : 'bg-pink-900 text-pink-400'}`}>
-                    {pos.direction.toUpperCase()}
-                  </span>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="rounded-full bg-cyan-400 px-2 py-0.5 text-[10px] font-bold uppercase text-black">
+                      {getMarketLifecycleLabel(status)}
+                    </span>
+                    <span className={`text-xs font-bold px-2 py-1 rounded ${pos.direction === 'yes' ? 'bg-cyan-900 text-cyan-400' : 'bg-pink-900 text-pink-400'}`}>
+                      {pos.direction.toUpperCase()}
+                    </span>
+                  </div>
                 </div>
                 <div className="flex items-center justify-between text-sm mb-3">
                   <span className="text-slate-400">Stake: <span className="text-white font-bold">${pos.amount}</span></span>
@@ -308,10 +324,10 @@ export default function Portfolio() {
                   <div className="w-full bg-slate-700 rounded-full h-1.5 mr-4">
                     <div className="bg-cyan-400 h-1.5 rounded-full w-1/2" />
                   </div>
-                  <Timer endsAt={pos.ends_at} />
+                  <Timer endsAt={pos.ends_at} onExpire={() => fetchPositions()} />
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         ) : (
           <div className="space-y-4">
@@ -320,7 +336,10 @@ export default function Portfolio() {
                 <p className="text-white font-semibold">No history yet</p>
                 <p className="text-slate-500 text-sm mt-2">Ended markets you joined will appear here.</p>
               </div>
-            ) : sortPositions(history).map(pos => (
+            ) : sortPositions(history).map(pos => {
+              const status = getMarketLifecycleStatus(pos.status, pos.ends_at, now)
+
+              return (
               <div
                 key={pos.id}
                 className="bg-slate-900 border border-slate-800 rounded-xl p-4 cursor-pointer active:opacity-70"
@@ -331,9 +350,14 @@ export default function Portfolio() {
               >
                 <div className="flex items-start justify-between mb-3">
                   <p className="text-white font-semibold text-sm flex-1 pr-4">{pos.question}</p>
-                  <span className={`text-xs font-bold px-2 py-1 rounded ${pos.direction === 'yes' ? 'bg-cyan-900 text-cyan-400' : 'bg-pink-900 text-pink-400'}`}>
-                    {pos.direction.toUpperCase()}
-                  </span>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-400">
+                      {getMarketLifecycleLabel(status)}
+                    </span>
+                    <span className={`text-xs font-bold px-2 py-1 rounded ${pos.direction === 'yes' ? 'bg-cyan-900 text-cyan-400' : 'bg-pink-900 text-pink-400'}`}>
+                      {pos.direction.toUpperCase()}
+                    </span>
+                  </div>
                 </div>
                 <div className="flex items-center justify-between text-sm mb-2">
                   <span className="text-slate-400">Stake: <span className="text-white font-bold">${pos.amount}</span></span>
@@ -341,10 +365,10 @@ export default function Portfolio() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500 text-xs">{formatDate(pos.created_at)}</span>
-                  <span className="text-slate-500 text-xs">resolution pending</span>
+                  <span className="text-slate-500 text-xs">{getMarketLifecycleLabel(status)}</span>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         )}
       </div>

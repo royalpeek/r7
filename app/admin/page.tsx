@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { RefreshCw, ShieldCheck, Users, BarChart3, Vote, WalletCards } from 'lucide-react'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
+import { getMarketLifecycleLabel, getMarketLifecycleStatus } from '@/lib/marketLifecycle'
 
 type Role = 'user' | 'creator' | 'admin'
 
@@ -273,8 +274,7 @@ export default function AdminPage() {
         <div className="space-y-3">
           {(overview?.polls || []).map(poll => {
             const totalPool = Number(poll.yes_pool || 0) + Number(poll.no_pool || 0)
-            const ended = new Date(poll.ends_at) <= new Date()
-            const status = poll.status || 'active'
+            const status = getMarketLifecycleStatus(poll.status, poll.ends_at)
             const isBusy = updatingPollId === poll.id
 
             return (
@@ -285,11 +285,11 @@ export default function AdminPage() {
                       ? 'bg-violet-500/15 text-violet-300'
                       : status === 'paused'
                       ? 'bg-amber-500/15 text-amber-300'
-                      : status === 'closed' || ended
+                      : status === 'closed' || status === 'ended'
                         ? 'bg-slate-800 text-slate-400'
                         : 'bg-cyan-400 text-black'
                   }`}>
-                    {status === 'closed' || ended ? 'closed' : status}
+                    {getMarketLifecycleLabel(status)}
                   </span>
                   <span className="text-xs text-slate-500">${totalPool.toFixed(2)} vol</span>
                 </div>
@@ -301,7 +301,7 @@ export default function AdminPage() {
                 <div className="mt-4 grid grid-cols-2 gap-2">
                   {status === 'paused' || status === 'archived' ? (
                     <button
-                      disabled={isBusy || ended}
+                      disabled={isBusy}
                       onClick={() => updatePoll(poll.id, 'resume')}
                       className="rounded-lg bg-cyan-400 px-3 py-2 text-xs font-bold text-black transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -309,7 +309,7 @@ export default function AdminPage() {
                     </button>
                   ) : (
                     <button
-                      disabled={isBusy || status === 'closed' || ended}
+                      disabled={isBusy || status === 'closed' || status === 'ended'}
                       onClick={() => updatePoll(poll.id, 'pause')}
                       className="rounded-lg bg-slate-800 px-3 py-2 text-xs font-bold text-slate-300 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -317,7 +317,7 @@ export default function AdminPage() {
                     </button>
                   )}
                   <button
-                    disabled={isBusy || status === 'closed' || status === 'archived' || ended}
+                    disabled={isBusy || status === 'closed' || status === 'archived' || status === 'ended'}
                     onClick={() => updatePoll(poll.id, 'close')}
                     className="rounded-lg bg-slate-800 px-3 py-2 text-xs font-bold text-slate-300 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                   >

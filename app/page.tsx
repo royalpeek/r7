@@ -7,6 +7,7 @@ import PollCard from './components/PollCard'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { usePolls } from './hooks/usePolls'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
+import { getMarketLifecycleStatus } from '@/lib/marketLifecycle'
 
 const CATEGORIES = ['Trending', 'New', 'Politics', 'Crypto', 'Sports', 'Tech']
 
@@ -126,8 +127,10 @@ export default function Home() {
   // filter and sort polls
   const filteredPolls = polls
     .filter(poll => {
-      const marketEnded = new Date(poll.ends_at) < new Date()
-      return filterStatus === 'active' ? !marketEnded : marketEnded
+      const lifecycleStatus = getMarketLifecycleStatus(poll.status, poll.ends_at)
+      return filterStatus === 'active'
+        ? lifecycleStatus === 'live'
+        : lifecycleStatus === 'ended' || lifecycleStatus === 'closed'
     })
     .sort((a, b) => {
       const totalA = a.yes_pool + a.no_pool

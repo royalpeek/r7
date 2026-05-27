@@ -10,6 +10,7 @@ import Timer from './Timer'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { usePolls } from '@/app/hooks/usePolls'
+import { getMarketLifecycleLabel, getMarketLifecycleStatus } from '@/lib/marketLifecycle'
 
 type Poll = {
   id: string
@@ -18,6 +19,7 @@ type Poll = {
   no_votes: number
   yes_pool: number
   no_pool: number
+  status?: string | null
   ends_at: string
 }
 
@@ -163,7 +165,7 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
     const dy = deltaY
     resetDrag()
 
-    const marketEnded = currentCard && new Date(currentCard.ends_at) < new Date()
+    const marketEnded = currentCard && getMarketLifecycleStatus(currentCard.status, currentCard.ends_at) !== 'live'
 
     if (axis === 'y' && Math.abs(dy) > 110) {
       setCurrentIndex(i => {
@@ -241,7 +243,8 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
   const totalPool = currentCard.yes_pool + currentCard.no_pool
   const yesPercent = totalPool > 0 ? Math.round((currentCard.yes_pool / totalPool) * 100) : 50
   const noPercent = 100 - yesPercent
-  const marketEnded = new Date(currentCard.ends_at) < new Date()
+  const lifecycleStatus = getMarketLifecycleStatus(currentCard.status, currentCard.ends_at)
+  const marketEnded = lifecycleStatus !== 'live'
 
   // show detail page when arrow is clicked
   if (showDetail) {
@@ -408,7 +411,7 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
               >
                 ← Back
               </button>
-              <Timer endsAt={currentCard.ends_at} />
+              <Timer endsAt={currentCard.ends_at} onExpire={() => onPollsChange?.()} />
             </div>
 
             <p className="text-white font-bold text-2xl leading-tight mb-3">{currentCard.question}</p>
@@ -498,6 +501,15 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
           {polls.map((poll, i) => {
             const isActive = i === currentIndex
             const pollUserVote = userVotes.find(v => v.poll_id === poll.id)
+            const cardStatus = getMarketLifecycleStatus(poll.status, poll.ends_at)
+            const statusClass = cardStatus === 'live'
+              ? 'bg-cyan-400 text-black'
+              : cardStatus === 'paused'
+              ? 'bg-amber-500/15 text-amber-300'
+              : 'bg-slate-800 text-slate-400'
+            const cardTotalPool = poll.yes_pool + poll.no_pool
+            const cardYesPercent = cardTotalPool > 0 ? Math.round((poll.yes_pool / cardTotalPool) * 100) : 50
+            const cardNoPercent = 100 - cardYesPercent
 
             return (
               <div key={poll.id} className="h-full w-full flex flex-col px-3 pt-1 pb-20">
@@ -526,7 +538,12 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
                   )}
 
                   <div className="flex items-center justify-between px-5 pt-4 pb-2">
-                    <Timer endsAt={poll.ends_at} />
+                    <div className="flex items-center gap-2">
+                      <Timer endsAt={poll.ends_at} onExpire={() => onPollsChange?.()} />
+                      <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${statusClass}`}>
+                        {getMarketLifecycleLabel(cardStatus)}
+                      </span>
+                    </div>
                     <div className="text-slate-400 text-sm">${(poll.yes_pool + poll.no_pool).toFixed(2)} USDT</div>
                   </div>
 
@@ -554,11 +571,11 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
 
                       <div className="px-5 pb-2 flex justify-between text-lg font-bold">
                         <div className="text-center">
-                          <p className="text-cyan-400">{Math.round((poll.yes_pool / (poll.yes_pool + poll.no_pool)) * 100)}%</p>
+                          <p className="text-cyan-400">{cardYesPercent}%</p>
                           <p className="text-cyan-400 text-xs">YES</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-pink-500">{Math.round((poll.no_pool / (poll.yes_pool + poll.no_pool)) * 100)}%</p>
+                          <p className="text-pink-500">{cardNoPercent}%</p>
                           <p className="text-pink-500 text-xs">NO</p>
                         </div>
                       </div>

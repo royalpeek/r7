@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
+import { closeExpiredMarkets } from '@/lib/marketLifecycle'
 
 async function requireAdmin(initData: string) {
   const telegramUser = getRequestTelegramUser(initData)
@@ -23,6 +24,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { supabase } = await requireAdmin(body.initData)
+    await closeExpiredMarkets(supabase)
 
     const [
       usersCountResult,

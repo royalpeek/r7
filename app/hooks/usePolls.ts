@@ -8,6 +8,7 @@ export type Poll = {
   no_votes: number
   yes_pool: number
   no_pool: number
+  status?: string | null
   ends_at: string
   created_at: string
 }

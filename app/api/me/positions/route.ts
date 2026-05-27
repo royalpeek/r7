@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
+import { closeExpiredMarkets } from '@/lib/marketLifecycle'
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,6 +9,7 @@ export async function POST(request: NextRequest) {
     const user = getRequestTelegramUser(body.initData)
     const userId = String(user.id)
     const supabase = getSupabaseAdmin()
+    await closeExpiredMarkets(supabase)
 
     const { data: votes, error: votesError } = await supabase
       .from('votes')
@@ -20,7 +22,7 @@ export async function POST(request: NextRequest) {
     const pollIds = votes.map(vote => vote.poll_id)
     const { data: polls, error: pollsError } = await supabase
       .from('polls')
-      .select('id, question, ends_at, yes_pool, no_pool')
+      .select('id, question, status, ends_at, yes_pool, no_pool')
       .in('id', pollIds)
 
     if (pollsError) throw pollsError
@@ -34,6 +36,7 @@ export async function POST(request: NextRequest) {
         question: poll?.question || 'unknown poll',
         direction: vote.direction,
         amount: vote.amount,
+        status: poll?.status || 'active',
         ends_at: poll?.ends_at || '',
         created_at: vote.created_at,
         yes_pool: poll?.yes_pool || 0,

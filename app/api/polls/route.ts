@@ -3,9 +3,12 @@ import { supabase } from '@/lib/supabase'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
 import { CREATOR_OPEN_MARKET_LIMIT, getOpenMarketCutoff } from '@/lib/creatorQuota'
+import { closeExpiredMarkets } from '@/lib/marketLifecycle'
 
 export async function GET() {
   try {
+    await closeExpiredMarkets(getSupabaseAdmin())
+
     const { data, error } = await supabase
       .from('polls')
       .select('*')
@@ -54,6 +57,8 @@ export async function POST(request: NextRequest) {
     }
 
     if (role === 'creator') {
+      await closeExpiredMarkets(admin)
+
       const openMarketCutoff = getOpenMarketCutoff()
       const { count, error: countError } = await admin
         .from('polls')
