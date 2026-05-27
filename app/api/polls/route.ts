@@ -102,7 +102,6 @@ export async function POST(request: NextRequest) {
       .insert({
         question: moderation.normalizedQuestion,
         category: moderation.category,
-        description: String(body.description || '').trim().slice(0, 256) || null,
         status: 'active',
         yes_pool: 0,
         no_pool: 0,
@@ -120,6 +119,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ poll: data })
   } catch (error) {
     console.error('Error creating poll:', error)
-    return NextResponse.json({ error: 'Failed to create poll' }, { status: 400 })
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : 'Failed to create poll',
+    }, { status: 400 })
   }
 }
