@@ -55,6 +55,7 @@ export default function MarketEnded({
   })
   const displayClaimable = localClaimedAt ? localPayout : payoutBreakdown.claimablePayout
   const pnl = userVoteAmount > 0 ? ((displayClaimable - userVoteAmount) / userVoteAmount) * 100 : 0
+  const winnerLabel = winner === 'draw' ? 'Draw' : `${winner.toUpperCase()} won`
 
   const handleClaim = async () => {
     try {
@@ -121,6 +122,11 @@ export default function MarketEnded({
           <p className="text-white font-bold text-2xl">
             {userWon ? `$${displayClaimable.toFixed(2)} USDT` : '$0.00 USDT'}
           </p>
+          <p className="mt-1 text-xs text-slate-500">
+            {userWon
+              ? 'Final amount after creator reward.'
+              : 'Your side did not win this market.'}
+          </p>
           <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
             <div>
               <p className="text-slate-500">Staked</p>
@@ -158,6 +164,40 @@ export default function MarketEnded({
               {claiming ? 'Claiming...' : 'Claim winnings'}
             </button>
           )}
+        </div>
+
+        <div className="mb-6 rounded-xl bg-slate-800 p-4">
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Final result</p>
+            <span className={`rounded-full px-3 py-1 text-xs font-bold ${
+              winner === 'draw'
+                ? 'bg-slate-700 text-slate-300'
+                : winner === 'yes'
+                  ? 'bg-cyan-400/10 text-cyan-400'
+                  : 'bg-pink-500/10 text-pink-400'
+            }`}>
+              {winnerLabel}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p className="text-slate-500">Your stake</p>
+              <p className="font-bold text-white">${userVoteAmount.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-slate-500">Total pool</p>
+              <p className="font-bold text-white">${totalVolume.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-slate-500">Votes</p>
+              <p className="font-bold text-white">{yesVotes} YES / {noVotes} NO</p>
+            </div>
+            <div>
+              <p className="text-slate-500">Pool split</p>
+              <p className="font-bold text-white">{yesPercent}% / {noPercent}%</p>
+            </div>
+          </div>
         </div>
 
         {/* vote counts and engagement */}
