@@ -42,6 +42,7 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
   const [showStakingModal, setShowStakingModal] = useState(false)
   const [stakingDirection, setStakingDirection] = useState<'yes' | 'no' | null>(null)
   const [showDetail, setShowDetail] = useState(false)
+  const [voteError, setVoteError] = useState<string | null>(null)
 
   const updateShowDetail = (nextShowDetail: boolean) => {
     if (nextShowDetail) haptics.impact('light')
@@ -52,6 +53,7 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
 
   const openStakingModal = (direction: 'yes' | 'no') => {
     haptics.impact('medium')
+    setVoteError(null)
     setStakingDirection(direction)
     setShowStakingModal(true)
   }
@@ -181,11 +183,12 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
 
   const handleConfirmVote = async (amount: number) => {
     if (!stakingDirection || !currentCard || !userId) {
-      alert(`missing data: userId=${userId}, direction=${stakingDirection}, card=${currentCard?.id}`)
+      setVoteError('Could not prepare your vote. Please try again.')
       return
     }
 
     try {
+      setVoteError(null)
       console.log('sending vote:', { userId, poll_id: currentCard.id, direction: stakingDirection, amount })
 
       const response = await fetch('/api/votes', {
@@ -223,7 +226,7 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
       haptics.notification('error')
       console.error('vote error:', error)
       const errorMessage = error instanceof Error ? error.message : JSON.stringify(error)
-      alert(`vote failed: ${errorMessage}`)
+      setVoteError(errorMessage || 'Vote failed. Please try again.')
     }
   }
 
@@ -526,6 +529,12 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
                     <Timer endsAt={poll.ends_at} />
                     <div className="text-slate-400 text-sm">${(poll.yes_pool + poll.no_pool).toFixed(2)} USDT</div>
                   </div>
+
+                  {isActive && voteError && (
+                    <div className="mx-5 mb-2 rounded-xl border border-pink-500/40 bg-pink-500/10 px-3 py-2 text-sm text-pink-200">
+                      {voteError}
+                    </div>
+                  )}
 
                   <div className="px-5 pt-1 pb-2">
                     <p className="text-white font-bold text-3xl leading-tight text-left">{poll.question}</p>

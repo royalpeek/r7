@@ -337,12 +337,12 @@ export default function Home() {
 
       {/* filter modal */}
       {showFilter && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+        <div className="fixed inset-0 z-[70] flex flex-col justify-end">
           <div
             className="absolute inset-0 bg-black/60"
             onClick={() => setShowFilter(false)}
           />
-          <div className="relative bg-slate-950 rounded-t-3xl p-6 pb-12 z-10 max-h-96 overflow-y-auto">
+          <div className="relative z-10 max-h-[80dvh] overflow-y-auto rounded-t-3xl bg-slate-950 px-6 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
             <div className="w-10 h-1 bg-slate-700 rounded-full mx-auto mb-6" />
             <button
               onClick={() => setShowFilter(false)}

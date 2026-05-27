@@ -30,6 +30,7 @@ export default function Portfolio() {
   const [positions, setPositions] = useState<Position[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [voteError, setVoteError] = useState<string | null>(null)
   const { userId, appUser, initData, updateBalance } = useTelegramUser()
   const balance = Number(appUser?.balance ?? 0)
   const [selectedPosition, setSelectedPosition] = useState<Position | null>(null)
@@ -69,6 +70,7 @@ export default function Portfolio() {
   const handleConfirmVote = async (amount: number) => {
     if (!stakingDirection || !selectedPosition || !userId) return
     try {
+      setVoteError(null)
       const response = await fetch('/api/votes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -90,7 +92,7 @@ export default function Portfolio() {
     } catch (error) {
       haptics.notification('error')
       console.error('vote error:', error)
-      alert('vote failed. try again.')
+      setVoteError(error instanceof Error ? error.message : 'vote failed. try again.')
     }
   }
 
@@ -142,17 +144,24 @@ export default function Portfolio() {
             haptics.selection()
             setSelectedPosition(null)
           }}
-          onAddMore={() => {
-            haptics.impact('medium')
-            setStakingDirection(selectedPosition.direction)
-            setShowStakingModal(true)
-          }}
-          onChangeVote={() => {
-            haptics.impact('medium')
-            setStakingDirection(selectedPosition.direction === 'yes' ? 'no' : 'yes')
-            setShowStakingModal(true)
-          }}
-        />
+            onAddMore={() => {
+              haptics.impact('medium')
+              setVoteError(null)
+              setStakingDirection(selectedPosition.direction)
+              setShowStakingModal(true)
+            }}
+            onChangeVote={() => {
+              haptics.impact('medium')
+              setVoteError(null)
+              setStakingDirection(selectedPosition.direction === 'yes' ? 'no' : 'yes')
+              setShowStakingModal(true)
+            }}
+          />
+          {voteError && (
+            <div className="fixed left-4 right-4 top-4 z-[70] mx-auto max-w-sm rounded-xl border border-pink-500/40 bg-pink-500/10 px-4 py-3 text-center text-sm text-pink-200">
+              {voteError}
+            </div>
+          )}
         {showStakingModal && stakingDirection && typeof document !== 'undefined' &&
           createPortal(
             <StakingModal
