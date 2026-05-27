@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
+import { recordTransaction } from '@/lib/transactions'
 
 export async function POST(request: NextRequest) {
   try {
@@ -187,17 +188,37 @@ export async function POST(request: NextRequest) {
 
     const { error: balanceError } = await supabase
       .from('users')
-      .update({ balance: currentBalance - totalCost })
+      .update({ balance: Number((currentBalance - totalCost).toFixed(2)) })
       .eq('id', userId)
 
     if (balanceError) throw balanceError
+    const nextBalance = Number((currentBalance - totalCost).toFixed(2))
+
+    await Promise.all([
+      recordTransaction(supabase, {
+        userId,
+        type: 'stake',
+        amount: -amount,
+        balanceAfter: nextBalance,
+        pollId: poll_id,
+        description: `${direction.toUpperCase()} stake`,
+      }),
+      recordTransaction(supabase, {
+        userId,
+        type: 'fee',
+        amount: -fee,
+        balanceAfter: nextBalance,
+        pollId: poll_id,
+        description: 'Voting fee',
+      }),
+    ])
 
     console.log('poll updated successfully')
     return NextResponse.json({ 
       success: true,
       vote_id: voteId,
       pools: { yes_pool: newYesPool, no_pool: newNoPool },
-      balance: currentBalance - totalCost,
+      balance: nextBalance,
     })
   } catch (error) {
     console.error('error:', error)

@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
 import { closeExpiredMarkets, getMarketLifecycleStatus } from '@/lib/marketLifecycle'
 import { calculateClaimPayout, calculateCreatorReward, getWinningDirection } from '@/lib/payouts'
+import { recordTransaction } from '@/lib/transactions'
 
 export async function POST(request: NextRequest) {
   try {
@@ -122,6 +123,14 @@ export async function POST(request: NextRequest) {
             .eq('id', poll.created_by)
 
           if (creatorBalanceError) throw creatorBalanceError
+          await recordTransaction(supabase, {
+            userId: poll.created_by,
+            type: 'creator_reward',
+            amount: creatorReward,
+            balanceAfter: Number((creatorBalance + creatorReward).toFixed(2)),
+            pollId,
+            description: 'Creator market reward',
+          })
         }
       }
     }
@@ -146,6 +155,14 @@ export async function POST(request: NextRequest) {
       .eq('id', userId)
 
     if (balanceError) throw balanceError
+    await recordTransaction(supabase, {
+      userId,
+      type: 'claim_payout',
+      amount: payout,
+      balanceAfter: nextBalance,
+      pollId,
+      description: 'Claim payout',
+    })
 
     return NextResponse.json({
       success: true,

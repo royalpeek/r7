@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
+import { recordTransaction } from '@/lib/transactions'
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,6 +33,13 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (error) throw error
+      await recordTransaction(supabase, {
+        userId,
+        type: 'test_credit',
+        amount: 100,
+        balanceAfter: 100,
+        description: 'Test wallet credit',
+      })
       return NextResponse.json({ user: data })
     }
 

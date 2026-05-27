@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
-import { X, Wallet, RefreshCw, PlusCircle, Send, QrCode, Filter, Lock, MapPin, Zap } from 'lucide-react'
+import { X, Wallet, RefreshCw, PlusCircle, Send, QrCode, Filter, Lock, MapPin, Zap, ReceiptText } from 'lucide-react'
 import PollCard from './components/PollCard'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { usePolls } from './hooks/usePolls'
@@ -10,6 +10,15 @@ import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { getMarketLifecycleStatus } from '@/lib/marketLifecycle'
 
 const CATEGORIES = ['Trending', 'New', 'Politics', 'Crypto', 'Sports', 'Tech']
+
+type WalletTransaction = {
+  id: string
+  type: string
+  amount: number
+  balance_after?: number | null
+  description?: string | null
+  created_at: string
+}
 
 export default function Home() {
   const haptics = useHapticFeedback()
@@ -43,6 +52,28 @@ export default function Home() {
   const canCreatePoll = userRole === 'creator' || userRole === 'admin'
   const [balanceOverride, setBalanceOverride] = useState<number | null>(null)
   const balance = balanceOverride ?? Number(appUser?.balance ?? 0)
+  const [transactions, setTransactions] = useState<WalletTransaction[]>([])
+  const [transactionsLoading, setTransactionsLoading] = useState(false)
+
+  const fetchTransactions = useCallback(async () => {
+    if (!userId) return
+
+    try {
+      setTransactionsLoading(true)
+      const response = await fetch('/api/me/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData }),
+      })
+      const data = await response.json()
+
+      if (response.ok) setTransactions((data.transactions || []) as WalletTransaction[])
+    } catch (error) {
+      console.error('fetch transactions error:', error)
+    } finally {
+      setTransactionsLoading(false)
+    }
+  }, [initData, userId])
 
   const fetchCreatorQuota = useCallback(async () => {
     if (!canCreatePoll) return
@@ -71,6 +102,16 @@ export default function Home() {
 
     return () => window.clearTimeout(timeout)
   }, [fetchCreatorQuota])
+
+  useEffect(() => {
+    if (!showWallet) return
+
+    const timeout = window.setTimeout(() => {
+      fetchTransactions()
+    }, 0)
+
+    return () => window.clearTimeout(timeout)
+  }, [fetchTransactions, showWallet])
 
   const handleCopy = () => {
     navigator.clipboard.writeText('3wbjCZ...kDdM')
@@ -500,6 +541,67 @@ export default function Home() {
                 <Send size={18} />
                 Send Soon
               </button>
+            </div>
+            <div className="mt-6">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-sm font-bold text-white">Transaction history</p>
+                <button
+                  onClick={() => {
+                    haptics.selection()
+                    fetchTransactions()
+                  }}
+                  className="rounded-full bg-slate-900 p-2 text-slate-400 active:scale-95 transition"
+                  title="Refresh transactions"
+                >
+                  <RefreshCw size={14} />
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {transactionsLoading ? (
+                  <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 text-sm text-slate-400">
+                    loading transactions...
+                  </div>
+                ) : transactions.length === 0 ? (
+                  <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 text-sm text-slate-400">
+                    No transactions yet.
+                  </div>
+                ) : transactions.map(transaction => {
+                  const amount = Number(transaction.amount || 0)
+                  const positive = amount > 0
+
+                  return (
+                    <div key={transaction.id} className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900 p-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`flex h-9 w-9 items-center justify-center rounded-full ${
+                          positive ? 'bg-cyan-400/10 text-cyan-400' : 'bg-pink-500/10 text-pink-400'
+                        }`}>
+                          <ReceiptText size={17} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-white">{transaction.description || transaction.type}</p>
+                          <p className="text-xs text-slate-500">
+                            {new Date(transaction.created_at).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-sm font-bold ${positive ? 'text-cyan-400' : 'text-pink-400'}`}>
+                          {positive ? '+' : '-'}${Math.abs(amount).toFixed(2)}
+                        </p>
+                        {typeof transaction.balance_after === 'number' && (
+                          <p className="text-xs text-slate-500">${transaction.balance_after.toFixed(2)}</p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           </div>
         </div>
