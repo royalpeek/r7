@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Share2 } from 'lucide-react'
 import PoolHistoryChart from './PoolHistoryChart'
 import Timer from './Timer'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
@@ -23,6 +24,7 @@ interface ResultsPageProps {
   endsAt: string
   marketEnded?: boolean
   onBack: () => void
+  onShare?: () => void
   onAddMore: () => void
   onChangeVote: () => void
   onClaimed?: (balance: number) => void | Promise<void>
@@ -44,6 +46,7 @@ export default function ResultsPage({
   endsAt,
   marketEnded = false,
   onBack,
+  onShare,
   onAddMore,
   onChangeVote,
   onClaimed,
@@ -138,7 +141,18 @@ export default function ResultsPage({
             >
               ← Back
             </button>
-            <Timer endsAt={endsAt} />
+            <div className="flex items-center gap-2">
+              {onShare && (
+                <button
+                  onClick={onShare}
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-slate-300 transition active:scale-95 active:text-cyan-300"
+                  title="Share market"
+                >
+                  <Share2 size={17} />
+                </button>
+              )}
+              <Timer endsAt={endsAt} />
+            </div>
           </div>
 
           <div className="bg-slate-800 rounded-xl p-6 mb-8">

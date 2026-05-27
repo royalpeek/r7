@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { Share2 } from 'lucide-react'
 import StakingModal from './StakingModal'
 import ResultsPage from './ResultsPage'
 import MarketEnded from './MarketEnded'
@@ -9,6 +10,7 @@ import PoolHistoryChart from './PoolHistoryChart'
 import Timer from './Timer'
 import Toast from './Toast'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
+import { useMarketShare } from '@/app/hooks/useMarketShare'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { usePolls } from '@/app/hooks/usePolls'
 import { getMarketLifecycleLabel, getMarketLifecycleStatus } from '@/lib/marketLifecycle'
@@ -34,6 +36,7 @@ type PollCardProps = {
 
 export default function PollCard({ polls, availableBalance = 0, onDetailChange, onPollsChange, onBalanceChange }: PollCardProps) {
   const haptics = useHapticFeedback()
+  const { shareFeedback, clearShareFeedback, shareMarket } = useMarketShare()
   const [currentIndex, setCurrentIndex] = useState(0)
   const currentCard = polls && polls.length > 0 ? polls[currentIndex] : null
 
@@ -246,6 +249,8 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
   const noPercent = 100 - yesPercent
   const lifecycleStatus = getMarketLifecycleStatus(currentCard.status, currentCard.ends_at)
   const marketEnded = lifecycleStatus !== 'live'
+  const toastMessage = voteError || shareFeedback
+  const toastType = voteError ? 'error' : 'success'
 
   // show detail page when arrow is clicked
   if (showDetail) {
@@ -256,26 +261,37 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
     // if market ended and user voted, show MarketEnded
     if (marketEnded && userVote) {
       return (
-        <MarketEnded
-          pollId={currentCard.id}
-          question={currentCard.question}
-          userVoteDirection={userVote.direction as 'yes' | 'no'}
-          userVoteAmount={userVote.amount}
-          claimedAt={userVote.claimed_at}
-          payoutAmount={userVote.payout_amount}
-          yesPool={currentCard.yes_pool}
-          noPool={currentCard.no_pool}
-          yesVotes={currentCard.yes_votes}
-          noVotes={currentCard.no_votes}
-          onBack={() => updateShowDetail(false)}
-          onClaimed={async balance => {
-            onBalanceChange?.(balance)
-            await Promise.all([
-              refetch(),
-              onPollsChange?.(),
-            ])
-          }}
-        />
+        <>
+          <MarketEnded
+            pollId={currentCard.id}
+            question={currentCard.question}
+            userVoteDirection={userVote.direction as 'yes' | 'no'}
+            userVoteAmount={userVote.amount}
+            claimedAt={userVote.claimed_at}
+            payoutAmount={userVote.payout_amount}
+            yesPool={currentCard.yes_pool}
+            noPool={currentCard.no_pool}
+            yesVotes={currentCard.yes_votes}
+            noVotes={currentCard.no_votes}
+            onBack={() => updateShowDetail(false)}
+            onShare={() => shareMarket({ question: currentCard.question })}
+            onClaimed={async balance => {
+              onBalanceChange?.(balance)
+              await Promise.all([
+                refetch(),
+                onPollsChange?.(),
+              ])
+            }}
+          />
+          <Toast
+            message={toastMessage}
+            type={toastType}
+            onClose={() => {
+              setVoteError(null)
+              clearShareFeedback()
+            }}
+          />
+        </>
       )
     }
 
@@ -300,6 +316,7 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
             endsAt={currentCard.ends_at}
             marketEnded={marketEnded}
             onBack={() => updateShowDetail(false)}
+            onShare={() => shareMarket({ question: currentCard.question })}
             onAddMore={() => {
               if (!marketEnded) {
                 openStakingModal(userVote.direction === 'yes' ? 'yes' : 'no')
@@ -309,6 +326,14 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
               if (!marketEnded) {
                 openStakingModal(userVote.direction === 'yes' ? 'no' : 'yes')
               }
+            }}
+          />
+          <Toast
+            message={toastMessage}
+            type={toastType}
+            onClose={() => {
+              setVoteError(null)
+              clearShareFeedback()
             }}
           />
           {showStakingModal && stakingDirection && typeof document !== 'undefined' &&
@@ -340,10 +365,27 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
             >
               ← Back
             </button>
-            <div className="bg-red-900 text-red-400 px-3 py-1 rounded text-sm font-mono">
-              ENDED
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => shareMarket({ question: currentCard.question })}
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-slate-300 transition active:scale-95 active:text-cyan-300"
+                title="Share market"
+              >
+                <Share2 size={17} />
+              </button>
+              <div className="bg-red-900 text-red-400 px-3 py-1 rounded text-sm font-mono">
+                ENDED
+              </div>
             </div>
           </div>
+          <Toast
+            message={toastMessage}
+            type={toastType}
+            onClose={() => {
+              setVoteError(null)
+              clearShareFeedback()
+            }}
+          />
 
           <div className="flex-1 overflow-y-auto px-5 pb-24">
             <p className="text-white font-bold text-2xl leading-tight mb-6">{currentCard.question}</p>
@@ -434,14 +476,23 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
 
             <div className="flex items-center justify-between mt-2">
               <p className="text-slate-500 text-xs">← NO · swipe · YES →</p>
-              <button className="text-slate-400">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="22" y1="2" x2="11" y2="13"></line>
-                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                </svg>
+              <button
+                onClick={() => shareMarket({ question: currentCard.question })}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition active:scale-95 active:text-cyan-300"
+                title="Share market"
+              >
+                <Share2 size={18} />
               </button>
             </div>
           </div>
+          <Toast
+            message={toastMessage}
+            type={toastType}
+            onClose={() => {
+              setVoteError(null)
+              clearShareFeedback()
+            }}
+          />
 
           <div className="flex-1 mx-4 mt-4 bg-slate-800 rounded-2xl flex flex-col items-center justify-center gap-4 p-6">
             <div className="text-6xl">🗳️</div>
@@ -563,7 +614,14 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
                   </div>
 
                   {isActive && (
-                    <Toast message={voteError} onClose={() => setVoteError(null)} />
+                    <Toast
+                      message={toastMessage}
+                      type={toastType}
+                      onClose={() => {
+                        setVoteError(null)
+                        clearShareFeedback()
+                      }}
+                    />
                   )}
 
                   <div className="px-5 pt-1 pb-2">
@@ -603,12 +661,21 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
 
                   <div className="flex items-center justify-between px-5 py-3">
                     <p className="text-slate-500 text-xs">← NO · swipe · YES →</p>
-                    <button
-                      onClick={() => updateShowDetail(true)}
-                      className="bg-cyan-400 text-black rounded-full w-9 h-9 flex items-center justify-center font-bold text-lg"
-                    >
-                      →
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => shareMarket({ question: poll.question })}
+                        className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-slate-300 transition active:scale-95 active:text-cyan-300"
+                        title="Share market"
+                      >
+                        <Share2 size={17} />
+                      </button>
+                      <button
+                        onClick={() => updateShowDetail(true)}
+                        className="bg-cyan-400 text-black rounded-full w-9 h-9 flex items-center justify-center font-bold text-lg"
+                      >
+                        →
+                      </button>
+                    </div>
                   </div>
                 </div>
 

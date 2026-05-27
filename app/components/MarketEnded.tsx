@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Share2 } from 'lucide-react'
 import PoolHistoryChart from './PoolHistoryChart'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
@@ -18,6 +19,7 @@ interface MarketEndedProps {
   yesVotes: number
   noVotes: number
   onBack: () => void
+  onShare?: () => void
   onClaimed?: (balance: number) => void | Promise<void>
 }
 
@@ -33,6 +35,7 @@ export default function MarketEnded({
   yesVotes,
   noVotes,
   onBack,
+  onShare,
   onClaimed,
 }: MarketEndedProps) {
   const haptics = useHapticFeedback()
@@ -95,8 +98,19 @@ export default function MarketEnded({
         >
           ← Back
         </button>
-        <div className="bg-red-900 text-red-400 px-3 py-1 rounded text-sm font-mono">
-          ENDED
+        <div className="flex items-center gap-2">
+          {onShare && (
+            <button
+              onClick={onShare}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-slate-300 transition active:scale-95 active:text-cyan-300"
+              title="Share market"
+            >
+              <Share2 size={17} />
+            </button>
+          )}
+          <div className="bg-red-900 text-red-400 px-3 py-1 rounded text-sm font-mono">
+            ENDED
+          </div>
         </div>
       </div>
 

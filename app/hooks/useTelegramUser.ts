@@ -22,6 +22,7 @@ interface TelegramWebApp {
   ready: () => void
   initData: string
   initDataUnsafe: TelegramInitDataUnsafe
+  openTelegramLink?: (url: string) => void
   HapticFeedback?: {
     impactOccurred?: (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft') => void
     notificationOccurred?: (type: 'error' | 'success' | 'warning') => void

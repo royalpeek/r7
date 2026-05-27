@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { Share2 } from 'lucide-react'
 import ResultsPage from '../components/ResultsPage'
 import StakingModal from '../components/StakingModal'
 import MarketEnded from '../components/MarketEnded'
@@ -9,6 +10,7 @@ import PoolHistoryChart from '../components/PoolHistoryChart'
 import Timer from '../components/Timer'
 import Toast from '../components/Toast'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
+import { useMarketShare } from '@/app/hooks/useMarketShare'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 
 type Poll = {
@@ -32,6 +34,7 @@ type UserVote = {
 
 export default function Search() {
   const haptics = useHapticFeedback()
+  const { shareFeedback, clearShareFeedback, shareMarket } = useMarketShare()
   const [searchTerm, setSearchTerm] = useState('')
   const [polls, setPolls] = useState<Poll[]>([])
   const [selectedPoll, setSelectedPoll] = useState<Poll | null>(null)
@@ -144,27 +147,40 @@ export default function Search() {
     const totalPool = selectedPoll.yes_pool + selectedPoll.no_pool
     const yesPercent = totalPool > 0 ? Math.round((selectedPoll.yes_pool / totalPool) * 100) : 50
     const noPercent = 100 - yesPercent
+    const toastMessage = voteError || shareFeedback
+    const toastType = voteError ? 'error' : 'success'
 
     // market ended + user voted
     if (marketEnded && userVote) {
       return (
-        <MarketEnded
-          pollId={selectedPoll.id}
-          question={selectedPoll.question}
-          userVoteDirection={userVote.direction}
-          userVoteAmount={userVote.amount}
-          claimedAt={userVote.claimed_at}
-          payoutAmount={userVote.payout_amount}
-          yesPool={selectedPoll.yes_pool}
-          noPool={selectedPoll.no_pool}
-          yesVotes={selectedPoll.yes_votes}
-          noVotes={selectedPoll.no_votes}
-          onBack={handleBack}
-          onClaimed={async balance => {
-            updateBalance(balance)
-            await fetchUserVote(selectedPoll.id)
-          }}
-        />
+        <>
+          <MarketEnded
+            pollId={selectedPoll.id}
+            question={selectedPoll.question}
+            userVoteDirection={userVote.direction}
+            userVoteAmount={userVote.amount}
+            claimedAt={userVote.claimed_at}
+            payoutAmount={userVote.payout_amount}
+            yesPool={selectedPoll.yes_pool}
+            noPool={selectedPoll.no_pool}
+            yesVotes={selectedPoll.yes_votes}
+            noVotes={selectedPoll.no_votes}
+            onBack={handleBack}
+            onShare={() => shareMarket({ question: selectedPoll.question })}
+            onClaimed={async balance => {
+              updateBalance(balance)
+              await fetchUserVote(selectedPoll.id)
+            }}
+          />
+          <Toast
+            message={toastMessage}
+            type={toastType}
+            onClose={() => {
+              setVoteError(null)
+              clearShareFeedback()
+            }}
+          />
+        </>
       )
     }
 
@@ -174,8 +190,25 @@ export default function Search() {
         <div className="bg-slate-950 min-h-screen flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-5 pt-5 pb-4">
             <button onClick={handleBack} className="text-slate-400 text-lg">← Back</button>
-            <div className="bg-red-900 text-red-400 px-3 py-1 rounded text-sm font-mono">ENDED</div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => shareMarket({ question: selectedPoll.question })}
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-slate-300 transition active:scale-95 active:text-cyan-300"
+                title="Share market"
+              >
+                <Share2 size={17} />
+              </button>
+              <div className="bg-red-900 text-red-400 px-3 py-1 rounded text-sm font-mono">ENDED</div>
+            </div>
           </div>
+          <Toast
+            message={toastMessage}
+            type={toastType}
+            onClose={() => {
+              setVoteError(null)
+              clearShareFeedback()
+            }}
+          />
 
           <div className="flex-1 overflow-y-auto px-5 pb-24">
             <p className="text-white font-bold text-2xl leading-tight mb-6">{selectedPoll.question}</p>
@@ -255,6 +288,7 @@ export default function Search() {
             endsAt={selectedPoll.ends_at}
             marketEnded={marketEnded}
             onBack={handleBack}
+            onShare={() => shareMarket({ question: selectedPoll.question })}
             onAddMore={() => {
               haptics.impact('medium')
               setStakingDirection(userVote.direction)
@@ -264,6 +298,14 @@ export default function Search() {
               haptics.impact('medium')
               setStakingDirection(userVote.direction === 'yes' ? 'no' : 'yes')
               setShowStakingModal(true)
+            }}
+          />
+          <Toast
+            message={toastMessage}
+            type={toastType}
+            onClose={() => {
+              setVoteError(null)
+              clearShareFeedback()
             }}
           />
           {showStakingModal && stakingDirection && typeof document !== 'undefined' &&
@@ -284,11 +326,27 @@ export default function Search() {
     // active + user hasn't voted
     return (
       <>
-        <Toast message={voteError} onClose={() => setVoteError(null)} />
+        <Toast
+          message={toastMessage}
+          type={toastType}
+          onClose={() => {
+            setVoteError(null)
+            clearShareFeedback()
+          }}
+        />
         <div className="bg-slate-950 min-h-screen flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-5 pt-5 pb-4">
             <button onClick={handleBack} className="text-slate-400 text-lg">← Back</button>
-            <Timer endsAt={selectedPoll.ends_at} />
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => shareMarket({ question: selectedPoll.question })}
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-slate-300 transition active:scale-95 active:text-cyan-300"
+                title="Share market"
+              >
+                <Share2 size={17} />
+              </button>
+              <Timer endsAt={selectedPoll.ends_at} />
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto px-5 pb-32">
