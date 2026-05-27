@@ -5,7 +5,7 @@ import ResultsPage from '../components/ResultsPage'
 import StakingModal from '../components/StakingModal'
 import Timer from '../components/Timer'
 import { createPortal } from 'react-dom'
-import { ArrowLeft, Gift, Share2 } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Gift, Share2 } from 'lucide-react'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { getMarketLifecycleLabel, getMarketLifecycleStatus } from '@/lib/marketLifecycle'
@@ -497,7 +497,10 @@ export default function Portfolio() {
             onClick={openPerformance}
             className="rounded-xl border border-slate-800 bg-slate-900 p-3.5 text-left active:scale-[0.99] transition"
           >
-            <p className="text-slate-400 text-xs mb-1">P&L</p>
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <p className="text-slate-400 text-xs">P&L</p>
+              <ChevronRight size={14} className="text-slate-500" />
+            </div>
             <p className={`text-xl font-bold ${performance.profit >= 0 ? 'text-cyan-400' : 'text-pink-500'}`}>
               {loading ? '...' : `${performance.profit >= 0 ? '+' : '-'}$${Math.abs(performance.profit).toFixed(2)}`}
             </p>
