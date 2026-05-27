@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
 import { X, Wallet, RefreshCw, PlusCircle, Send, QrCode, Filter, Lock, MapPin, Zap, ReceiptText } from 'lucide-react'
 import PollCard from './components/PollCard'
+import Toast from './components/Toast'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { usePolls } from './hooks/usePolls'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
@@ -299,6 +300,9 @@ export default function Home() {
         )}
       </div>
 
+      {/* error feedback */}
+      <Toast message={createError} onClose={() => setCreateError(null)} />
+
       {/* create poll modal */}
       {showCreatePoll && (
         <div className="fixed inset-0 z-[70] flex flex-col bg-slate-950 overflow-y-auto">
@@ -404,11 +408,6 @@ export default function Home() {
                 When your poll resolves, you earn 0.25% of the winning pool and 0.5% of the losing pool, paid directly in USDT.
               </p>
             </div>
-
-            {/* error message */}
-            {createError && (
-              <p className="text-pink-400 text-sm mb-4">{createError}</p>
-            )}
 
             {/* create button */}
             <button

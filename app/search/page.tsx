@@ -7,6 +7,7 @@ import StakingModal from '../components/StakingModal'
 import MarketEnded from '../components/MarketEnded'
 import PoolHistoryChart from '../components/PoolHistoryChart'
 import Timer from '../components/Timer'
+import Toast from '../components/Toast'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 
@@ -283,6 +284,7 @@ export default function Search() {
     // active + user hasn't voted
     return (
       <>
+        <Toast message={voteError} onClose={() => setVoteError(null)} />
         <div className="bg-slate-950 min-h-screen flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-5 pt-5 pb-4">
             <button onClick={handleBack} className="text-slate-400 text-lg">← Back</button>
@@ -302,11 +304,6 @@ export default function Search() {
           </div>
 
           <div className="p-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
-            {voteError && (
-              <p className="mb-3 rounded-xl border border-pink-500/40 bg-pink-500/10 px-4 py-3 text-center text-sm text-pink-200">
-                {voteError}
-              </p>
-            )}
             <div className="flex gap-3">
               <button
                 onClick={() => {

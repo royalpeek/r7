@@ -7,6 +7,7 @@ import ResultsPage from './ResultsPage'
 import MarketEnded from './MarketEnded'
 import PoolHistoryChart from './PoolHistoryChart'
 import Timer from './Timer'
+import Toast from './Toast'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { usePolls } from '@/app/hooks/usePolls'
@@ -561,10 +562,8 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
                     <div className="text-slate-400 text-sm">${(poll.yes_pool + poll.no_pool).toFixed(2)} USDT</div>
                   </div>
 
-                  {isActive && voteError && (
-                    <div className="mx-5 mb-2 rounded-xl border border-pink-500/40 bg-pink-500/10 px-3 py-2 text-sm text-pink-200">
-                      {voteError}
-                    </div>
+                  {isActive && (
+                    <Toast message={voteError} onClose={() => setVoteError(null)} />
                   )}
 
                   <div className="px-5 pt-1 pb-2">
