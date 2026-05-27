@@ -20,6 +20,10 @@ type Position = {
   created_at: string
   yes_pool: number
   no_pool: number
+  yes_votes: number
+  no_votes: number
+  claimed_at?: string | null
+  payout_amount?: number | null
 }
 
 type SortOption = 'newest' | 'oldest' | 'highest_stake' | 'lowest_stake'
@@ -151,6 +155,10 @@ export default function Portfolio() {
           noPercent={noPercent}
           yesPool={selectedPosition.yes_pool}
           noPool={selectedPosition.no_pool}
+          yesVotes={selectedPosition.yes_votes}
+          noVotes={selectedPosition.no_votes}
+          claimedAt={selectedPosition.claimed_at}
+          payoutAmount={selectedPosition.payout_amount}
           endsAt={selectedPosition.ends_at}
           marketEnded={marketEnded}
           onBack={() => {
@@ -170,6 +178,12 @@ export default function Portfolio() {
               setVoteError(null)
               setStakingDirection(selectedPosition.direction === 'yes' ? 'no' : 'yes')
               setShowStakingModal(true)
+            }}
+            onClaimed={async balance => {
+              updateBalance(balance)
+              const nextPositions = await fetchPositions()
+              const nextSelectedPosition = nextPositions.find(position => position.poll_id === selectedPosition.poll_id)
+              if (nextSelectedPosition) setSelectedPosition(nextSelectedPosition)
             }}
           />
           {voteError && (

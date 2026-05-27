@@ -19,6 +19,8 @@ export type UserVote = {
   user_id: string
   direction: 'yes' | 'no'
   amount: number
+  claimed_at?: string | null
+  payout_amount?: number | null
   created_at?: string
   updated_at?: string
 }

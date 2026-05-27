@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const pollIds = votes.map(vote => vote.poll_id)
     const { data: polls, error: pollsError } = await supabase
       .from('polls')
-      .select('id, question, status, ends_at, yes_pool, no_pool')
+      .select('id, question, status, ends_at, yes_pool, no_pool, yes_votes, no_votes')
       .in('id', pollIds)
 
     if (pollsError) throw pollsError
@@ -36,11 +36,15 @@ export async function POST(request: NextRequest) {
         question: poll?.question || 'unknown poll',
         direction: vote.direction,
         amount: vote.amount,
+        claimed_at: vote.claimed_at || null,
+        payout_amount: vote.payout_amount || 0,
         status: poll?.status || 'active',
         ends_at: poll?.ends_at || '',
         created_at: vote.created_at,
         yes_pool: poll?.yes_pool || 0,
         no_pool: poll?.no_pool || 0,
+        yes_votes: poll?.yes_votes || 0,
+        no_votes: poll?.no_votes || 0,
       }
     })
 

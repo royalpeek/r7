@@ -1,31 +1,84 @@
 'use client'
 
+import { useState } from 'react'
 import PoolHistoryChart from './PoolHistoryChart'
+import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
+import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 
 interface MarketEndedProps {
   pollId: string
   question: string
   userVoteDirection: 'yes' | 'no'
+  userVoteAmount: number
+  claimedAt?: string | null
+  payoutAmount?: number | null
   yesPool: number
   noPool: number
   yesVotes: number
   noVotes: number
   onBack: () => void
+  onClaimed?: (balance: number) => void | Promise<void>
 }
 
 export default function MarketEnded({
   pollId,
   question,
   userVoteDirection,
+  userVoteAmount,
+  claimedAt,
+  payoutAmount,
   yesPool,
   noPool,
   yesVotes,
   noVotes,
   onBack,
+  onClaimed,
 }: MarketEndedProps) {
+  const haptics = useHapticFeedback()
+  const { initData, updateBalance } = useTelegramUser()
+  const [claiming, setClaiming] = useState(false)
+  const [claimError, setClaimError] = useState<string | null>(null)
+  const [localClaimedAt, setLocalClaimedAt] = useState<string | null>(claimedAt || null)
+  const [localPayout, setLocalPayout] = useState<number>(Number(payoutAmount || 0))
   const totalVolume = yesPool + noPool
   const yesPercent = totalVolume > 0 ? Math.round((yesPool / totalVolume) * 100) : 0
   const noPercent = 100 - yesPercent
+  const winner = yesVotes > noVotes ? 'yes' : noVotes > yesVotes ? 'no' : 'draw'
+  const userWon = winner === 'draw' || winner === userVoteDirection
+  const winningPool = winner === 'yes' ? yesPool : winner === 'no' ? noPool : userVoteAmount
+  const estimatedPayout = winner === 'draw'
+    ? userVoteAmount
+    : winningPool > 0
+      ? Number(((userVoteAmount / winningPool) * totalVolume).toFixed(2))
+      : 0
+
+  const handleClaim = async () => {
+    try {
+      setClaiming(true)
+      setClaimError(null)
+      const response = await fetch('/api/claims', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData, poll_id: pollId }),
+      })
+      const data = await response.json()
+
+      if (!response.ok) throw new Error(data.error || 'claim failed')
+
+      setLocalClaimedAt(data.claimedAt)
+      setLocalPayout(Number(data.payout || 0))
+      if (typeof data.balance === 'number') {
+        updateBalance(data.balance)
+        await onClaimed?.(data.balance)
+      }
+      haptics.notification('success')
+    } catch (error) {
+      haptics.notification('error')
+      setClaimError(error instanceof Error ? error.message : 'claim failed')
+    } finally {
+      setClaiming(false)
+    }
+  }
 
   return (
     <div className="h-full w-full bg-slate-950 flex flex-col overflow-hidden">
@@ -51,6 +104,36 @@ export default function MarketEnded({
         <p className={`text-sm font-bold mb-4 ${userVoteDirection === 'yes' ? 'text-cyan-400' : 'text-pink-500'}`}>
           You voted {userVoteDirection === 'yes' ? 'YES' : 'NO'}
         </p>
+
+        <div className={`rounded-xl p-4 mb-6 border ${
+          userWon
+            ? 'bg-cyan-400/10 border-cyan-400/30'
+            : 'bg-pink-500/10 border-pink-500/30'
+        }`}>
+          <p className={`text-xs font-bold uppercase mb-1 ${userWon ? 'text-cyan-400' : 'text-pink-400'}`}>
+            {winner === 'draw' ? 'Draw' : userWon ? 'You won' : 'You lost'}
+          </p>
+          <p className="text-white font-bold text-2xl">
+            {userWon ? `$${(localClaimedAt ? localPayout : estimatedPayout).toFixed(2)} USDT` : '$0.00 USDT'}
+          </p>
+          <p className="text-slate-400 text-sm mt-1">
+            {localClaimedAt
+              ? 'Claimed successfully'
+              : userWon
+                ? 'Ready to claim'
+                : 'Only winning votes can claim.'}
+          </p>
+          {claimError && <p className="text-pink-300 text-sm mt-3">{claimError}</p>}
+          {userWon && !localClaimedAt && (
+            <button
+              onClick={handleClaim}
+              disabled={claiming}
+              className="mt-4 w-full rounded-2xl bg-cyan-400 py-3.5 text-sm font-bold text-black active:scale-95 transition disabled:opacity-60"
+            >
+              {claiming ? 'Claiming...' : 'Claim winnings'}
+            </button>
+          )}
+        </div>
 
         {/* vote counts and engagement */}
         <div className="bg-slate-800 rounded-xl p-4 mb-6 flex items-center gap-3">

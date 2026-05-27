@@ -25,6 +25,8 @@ type UserVote = {
   poll_id: string
   direction: 'yes' | 'no'
   amount: number
+  claimed_at?: string | null
+  payout_amount?: number | null
 }
 
 export default function Search() {
@@ -149,11 +151,18 @@ export default function Search() {
           pollId={selectedPoll.id}
           question={selectedPoll.question}
           userVoteDirection={userVote.direction}
+          userVoteAmount={userVote.amount}
+          claimedAt={userVote.claimed_at}
+          payoutAmount={userVote.payout_amount}
           yesPool={selectedPoll.yes_pool}
           noPool={selectedPoll.no_pool}
           yesVotes={selectedPoll.yes_votes}
           noVotes={selectedPoll.no_votes}
           onBack={handleBack}
+          onClaimed={async balance => {
+            updateBalance(balance)
+            await fetchUserVote(selectedPoll.id)
+          }}
         />
       )
     }
@@ -240,6 +249,8 @@ export default function Search() {
             noPercent={noPercent}
             yesPool={selectedPoll.yes_pool}
             noPool={selectedPoll.no_pool}
+            yesVotes={selectedPoll.yes_votes}
+            noVotes={selectedPoll.no_votes}
             endsAt={selectedPoll.ends_at}
             marketEnded={marketEnded}
             onBack={handleBack}

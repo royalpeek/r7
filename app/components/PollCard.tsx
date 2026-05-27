@@ -259,11 +259,21 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
           pollId={currentCard.id}
           question={currentCard.question}
           userVoteDirection={userVote.direction as 'yes' | 'no'}
+          userVoteAmount={userVote.amount}
+          claimedAt={userVote.claimed_at}
+          payoutAmount={userVote.payout_amount}
           yesPool={currentCard.yes_pool}
           noPool={currentCard.no_pool}
           yesVotes={currentCard.yes_votes}
           noVotes={currentCard.no_votes}
           onBack={() => updateShowDetail(false)}
+          onClaimed={async balance => {
+            onBalanceChange?.(balance)
+            await Promise.all([
+              refetch(),
+              onPollsChange?.(),
+            ])
+          }}
         />
       )
     }
@@ -282,6 +292,10 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
             noPercent={noPercent}
             yesPool={currentCard.yes_pool}
             noPool={currentCard.no_pool}
+            yesVotes={currentCard.yes_votes}
+            noVotes={currentCard.no_votes}
+            claimedAt={userVote.claimed_at}
+            payoutAmount={userVote.payout_amount}
             endsAt={currentCard.ends_at}
             marketEnded={marketEnded}
             onBack={() => updateShowDetail(false)}
