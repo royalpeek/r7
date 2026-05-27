@@ -30,6 +30,7 @@ export default function Home() {
   const [filterStatus, setFilterStatus] = useState('active')
   const [sortBy, setSortBy] = useState('oldest')
   const [showDetail, setShowDetail] = useState(false)
+  const [deepLinkedMarketId, setDeepLinkedMarketId] = useState<string | null>(null)
 
   // create poll form state
   const [pollTitle, setPollTitle] = useState('')
@@ -114,6 +115,22 @@ export default function Home() {
     return () => window.clearTimeout(timeout)
   }, [fetchTransactions, showWallet])
 
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      const telegramApp = window.Telegram?.WebApp
+      const startParam = telegramApp?.startParam || telegramApp?.initDataUnsafe?.start_param
+      const marketParam = new URLSearchParams(window.location.search).get('market')
+      const rawMarketId = startParam || marketParam
+      const marketId = rawMarketId?.startsWith('market_')
+        ? rawMarketId.replace(/^market_/, '')
+        : rawMarketId
+
+      if (marketId) setDeepLinkedMarketId(marketId)
+    }, 0)
+
+    return () => window.clearTimeout(timeout)
+  }, [])
+
   const handleCopy = () => {
     navigator.clipboard.writeText('3wbjCZ...kDdM')
   }
@@ -165,12 +182,20 @@ export default function Home() {
   }
 
   const loading = userLoading || pollsLoading
+  const deepLinkedPoll = deepLinkedMarketId
+    ? polls.find(poll => poll.id === deepLinkedMarketId)
+    : null
+  const effectiveFilterStatus = deepLinkedPoll
+    ? getMarketLifecycleStatus(deepLinkedPoll.status, deepLinkedPoll.ends_at) === 'live'
+      ? 'active'
+      : 'ended'
+    : filterStatus
 
   // filter and sort polls
   const filteredPolls = polls
     .filter(poll => {
       const lifecycleStatus = getMarketLifecycleStatus(poll.status, poll.ends_at)
-      return filterStatus === 'active'
+      return effectiveFilterStatus === 'active'
         ? lifecycleStatus === 'live'
         : lifecycleStatus === 'ended' || lifecycleStatus === 'closed'
     })
@@ -281,8 +306,12 @@ export default function Home() {
         ) : filteredPolls.length > 0 ? (
           <PollCard
             polls={filteredPolls}
+            focusPollId={deepLinkedMarketId}
             availableBalance={balance}
-            onDetailChange={setShowDetail}
+            onDetailChange={nextShowDetail => {
+              setShowDetail(nextShowDetail)
+              if (!nextShowDetail) setDeepLinkedMarketId(null)
+            }}
             onPollsChange={refetch}
             onBalanceChange={setBalanceOverride}
           />

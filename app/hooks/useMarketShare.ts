@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useHapticFeedback } from './useHapticFeedback'
 
 type ShareMarketInput = {
+  pollId: string
   question: string
 }
 
@@ -16,14 +17,20 @@ export function useMarketShare() {
   const haptics = useHapticFeedback()
   const [shareFeedback, setShareFeedback] = useState<string | null>(null)
 
-  const shareMarket = async ({ question }: ShareMarketInput) => {
+  const shareMarket = async ({ pollId, question }: ShareMarketInput) => {
     haptics.impact('light')
 
     if (typeof window === 'undefined') return
 
     const appUrl = window.location.origin
+    const marketPayload = `market_${pollId}`
+    const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME?.replace(/^@/, '')
+    const miniAppShortName = process.env.NEXT_PUBLIC_TELEGRAM_APP_SHORT_NAME
+    const deepLink = botUsername && miniAppShortName
+      ? `https://t.me/${botUsername}/${miniAppShortName}?startapp=${encodeURIComponent(marketPayload)}`
+      : `${appUrl}/?market=${encodeURIComponent(pollId)}`
     const text = `R7 market: ${question}\nVote YES or NO on R7.`
-    const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(appUrl)}&text=${encodeURIComponent(text)}`
+    const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(deepLink)}&text=${encodeURIComponent(text)}`
     const telegramApp = window.Telegram?.WebApp
 
     try {
@@ -38,14 +45,14 @@ export function useMarketShare() {
         await nav.share({
           title: 'R7 market',
           text,
-          url: appUrl,
+          url: deepLink,
         })
         setShareFeedback('Share sheet opened')
         return
       }
 
       if (nav.clipboard?.writeText) {
-        await nav.clipboard.writeText(`${text}\n${appUrl}`)
+        await nav.clipboard.writeText(`${text}\n${deepLink}`)
         setShareFeedback('Market link copied')
         return
       }

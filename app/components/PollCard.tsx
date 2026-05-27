@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Share2 } from 'lucide-react'
 import StakingModal from './StakingModal'
@@ -28,17 +28,19 @@ type Poll = {
 
 type PollCardProps = {
   polls: Poll[]
+  focusPollId?: string | null
   availableBalance?: number
   onDetailChange?: (showDetail: boolean) => void
   onPollsChange?: () => void | Promise<void>
   onBalanceChange?: (balance: number) => void
 }
 
-export default function PollCard({ polls, availableBalance = 0, onDetailChange, onPollsChange, onBalanceChange }: PollCardProps) {
+export default function PollCard({ polls, focusPollId = null, availableBalance = 0, onDetailChange, onPollsChange, onBalanceChange }: PollCardProps) {
   const haptics = useHapticFeedback()
   const { shareFeedback, clearShareFeedback, shareMarket } = useMarketShare()
   const [currentIndex, setCurrentIndex] = useState(0)
   const currentCard = polls && polls.length > 0 ? polls[currentIndex] : null
+  const openedFocusPollId = useRef<string | null>(null)
 
   const { userId, initData, updateBalance } = useTelegramUser()
   const { userVotes, refetch } = usePolls(userId, initData)
@@ -49,6 +51,23 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
   const [stakingDirection, setStakingDirection] = useState<'yes' | 'no' | null>(null)
   const [showDetail, setShowDetail] = useState(false)
   const [voteError, setVoteError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!focusPollId || openedFocusPollId.current === focusPollId) return
+
+    const targetIndex = polls.findIndex(poll => poll.id === focusPollId)
+    if (targetIndex < 0) return
+
+    const timeout = window.setTimeout(() => {
+      openedFocusPollId.current = focusPollId
+      setCurrentIndex(targetIndex)
+      setShowDetail(true)
+      onDetailChange?.(true)
+      haptics.impact('light')
+    }, 0)
+
+    return () => window.clearTimeout(timeout)
+  }, [focusPollId, haptics, onDetailChange, polls])
 
   const updateShowDetail = (nextShowDetail: boolean) => {
     if (nextShowDetail) haptics.impact('light')
@@ -274,7 +293,7 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
             yesVotes={currentCard.yes_votes}
             noVotes={currentCard.no_votes}
             onBack={() => updateShowDetail(false)}
-            onShare={() => shareMarket({ question: currentCard.question })}
+            onShare={() => shareMarket({ pollId: currentCard.id, question: currentCard.question })}
             onClaimed={async balance => {
               onBalanceChange?.(balance)
               await Promise.all([
@@ -316,7 +335,7 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
             endsAt={currentCard.ends_at}
             marketEnded={marketEnded}
             onBack={() => updateShowDetail(false)}
-            onShare={() => shareMarket({ question: currentCard.question })}
+            onShare={() => shareMarket({ pollId: currentCard.id, question: currentCard.question })}
             onAddMore={() => {
               if (!marketEnded) {
                 openStakingModal(userVote.direction === 'yes' ? 'yes' : 'no')
@@ -367,7 +386,7 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
             </button>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => shareMarket({ question: currentCard.question })}
+                onClick={() => shareMarket({ pollId: currentCard.id, question: currentCard.question })}
                 className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-slate-300 transition active:scale-95 active:text-cyan-300"
                 title="Share market"
               >
@@ -477,7 +496,7 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
             <div className="flex items-center justify-between mt-2">
               <p className="text-slate-500 text-xs">← NO · swipe · YES →</p>
               <button
-                onClick={() => shareMarket({ question: currentCard.question })}
+                onClick={() => shareMarket({ pollId: currentCard.id, question: currentCard.question })}
                 className="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition active:scale-95 active:text-cyan-300"
                 title="Share market"
               >
@@ -663,7 +682,7 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
                     <p className="text-slate-500 text-xs">← NO · swipe · YES →</p>
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => shareMarket({ question: poll.question })}
+                        onClick={() => shareMarket({ pollId: poll.id, question: poll.question })}
                         className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-slate-300 transition active:scale-95 active:text-cyan-300"
                         title="Share market"
                       >

@@ -16,6 +16,25 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Telegram market sharing
+
+Market share links use each market's database `id` as the deep-link payload.
+
+Set these Vercel environment variables so shared links open the Telegram Mini App directly:
+
+```bash
+NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=your_bot_username
+NEXT_PUBLIC_TELEGRAM_APP_SHORT_NAME=your_mini_app_short_name
+```
+
+Shared links are generated like:
+
+```text
+https://t.me/your_bot_username/your_mini_app_short_name?startapp=market_MARKET_ID
+```
+
+When that link opens, the app reads `market_MARKET_ID`, finds the market, and opens the live detail page or the ended result page.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

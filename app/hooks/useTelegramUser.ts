@@ -16,12 +16,14 @@ interface AppUser {
 
 interface TelegramInitDataUnsafe {
   user?: TelegramUser
+  start_param?: string
 }
 
 interface TelegramWebApp {
   ready: () => void
   initData: string
   initDataUnsafe: TelegramInitDataUnsafe
+  startParam?: string
   openTelegramLink?: (url: string) => void
   HapticFeedback?: {
     impactOccurred?: (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft') => void

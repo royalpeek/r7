@@ -166,7 +166,7 @@ export default function Search() {
             yesVotes={selectedPoll.yes_votes}
             noVotes={selectedPoll.no_votes}
             onBack={handleBack}
-            onShare={() => shareMarket({ question: selectedPoll.question })}
+            onShare={() => shareMarket({ pollId: selectedPoll.id, question: selectedPoll.question })}
             onClaimed={async balance => {
               updateBalance(balance)
               await fetchUserVote(selectedPoll.id)
@@ -192,7 +192,7 @@ export default function Search() {
             <button onClick={handleBack} className="text-slate-400 text-lg">← Back</button>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => shareMarket({ question: selectedPoll.question })}
+                onClick={() => shareMarket({ pollId: selectedPoll.id, question: selectedPoll.question })}
                 className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-slate-300 transition active:scale-95 active:text-cyan-300"
                 title="Share market"
               >
@@ -288,7 +288,7 @@ export default function Search() {
             endsAt={selectedPoll.ends_at}
             marketEnded={marketEnded}
             onBack={handleBack}
-            onShare={() => shareMarket({ question: selectedPoll.question })}
+            onShare={() => shareMarket({ pollId: selectedPoll.id, question: selectedPoll.question })}
             onAddMore={() => {
               haptics.impact('medium')
               setStakingDirection(userVote.direction)
@@ -339,7 +339,7 @@ export default function Search() {
             <button onClick={handleBack} className="text-slate-400 text-lg">← Back</button>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => shareMarket({ question: selectedPoll.question })}
+                onClick={() => shareMarket({ pollId: selectedPoll.id, question: selectedPoll.question })}
                 className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-slate-300 transition active:scale-95 active:text-cyan-300"
                 title="Share market"
               >
