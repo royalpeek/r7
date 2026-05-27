@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
+import { CREATOR_DAILY_POLL_LIMIT, getLagosDayWindow } from '@/lib/creatorQuota'
 
 export async function GET() {
   try {
@@ -52,6 +53,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Creator access required' }, { status: 403 })
     }
 
+    if (role === 'creator') {
+      const { startIso, endIso } = getLagosDayWindow()
+      const { count, error: countError } = await admin
+        .from('polls')
+        .select('*', { count: 'exact', head: true })
+        .eq('created_by', userId)
+        .gte('created_at', startIso)
+        .lt('created_at', endIso)
+
+      if (countError) throw countError
+
+      if ((count ?? 0) >= CREATOR_DAILY_POLL_LIMIT) {
+        return NextResponse.json({ error: 'Daily poll limit reached' }, { status: 429 })
+      }
+    }
+
     // set poll to expire 24 hours from now
     const ends_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
 
@@ -67,6 +84,7 @@ export async function POST(request: NextRequest) {
         no_votes: 0,
         volume: 0,
         ends_at,
+        created_by: userId,
       })
       .select()
       .single()

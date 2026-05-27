@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
 import { X, Wallet, RefreshCw, PlusCircle, Send, QrCode, Filter, Lock, MapPin, Zap } from 'lucide-react'
 import PollCard from './components/PollCard'
@@ -27,6 +27,14 @@ export default function Home() {
   const [isLocal, setIsLocal] = useState(false)
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
+  const [quotaLoading, setQuotaLoading] = useState(false)
+  const [quota, setQuota] = useState<{
+    canCreate: boolean
+    isAdmin: boolean
+    limit: number | null
+    used: number
+    remaining: number | null
+  } | null>(null)
 
   const { userId, appUser, initData, loading: userLoading } = useTelegramUser()
   const { polls, loading: pollsLoading, error: pollsError, refetch } = usePolls(userId, initData)
@@ -34,6 +42,34 @@ export default function Home() {
   const canCreatePoll = userRole === 'creator' || userRole === 'admin'
   const [balanceOverride, setBalanceOverride] = useState<number | null>(null)
   const balance = balanceOverride ?? Number(appUser?.balance ?? 0)
+
+  const fetchCreatorQuota = useCallback(async () => {
+    if (!canCreatePoll) return
+
+    try {
+      setQuotaLoading(true)
+      const response = await fetch('/api/creator/quota', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData }),
+      })
+      const data = await response.json()
+
+      if (response.ok) setQuota(data)
+    } catch (error) {
+      console.error('fetch creator quota error:', error)
+    } finally {
+      setQuotaLoading(false)
+    }
+  }, [canCreatePoll, initData])
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      fetchCreatorQuota()
+    }, 0)
+
+    return () => window.clearTimeout(timeout)
+  }, [fetchCreatorQuota])
 
   const handleCopy = () => {
     navigator.clipboard.writeText('3wbjCZ...kDdM')
@@ -64,8 +100,9 @@ export default function Home() {
           is_private: isPrivate,
         }),
       })
+      const data = await response.json()
 
-      if (!response.ok) throw new Error('failed to create poll')
+      if (!response.ok) throw new Error(data.error || 'failed to create poll')
 
       // reset form and close modal
       setPollTitle('')
@@ -73,9 +110,12 @@ export default function Home() {
       setIsPrivate(false)
       setIsLocal(false)
       setShowCreatePoll(false)
-      refetch()
-    } catch {
-      setCreateError('failed to create poll. try again.')
+      await Promise.all([
+        refetch(),
+        fetchCreatorQuota(),
+      ])
+    } catch (error) {
+      setCreateError(error instanceof Error ? error.message : 'failed to create poll. try again.')
     } finally {
       setCreating(false)
     }
@@ -140,6 +180,7 @@ export default function Home() {
           <button
             onClick={() => {
               haptics.impact('medium')
+              fetchCreatorQuota()
               setShowCreatePoll(true)
             }}
             className="h-10 flex items-center gap-1.5 rounded-xl bg-cyan-400 px-3 text-sm font-bold text-black hover:bg-cyan-500 active:scale-95 transition"
@@ -242,7 +283,13 @@ export default function Home() {
             {/* polls remaining badge */}
             <div className="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 mb-6 flex items-center gap-2">
               <Zap size={16} className="text-pink-400" />
-              <span className="text-pink-400 text-sm font-medium">2/2 polls remaining today</span>
+              <span className="text-pink-400 text-sm font-medium">
+                {quotaLoading
+                  ? 'checking poll limit...'
+                  : quota?.isAdmin
+                    ? 'admin: unlimited polls'
+                    : `${quota?.remaining ?? 0}/${quota?.limit ?? 2} polls remaining today`}
+              </span>
             </div>
 
             {/* title input */}
@@ -326,7 +373,7 @@ export default function Home() {
             {/* create button */}
             <button
               onClick={handleCreatePoll}
-              disabled={creating || !pollTitle.trim()}
+              disabled={creating || !pollTitle.trim() || (!quota?.isAdmin && quota?.remaining === 0)}
               className="w-full bg-cyan-400 text-black font-bold py-4 rounded-2xl text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-cyan-500 transition"
             >
               {creating ? 'Creating...' : 'Create Poll'}
