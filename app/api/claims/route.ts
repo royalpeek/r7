@@ -2,12 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
 import { closeExpiredMarkets, getMarketLifecycleStatus } from '@/lib/marketLifecycle'
-
-function getWinningDirection(yesVotes: number, noVotes: number) {
-  if (yesVotes > noVotes) return 'yes'
-  if (noVotes > yesVotes) return 'no'
-  return 'draw'
-}
+import { calculateClaimPayout, calculateCreatorReward, getWinningDirection } from '@/lib/payouts'
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     const { data: poll, error: pollError } = await supabase
       .from('polls')
-      .select('status, ends_at, yes_pool, no_pool, yes_votes, no_votes')
+      .select('status, ends_at, yes_pool, no_pool, yes_votes, no_votes, created_by, creator_reward_paid_at')
       .eq('id', pollId)
       .single()
 
@@ -62,18 +57,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'this vote did not win' }, { status: 400 })
     }
 
-    const winningPool = winningDirection === 'draw'
-      ? voteAmount
-      : winningDirection === 'yes'
-        ? yesPool
-        : noPool
-    const totalPool = yesPool + noPool
-    const rawPayout = winningDirection === 'draw'
-      ? voteAmount
-      : winningPool > 0
-        ? (voteAmount / winningPool) * totalPool
-        : 0
-    const payout = Number(rawPayout.toFixed(2))
+    const payout = calculateClaimPayout({
+      voteAmount,
+      voteDirection: vote.direction,
+      winningDirection,
+      yesPool,
+      noPool,
+    })
 
     if (!Number.isFinite(payout) || payout <= 0) {
       return NextResponse.json({ error: 'nothing to claim' }, { status: 400 })
@@ -91,13 +81,58 @@ export async function POST(request: NextRequest) {
     if (!Number.isFinite(currentBalance)) throw new Error('invalid user balance')
 
     const claimedAt = new Date().toISOString()
-    const { error: claimError } = await supabase
+
+    if (winningDirection !== 'draw' && poll.created_by && !poll.creator_reward_paid_at) {
+      const creatorReward = calculateCreatorReward(winningDirection, yesPool, noPool)
+
+      if (creatorReward > 0) {
+        const { data: rewardMarker, error: creatorRewardError } = await supabase
+          .from('polls')
+          .update({
+            creator_reward_amount: creatorReward,
+            creator_reward_paid_at: claimedAt,
+          })
+          .eq('id', pollId)
+          .is('creator_reward_paid_at', null)
+          .select('id')
+          .maybeSingle()
+
+        if (creatorRewardError) throw creatorRewardError
+
+        if (rewardMarker) {
+          const { data: creator, error: creatorError } = await supabase
+            .from('users')
+            .select('balance')
+            .eq('id', poll.created_by)
+            .single()
+
+          if (creatorError) throw creatorError
+
+          const creatorBalance = Number(creator.balance ?? 0)
+          if (!Number.isFinite(creatorBalance)) throw new Error('invalid creator balance')
+
+          const { error: creatorBalanceError } = await supabase
+            .from('users')
+            .update({ balance: Number((creatorBalance + creatorReward).toFixed(2)) })
+            .eq('id', poll.created_by)
+
+          if (creatorBalanceError) throw creatorBalanceError
+        }
+      }
+    }
+
+    const { data: claimMarker, error: claimError } = await supabase
       .from('votes')
       .update({ claimed_at: claimedAt, payout_amount: payout })
       .eq('id', vote.id)
       .is('claimed_at', null)
+      .select('id')
+      .maybeSingle()
 
     if (claimError) throw claimError
+    if (!claimMarker) {
+      return NextResponse.json({ error: 'already claimed' }, { status: 400 })
+    }
 
     const nextBalance = Number((currentBalance + payout).toFixed(2))
     const { error: balanceError } = await supabase

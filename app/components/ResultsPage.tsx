@@ -5,6 +5,7 @@ import PoolHistoryChart from './PoolHistoryChart'
 import Timer from './Timer'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
+import { calculateClaimPayout, getWinningDirection } from '@/lib/payouts'
 
 interface ResultsPageProps {
   question: string
@@ -76,20 +77,22 @@ export default function ResultsPage({
   }, [pollId])
 
   const totalVolume = yesPool + noPool
-  const yesWon = typeof yesVotes === 'number' && typeof noVotes === 'number'
-    ? yesVotes > noVotes
+  const winner = typeof yesVotes === 'number' && typeof noVotes === 'number'
+    ? getWinningDirection(yesVotes, noVotes)
     : yesPercent > noPercent
-  const noWon = typeof yesVotes === 'number' && typeof noVotes === 'number'
-    ? noVotes > yesVotes
-    : noPercent > yesPercent
-  const winner = yesWon ? 'YES' : noWon ? 'NO' : 'DRAW'
-  const userWon = winner === 'DRAW' || winner === voteDirection
-  const winningPool = winner === 'YES' ? yesPool : winner === 'NO' ? noPool : amount
-  const estimatedPayout = winner === 'DRAW'
-    ? amount
-    : winningPool > 0
-      ? Number(((amount / winningPool) * totalVolume).toFixed(2))
-      : 0
+      ? 'yes'
+      : noPercent > yesPercent
+        ? 'no'
+        : 'draw'
+  const normalizedVoteDirection = voteDirection === 'YES' ? 'yes' : 'no'
+  const userWon = winner === 'draw' || winner === normalizedVoteDirection
+  const estimatedPayout = calculateClaimPayout({
+    voteAmount: amount,
+    voteDirection: normalizedVoteDirection,
+    winningDirection: winner,
+    yesPool,
+    noPool,
+  })
 
   const handleClaim = async () => {
     try {
@@ -198,7 +201,7 @@ export default function ResultsPage({
                 : 'bg-pink-500/10 border-pink-500/30'
             }`}>
               <p className={`text-xs font-bold uppercase mb-1 ${userWon ? 'text-cyan-400' : 'text-pink-400'}`}>
-                {winner === 'DRAW' ? 'Draw' : userWon ? 'You won' : 'You lost'}
+                {winner === 'draw' ? 'Draw' : userWon ? 'You won' : 'You lost'}
               </p>
               <p className="text-white font-bold text-2xl">
                 {userWon ? `$${(localClaimedAt ? localPayout : estimatedPayout).toFixed(2)} USDT` : '$0.00 USDT'}

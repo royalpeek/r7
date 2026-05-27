@@ -4,6 +4,7 @@ import { useState } from 'react'
 import PoolHistoryChart from './PoolHistoryChart'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
+import { calculateClaimPayout, getWinningDirection } from '@/lib/payouts'
 
 interface MarketEndedProps {
   pollId: string
@@ -43,14 +44,15 @@ export default function MarketEnded({
   const totalVolume = yesPool + noPool
   const yesPercent = totalVolume > 0 ? Math.round((yesPool / totalVolume) * 100) : 0
   const noPercent = 100 - yesPercent
-  const winner = yesVotes > noVotes ? 'yes' : noVotes > yesVotes ? 'no' : 'draw'
+  const winner = getWinningDirection(yesVotes, noVotes)
   const userWon = winner === 'draw' || winner === userVoteDirection
-  const winningPool = winner === 'yes' ? yesPool : winner === 'no' ? noPool : userVoteAmount
-  const estimatedPayout = winner === 'draw'
-    ? userVoteAmount
-    : winningPool > 0
-      ? Number(((userVoteAmount / winningPool) * totalVolume).toFixed(2))
-      : 0
+  const estimatedPayout = calculateClaimPayout({
+    voteAmount: userVoteAmount,
+    voteDirection: userVoteDirection,
+    winningDirection: winner,
+    yesPool,
+    noPool,
+  })
 
   const handleClaim = async () => {
     try {
