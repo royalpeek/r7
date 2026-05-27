@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
 import { CREATOR_OPEN_MARKET_LIMIT, getOpenMarketCutoff } from '@/lib/creatorQuota'
 import { closeExpiredMarkets } from '@/lib/marketLifecycle'
+import { moderateMarketQuestion } from '@/lib/marketModeration'
 
 export async function GET() {
   try {
@@ -31,16 +32,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const telegramUser = getRequestTelegramUser(body.initData)
     const userId = String(telegramUser.id)
-    const { question, category } = body
+    const { question, category, durationHours } = body
     const admin = getSupabaseAdmin()
 
     if (!question || question.trim().length === 0) {
       return NextResponse.json({ error: 'Question is required' }, { status: 400 })
-    }
-
-    const trimmedQuestion = question.trim()
-    if (trimmedQuestion.length > 64) {
-      return NextResponse.json({ error: 'Question is too long' }, { status: 400 })
     }
 
     const { data: creator, error: creatorError } = await admin
@@ -74,14 +70,38 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // set poll to expire 24 hours from now
-    const ends_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+    const { data: existingMarkets, error: existingMarketsError } = await admin
+      .from('polls')
+      .select('id, question')
+      .neq('status', 'archived')
+      .order('created_at', { ascending: false })
+      .limit(100)
+
+    if (existingMarketsError) throw existingMarketsError
+
+    const moderation = moderateMarketQuestion({
+      question,
+      category,
+      durationHours,
+      existingMarkets: existingMarkets || [],
+    })
+
+    if (!moderation.approved) {
+      return NextResponse.json({
+        error: moderation.reasons[0] || 'Market did not pass moderation',
+        reasons: moderation.reasons,
+        similarMarket: moderation.similarMarket,
+      }, { status: 400 })
+    }
+
+    const ends_at = new Date(Date.now() + moderation.durationHours * 60 * 60 * 1000).toISOString()
 
     const { data, error } = await admin
       .from('polls')
       .insert({
-        question: trimmedQuestion,
-        category: category || 'general',
+        question: moderation.normalizedQuestion,
+        category: moderation.category,
+        description: String(body.description || '').trim().slice(0, 256) || null,
         status: 'active',
         yes_pool: 0,
         no_pool: 0,
