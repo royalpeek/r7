@@ -301,7 +301,7 @@ export default function Search() {
             <p className="text-slate-600 text-xs text-center">1% fee · 24h consensus · no gas</p>
           </div>
 
-          <div className="p-4 pb-8">
+          <div className="p-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
             {voteError && (
               <p className="mb-3 rounded-xl border border-pink-500/40 bg-pink-500/10 px-4 py-3 text-center text-sm text-pink-200">
                 {voteError}

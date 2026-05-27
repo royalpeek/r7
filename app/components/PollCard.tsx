@@ -583,7 +583,7 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
                         <PoolHistoryChart pollId={poll.id} yesPool={poll.yes_pool} noPool={poll.no_pool} />
                       </div>
 
-                      <div className="px-5 pb-2 flex justify-between text-lg font-bold">
+                      <div className="px-5 -mt-1 pb-2 flex justify-between text-lg font-bold">
                         <div className="text-center">
                           <p className="text-cyan-400">{cardYesPercent}%</p>
                           <p className="text-cyan-400 text-xs">YES</p>
