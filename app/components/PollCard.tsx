@@ -166,7 +166,7 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
     if (axis === 'y' && Math.abs(dy) > 110) {
       setCurrentIndex(i => {
         const nextIndex = dy < 0 ? Math.min(i + 1, polls.length - 1) : Math.max(i - 1, 0)
-        if (nextIndex !== i) haptics.selection()
+        if (nextIndex !== i) haptics.impact('medium')
         return nextIndex
       })
       return
@@ -473,6 +473,10 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
   const activeCardTilt = axis === 'x'
     ? `translateX(${deltaX}px) rotate(${deltaX / 18}deg)`
     : 'translateX(0px)'
+  const visibleIndicatorCount = Math.min(polls.length, 8)
+  const activeIndicatorIndex = polls.length <= 8
+    ? currentIndex
+    : Math.round((currentIndex / Math.max(1, polls.length - 1)) * (visibleIndicatorCount - 1))
 
   return (
     <>
@@ -495,12 +499,29 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
             return (
               <div key={poll.id} className="h-full w-full flex flex-col px-3 pt-1 pb-20">
                 <div
-                  className="flex-1 bg-slate-900 rounded-2xl border border-slate-700 flex flex-col overflow-hidden"
+                  className="relative flex-1 bg-slate-900 rounded-2xl border border-slate-700 flex flex-col overflow-hidden"
                   style={{
                     transform: isActive ? activeCardTilt : 'translateX(0px)',
                     transition: isActive && dragging && axis === 'x' ? 'none' : 'transform 200ms ease-out',
                   }}
                 >
+                  {isActive && polls.length > 1 && (
+                    <div className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-slate-950/70 px-1.5 py-3 backdrop-blur-sm">
+                      <div className="flex flex-col items-center gap-2">
+                        {Array.from({ length: visibleIndicatorCount }).map((_, dotIndex) => (
+                          <span
+                            key={dotIndex}
+                            className={`block rounded-full transition-all duration-300 ${
+                              dotIndex === activeIndicatorIndex
+                                ? 'h-7 w-1.5 bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.8)]'
+                                : 'h-1.5 w-1.5 bg-slate-600/70'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between px-5 pt-4 pb-2">
                     <Timer endsAt={poll.ends_at} />
                     <div className="text-slate-400 text-sm">${(poll.yes_pool + poll.no_pool).toFixed(2)} USDT</div>
