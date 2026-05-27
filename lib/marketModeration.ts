@@ -32,7 +32,6 @@ type ExistingMarket = {
 const allowedOpeners = [
   'is',
   'are',
-  'will',
   'would',
   'should',
   'can',
@@ -45,6 +44,8 @@ const allowedOpeners = [
   'was',
   'were',
 ]
+
+const blockedOpeners = new Set(['will'])
 
 const stopWords = new Set([
   'a',
@@ -78,6 +79,9 @@ const stopWords = new Set([
 ])
 
 const blockedPatterns: Array<{ pattern: RegExp; reason: string }> = [
+  { pattern: /\b(will)\b/i, reason: 'Will questions are not allowed because they are usually predictions, not opinion markets.' },
+  { pattern: /\b(you|your|u)\b.*\b(marry|date|love|like|kiss|sleep with|be my|be mine)\b/i, reason: 'No personal questions directed at another person.' },
+  { pattern: /\b(marry me|date me|love me|be my girlfriend|be my boyfriend|be my wife|be my husband)\b/i, reason: 'No personal relationship or proposal markets.' },
   { pattern: /\b\w+\b\s+(?:or|\/)\s+\b\w+\b/i, reason: 'This is not a clean YES/NO question. Rephrase A-or-B choices using "over" or "more than".' },
   { pattern: /\b(reduce|lower|increase|improve|affect|impact)\b.*\b(cost|costs|prices|effectiveness|effective)\b/i, reason: 'This question needs more nuance than a simple YES or NO.' },
   { pattern: /\b(will|would|could|can|does|do)\b.*\b(make|become|lead to|result in)\b.*\b(fairer|fairness|fair)\b/i, reason: 'No prediction-style markets about whether a system will become fairer.' },
@@ -170,6 +174,19 @@ function buildSuggestion(question: string, reasons: string[]) {
     }
   }
 
+  if (blockedOpeners.has(question.split(/\s+/)[0]?.replace(/[^a-z]/gi, '').toLowerCase())) {
+    return {
+      suggestion: 'Try asking a broad opinion question with "Is", "Are", "Should", "Would", "Can", or "Does".',
+    }
+  }
+
+  if (/\b(marry|date|love|kiss|girlfriend|boyfriend|wife|husband)\b/i.test(question)) {
+    return {
+      suggestion: 'Try a broad social opinion instead, like "Should people date based on financial status?"',
+      suggestedTitle: 'Should people date based on financial status?',
+    }
+  }
+
   if (!allowedOpeners.includes(question.split(/\s+/)[0]?.replace(/[^a-z]/gi, '').toLowerCase())) {
     const cleanedQuestion = question
       .replace(/^\b(of|the|a|an)\b\s+/i, '')
@@ -230,8 +247,12 @@ export function moderateMarketQuestion({
   }
 
   const firstWord = normalizedQuestion.split(/\s+/)[0]?.replace(/[^a-z]/gi, '').toLowerCase()
+  if (blockedOpeners.has(firstWord)) {
+    reasons.push('Will questions are not allowed because they are usually predictions, not opinion markets.')
+  }
+
   if (!allowedOpeners.includes(firstWord)) {
-    reasons.push('Start with a clear YES/NO opener like Is, Should, Would, Will, or Can.')
+    reasons.push('Start with a clear YES/NO opener like Is, Are, Should, Would, Can, or Does.')
   }
 
   if (/\b(yes or no|true or false)\b/i.test(normalizedQuestion)) {
