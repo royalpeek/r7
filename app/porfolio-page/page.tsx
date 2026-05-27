@@ -39,7 +39,7 @@ export default function Portfolio() {
 
   const fetchPositions = useCallback(async () => {
     try {
-      if (!userId) return
+      if (!userId) return []
       setLoading(true)
       setError(null)
       const response = await fetch('/api/me/positions', {
@@ -50,10 +50,13 @@ export default function Portfolio() {
       const data = await response.json()
 
       if (!response.ok) throw new Error(data.error || 'failed to fetch positions')
-      setPositions((data.positions || []) as Position[])
+      const nextPositions = (data.positions || []) as Position[]
+      setPositions(nextPositions)
+      return nextPositions
     } catch (err) {
       console.error('fetch error:', err)
       setError(err instanceof Error ? err.message : 'failed to fetch positions')
+      return []
     } finally {
       setLoading(false)
     }
@@ -88,7 +91,11 @@ export default function Portfolio() {
       haptics.notification('success')
       setShowStakingModal(false)
       setStakingDirection(null)
-      await fetchPositions()
+      const nextPositions = await fetchPositions()
+      const nextSelectedPosition = nextPositions.find(position => position.poll_id === selectedPosition.poll_id)
+      if (nextSelectedPosition) {
+        setSelectedPosition(nextSelectedPosition)
+      }
     } catch (error) {
       haptics.notification('error')
       console.error('vote error:', error)
