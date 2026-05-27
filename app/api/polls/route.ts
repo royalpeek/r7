@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
-import { CREATOR_DAILY_POLL_LIMIT, getLagosDayWindow } from '@/lib/creatorQuota'
+import { CREATOR_OPEN_MARKET_LIMIT, getOpenMarketCutoff } from '@/lib/creatorQuota'
 
 export async function GET() {
   try {
@@ -54,18 +54,18 @@ export async function POST(request: NextRequest) {
     }
 
     if (role === 'creator') {
-      const { startIso, endIso } = getLagosDayWindow()
+      const openMarketCutoff = getOpenMarketCutoff()
       const { count, error: countError } = await admin
         .from('polls')
         .select('*', { count: 'exact', head: true })
         .eq('created_by', userId)
-        .gte('created_at', startIso)
-        .lt('created_at', endIso)
+        .in('status', ['active', 'paused'])
+        .gt('ends_at', openMarketCutoff)
 
       if (countError) throw countError
 
-      if ((count ?? 0) >= CREATOR_DAILY_POLL_LIMIT) {
-        return NextResponse.json({ error: 'Daily poll limit reached' }, { status: 429 })
+      if ((count ?? 0) >= CREATOR_OPEN_MARKET_LIMIT) {
+        return NextResponse.json({ error: 'Open market limit reached' }, { status: 429 })
       }
     }
 

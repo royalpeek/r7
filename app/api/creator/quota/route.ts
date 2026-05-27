@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
-import { CREATOR_DAILY_POLL_LIMIT, getLagosDayWindow } from '@/lib/creatorQuota'
+import { CREATOR_OPEN_MARKET_LIMIT, getOpenMarketCutoff } from '@/lib/creatorQuota'
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,23 +42,23 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const { startIso, endIso } = getLagosDayWindow()
+    const openMarketCutoff = getOpenMarketCutoff()
     const { count, error: countError } = await supabase
       .from('polls')
       .select('*', { count: 'exact', head: true })
       .eq('created_by', userId)
-      .gte('created_at', startIso)
-      .lt('created_at', endIso)
+      .in('status', ['active', 'paused'])
+      .gt('ends_at', openMarketCutoff)
 
     if (countError) throw countError
 
     const used = count ?? 0
-    const remaining = Math.max(0, CREATOR_DAILY_POLL_LIMIT - used)
+    const remaining = Math.max(0, CREATOR_OPEN_MARKET_LIMIT - used)
 
     return NextResponse.json({
       canCreate: remaining > 0,
       isAdmin: false,
-      limit: CREATOR_DAILY_POLL_LIMIT,
+      limit: CREATOR_OPEN_MARKET_LIMIT,
       used,
       remaining,
     })

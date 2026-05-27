@@ -288,7 +288,7 @@ export default function Home() {
                   ? 'checking poll limit...'
                   : quota?.isAdmin
                     ? 'admin: unlimited polls'
-                    : `${quota?.remaining ?? 0}/${quota?.limit ?? 2} polls remaining today`}
+                    : `${quota?.remaining ?? 0}/${quota?.limit ?? 2} open market slots available`}
               </span>
             </div>
 
