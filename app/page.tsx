@@ -11,7 +11,17 @@ import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { getMarketLifecycleStatus } from '@/lib/marketLifecycle'
 import { parseMarketStartParam } from '@/lib/marketDeepLink'
 
-const CATEGORIES = ['Trending', 'New', 'Politics', 'Crypto', 'Sports', 'Tech']
+const DISCOVERY_TABS = [
+  { label: 'Trending', value: 'trending' },
+  { label: 'New', value: 'new' },
+  { label: 'Politics', value: 'politics' },
+  { label: 'Crypto', value: 'crypto' },
+  { label: 'Sports', value: 'sports' },
+  { label: 'Tech', value: 'tech' },
+  { label: 'Economy', value: 'economy' },
+  { label: 'Science', value: 'science' },
+  { label: 'Other', value: 'other' },
+]
 
 type WalletTransaction = {
   id: string
@@ -27,7 +37,7 @@ export default function Home() {
   const [showWallet, setShowWallet] = useState(false)
   const [showFilter, setShowFilter] = useState(false)
   const [showCreatePoll, setShowCreatePoll] = useState(false)
-  const [selectedCategory, setSelectedCategory] = useState('Trending')
+  const [selectedCategory, setSelectedCategory] = useState('trending')
   const [filterStatus, setFilterStatus] = useState('active')
   const [sortBy, setSortBy] = useState('oldest')
   const [showDetail, setShowDetail] = useState(false)
@@ -233,18 +243,32 @@ export default function Home() {
       ? 'active'
       : 'ended'
     : filterStatus
+  const activeDiscoveryTab = DISCOVERY_TABS.find(tab => tab.value === selectedCategory) || DISCOVERY_TABS[0]
 
   // filter and sort polls
   const filteredPolls = polls
     .filter(poll => {
       const lifecycleStatus = getMarketLifecycleStatus(poll.status, poll.ends_at)
-      return effectiveFilterStatus === 'active'
+      const matchesStatus = effectiveFilterStatus === 'active'
         ? lifecycleStatus === 'live'
         : lifecycleStatus === 'ended' || lifecycleStatus === 'closed'
+      const matchesCategory = deepLinkedMarketId || selectedCategory === 'trending' || selectedCategory === 'new'
+        ? true
+        : (poll.category || 'other').toLowerCase() === selectedCategory
+
+      return matchesStatus && matchesCategory
     })
     .sort((a, b) => {
       const totalA = a.yes_pool + a.no_pool
       const totalB = b.yes_pool + b.no_pool
+
+      if (selectedCategory === 'trending') {
+        return totalB - totalA || new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      }
+
+      if (selectedCategory === 'new') {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      }
 
       switch (sortBy) {
         case 'newest':
@@ -304,17 +328,20 @@ export default function Home() {
       {/* category tabs - ONLY show on home page, NOT on detail page */}
       {!showDetail && (
         <div className="flex gap-5 px-3 pt-1 pb-2 overflow-x-auto flex-shrink-0 scrollbar-hide">
-          {CATEGORIES.map(cat => (
+          {DISCOVERY_TABS.map(tab => (
             <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
+              key={tab.value}
+              onClick={() => {
+                haptics.selection()
+                setSelectedCategory(tab.value)
+              }}
               className={`whitespace-nowrap pb-2 text-sm font-semibold transition border-b-2 ${
-                selectedCategory === cat
+                selectedCategory === tab.value
                   ? 'text-cyan-400 border-cyan-400'
                   : 'text-slate-400 border-transparent'
               }`}
             >
-              {cat}
+              {tab.label}
             </button>
           ))}
         </div>
@@ -361,7 +388,9 @@ export default function Home() {
         ) : (
           <div className="flex h-full flex-col items-center justify-center px-6 text-center">
             <p className="text-white font-semibold">
-              {filterStatus === 'active' ? 'No active markets' : 'No ended markets'}
+              {filterStatus === 'active'
+                ? `No ${activeDiscoveryTab.label.toLowerCase()} markets`
+                : `No ended ${activeDiscoveryTab.label.toLowerCase()} markets`}
             </p>
             <p className="text-slate-500 text-sm mt-2">
               {filterStatus === 'active'

@@ -20,6 +20,7 @@ type Poll = {
   no_votes: number
   yes_pool: number
   no_pool: number
+  category?: string | null
   ends_at: string
 }
 
@@ -469,7 +470,12 @@ export default function Search() {
                     {ended ? 'Ended' : 'Active'}
                   </span>
                 </div>
-                <span className="text-slate-500 text-xs">${total.toFixed(2)} vol</span>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-400">
+                    {poll.category || 'other'}
+                  </span>
+                  <span className="text-slate-500 text-xs">${total.toFixed(2)} vol</span>
+                </div>
               </div>
 
               <p className="text-white font-bold mb-3">{poll.question}</p>

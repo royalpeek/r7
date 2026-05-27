@@ -22,6 +22,7 @@ type Poll = {
   no_votes: number
   yes_pool: number
   no_pool: number
+  category?: string | null
   status?: string | null
   ends_at: string
 }
@@ -51,6 +52,16 @@ export default function PollCard({ polls, focusPollId = null, availableBalance =
   const [stakingDirection, setStakingDirection] = useState<'yes' | 'no' | null>(null)
   const [showDetail, setShowDetail] = useState(false)
   const [voteError, setVoteError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (polls.length === 0 || currentIndex < polls.length) return
+
+    const timeout = window.setTimeout(() => {
+      setCurrentIndex(0)
+    }, 0)
+
+    return () => window.clearTimeout(timeout)
+  }, [currentIndex, polls.length])
 
   useEffect(() => {
     if (!focusPollId || openedFocusPollId.current === focusPollId) return
