@@ -7,6 +7,13 @@ import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 export default function Profile() {
   const [totalVotes, setTotalVotes] = useState<number | null>(null)
   const [statsError, setStatsError] = useState(false)
+  const [referralCode, setReferralCode] = useState('')
+  const [referralCount, setReferralCount] = useState(0)
+  const [hasAppliedReferral, setHasAppliedReferral] = useState(false)
+  const [codeInput, setCodeInput] = useState('')
+  const [referralMessage, setReferralMessage] = useState<string | null>(null)
+  const [referralError, setReferralError] = useState<string | null>(null)
+  const [applyingReferral, setApplyingReferral] = useState(false)
   const { userId, user, initData, loading } = useTelegramUser()
   const username = user?.username || user?.first_name || null
   const avatarLetter = useMemo(() => (user?.first_name || username || '?')[0].toUpperCase(), [user?.first_name, username])
@@ -14,32 +21,78 @@ export default function Profile() {
   useEffect(() => {
     if (!userId) return
 
-    const fetchVotes = async () => {
+    const fetchProfileData = async () => {
       try {
-        const response = await fetch('/api/me/stats', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ initData }),
-        })
-        const data = await response.json()
+        const [statsResponse, referralResponse] = await Promise.all([
+          fetch('/api/me/stats', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ initData }),
+          }),
+          fetch('/api/me/referral', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ initData }),
+          }),
+        ])
 
-        if (!response.ok) {
+        const statsData = await statsResponse.json()
+        const referralData = await referralResponse.json()
+
+        if (!statsResponse.ok) {
           setStatsError(true)
           setTotalVotes(0)
-          return
+        } else {
+          setStatsError(false)
+          setTotalVotes(statsData.totalVotes)
         }
 
-        setStatsError(false)
-        setTotalVotes(data.totalVotes)
+        if (referralResponse.ok) {
+          setReferralCode(referralData.referralCode || '')
+          setReferralCount(referralData.referralCount || 0)
+          setHasAppliedReferral(Boolean(referralData.hasAppliedReferral))
+        }
       } catch (error) {
-        console.error('fetch stats error:', error)
+        console.error('fetch profile data error:', error)
         setStatsError(true)
         setTotalVotes(0)
       }
     }
 
-    fetchVotes()
+    fetchProfileData()
   }, [initData, userId])
+
+  const handleCopyReferralCode = async () => {
+    if (!referralCode) return
+    await navigator.clipboard.writeText(referralCode)
+    setReferralError(null)
+    setReferralMessage('Referral code copied.')
+  }
+
+  const handleApplyReferralCode = async () => {
+    setApplyingReferral(true)
+    setReferralError(null)
+    setReferralMessage(null)
+
+    try {
+      const response = await fetch('/api/referrals/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData, code: codeInput }),
+      })
+      const data = await response.json()
+
+      if (!response.ok) throw new Error(data.error || 'Failed to apply referral code')
+
+      setCodeInput('')
+      setHasAppliedReferral(true)
+      setReferralMessage('Referral code applied.')
+    } catch (error) {
+      setReferralError(error instanceof Error ? error.message : 'Failed to apply referral code')
+    } finally {
+      setApplyingReferral(false)
+    }
+  }
 
   return (
     <div className="bg-slate-950 min-h-screen p-4 pb-28">
@@ -108,30 +161,52 @@ export default function Profile() {
       <div className="grid grid-cols-2 gap-3 mb-4">
         <button className="bg-slate-900 border border-slate-700 rounded-2xl p-4 flex flex-col items-center gap-2">
           <Gift size={24} className="text-cyan-400" />
-          <p className="text-white text-sm font-semibold">Invite</p>
+          <p className="text-white text-sm font-semibold">{referralCode || 'Invite'}</p>
         </button>
         <button className="bg-slate-900 border border-slate-700 rounded-2xl p-4 flex flex-col items-center gap-2">
           <Users size={24} className="text-cyan-400" />
-          <p className="text-white text-sm font-semibold">My Referrals</p>
+          <p className="text-white text-sm font-semibold">{referralCount} Referrals</p>
         </button>
       </div>
 
       {/* referral code */}
       <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 mb-6">
-        <div className="flex items-center gap-2 mb-2">
-          <Ticket size={14} className="text-slate-400" />
-          <p className="text-slate-400 text-xs">Have a Referral Code?</p>
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div className="flex items-center gap-2">
+            <Ticket size={14} className="text-slate-400" />
+            <p className="text-slate-400 text-xs">Referral</p>
+          </div>
+          <button
+            onClick={handleCopyReferralCode}
+            disabled={!referralCode}
+            className="text-cyan-400 text-xs font-bold disabled:text-slate-600"
+          >
+            Copy Code
+          </button>
+        </div>
+        <div className="rounded-xl bg-slate-800 border border-slate-700 px-3 py-2 mb-3">
+          <p className="text-slate-500 text-xs">Your code</p>
+          <p className="text-white font-mono font-bold">{referralCode || 'loading...'}</p>
         </div>
         <div className="flex gap-2">
           <input
             type="text"
             placeholder="Enter code"
+            value={codeInput}
+            disabled={hasAppliedReferral || applyingReferral}
+            onChange={e => setCodeInput(e.target.value.toUpperCase())}
             className="flex-1 bg-slate-800 text-white placeholder-slate-500 px-3 py-2 rounded-lg text-sm focus:outline-none border border-slate-700"
           />
-          <button className="bg-cyan-400 text-black font-bold px-4 py-2 rounded-lg text-sm">
-            Apply
+          <button
+            onClick={handleApplyReferralCode}
+            disabled={hasAppliedReferral || applyingReferral || !codeInput.trim()}
+            className="bg-cyan-400 text-black font-bold px-4 py-2 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {applyingReferral ? 'Applying' : hasAppliedReferral ? 'Applied' : 'Apply'}
           </button>
         </div>
+        {referralMessage && <p className="text-cyan-400 text-xs mt-3">{referralMessage}</p>}
+        {referralError && <p className="text-pink-300 text-xs mt-3">{referralError}</p>}
       </div>
 
       {/* sign out */}
