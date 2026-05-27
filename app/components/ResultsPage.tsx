@@ -5,7 +5,7 @@ import PoolHistoryChart from './PoolHistoryChart'
 import Timer from './Timer'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
-import { calculateClaimPayout, getWinningDirection } from '@/lib/payouts'
+import { calculatePayoutBreakdown, getWinningDirection } from '@/lib/payouts'
 
 interface ResultsPageProps {
   question: string
@@ -86,13 +86,15 @@ export default function ResultsPage({
         : 'draw'
   const normalizedVoteDirection = voteDirection === 'YES' ? 'yes' : 'no'
   const userWon = winner === 'draw' || winner === normalizedVoteDirection
-  const estimatedPayout = calculateClaimPayout({
+  const payoutBreakdown = calculatePayoutBreakdown({
     voteAmount: amount,
     voteDirection: normalizedVoteDirection,
     winningDirection: winner,
     yesPool,
     noPool,
   })
+  const displayClaimable = localClaimedAt ? localPayout : payoutBreakdown.claimablePayout
+  const pnl = amount > 0 ? ((displayClaimable - amount) / amount) * 100 : 0
 
   const handleClaim = async () => {
     try {
@@ -203,10 +205,31 @@ export default function ResultsPage({
               <p className={`text-xs font-bold uppercase mb-1 ${userWon ? 'text-cyan-400' : 'text-pink-400'}`}>
                 {winner === 'draw' ? 'Draw' : userWon ? 'You won' : 'You lost'}
               </p>
+              <p className="text-slate-400 text-xs uppercase tracking-wide">Claimable</p>
               <p className="text-white font-bold text-2xl">
-                {userWon ? `$${(localClaimedAt ? localPayout : estimatedPayout).toFixed(2)} USDT` : '$0.00 USDT'}
+                {userWon ? `$${displayClaimable.toFixed(2)} USDT` : '$0.00 USDT'}
               </p>
-              <p className="text-slate-400 text-sm mt-1">
+              <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-slate-500">Staked</p>
+                  <p className="font-bold text-white">${amount.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-slate-500">P&L</p>
+                  <p className={`font-bold ${pnl >= 0 ? 'text-cyan-400' : 'text-pink-400'}`}>
+                    {userWon ? `${pnl >= 0 ? '+' : ''}${pnl.toFixed(1)}%` : '-100.0%'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-500">Gross value</p>
+                  <p className="font-bold text-slate-200">${payoutBreakdown.grossPayout.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-slate-500">Creator reward</p>
+                  <p className="font-bold text-slate-200">-${payoutBreakdown.creatorRewardShare.toFixed(2)}</p>
+                </div>
+              </div>
+              <p className="text-slate-400 text-sm mt-3">
                 {localClaimedAt
                   ? 'Claimed successfully'
                   : userWon

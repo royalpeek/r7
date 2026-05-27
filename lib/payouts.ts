@@ -34,13 +34,69 @@ export function calculateClaimPayout({
   yesPool: number
   noPool: number
 }) {
-  if (winningDirection === 'draw') return Number(voteAmount.toFixed(2))
-  if (voteDirection !== winningDirection) return 0
+  return calculatePayoutBreakdown({
+    voteAmount,
+    voteDirection,
+    winningDirection,
+    yesPool,
+    noPool,
+  }).claimablePayout
+}
+
+export function calculatePayoutBreakdown({
+  voteAmount,
+  voteDirection,
+  winningDirection,
+  yesPool,
+  noPool,
+}: {
+  voteAmount: number
+  voteDirection: 'yes' | 'no'
+  winningDirection: WinningDirection
+  yesPool: number
+  noPool: number
+}) {
+  if (winningDirection === 'draw') {
+    return {
+      grossPayout: Number(voteAmount.toFixed(2)),
+      creatorReward: 0,
+      creatorRewardShare: 0,
+      claimablePayout: Number(voteAmount.toFixed(2)),
+    }
+  }
+
+  if (voteDirection !== winningDirection) {
+    return {
+      grossPayout: 0,
+      creatorReward: calculateCreatorReward(winningDirection, yesPool, noPool),
+      creatorRewardShare: 0,
+      claimablePayout: 0,
+    }
+  }
 
   const winningPool = winningDirection === 'yes' ? yesPool : noPool
+  const totalPool = yesPool + noPool
   const creatorReward = calculateCreatorReward(winningDirection, yesPool, noPool)
-  const claimablePool = Math.max(0, yesPool + noPool - creatorReward)
+  const claimablePool = Math.max(0, totalPool - creatorReward)
 
-  if (winningPool <= 0) return 0
-  return Number(((voteAmount / winningPool) * claimablePool).toFixed(2))
+  if (winningPool <= 0) {
+    return {
+      grossPayout: 0,
+      creatorReward,
+      creatorRewardShare: 0,
+      claimablePayout: 0,
+    }
+  }
+
+  const stakeShare = voteAmount / winningPool
+  const grossPayout = Number((stakeShare * totalPool).toFixed(2))
+  const creatorRewardShare = Number((stakeShare * creatorReward).toFixed(2))
+  const claimablePayout = Number((stakeShare * claimablePool).toFixed(2))
+
+  return {
+    grossPayout,
+    creatorReward,
+    creatorRewardShare,
+    claimablePayout,
+  }
 }

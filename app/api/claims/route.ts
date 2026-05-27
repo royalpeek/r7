@@ -81,6 +81,7 @@ export async function POST(request: NextRequest) {
     if (!Number.isFinite(currentBalance)) throw new Error('invalid user balance')
 
     const claimedAt = new Date().toISOString()
+    let creatorRewardForClaimant = 0
 
     if (winningDirection !== 'draw' && poll.created_by && !poll.creator_reward_paid_at) {
       const creatorReward = calculateCreatorReward(winningDirection, yesPool, noPool)
@@ -100,6 +101,10 @@ export async function POST(request: NextRequest) {
         if (creatorRewardError) throw creatorRewardError
 
         if (rewardMarker) {
+          if (poll.created_by === userId) {
+            creatorRewardForClaimant = creatorReward
+          }
+
           const { data: creator, error: creatorError } = await supabase
             .from('users')
             .select('balance')
@@ -134,7 +139,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'already claimed' }, { status: 400 })
     }
 
-    const nextBalance = Number((currentBalance + payout).toFixed(2))
+    const nextBalance = Number((currentBalance + payout + creatorRewardForClaimant).toFixed(2))
     const { error: balanceError } = await supabase
       .from('users')
       .update({ balance: nextBalance })
