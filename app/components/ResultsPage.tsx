@@ -214,16 +214,23 @@ export default function ResultsPage({
                 <p className="text-slate-500">Total pool</p>
                 <p className="font-bold text-white">${totalVolume.toFixed(2)}</p>
               </div>
-              <div>
-                <p className="text-slate-500">Votes</p>
-                <p className="font-bold text-white">
-                  {typeof yesVotes === 'number' && typeof noVotes === 'number'
-                    ? `${yesVotes} YES / ${noVotes} NO`
-                    : loading
-                      ? 'loading...'
-                      : totalVotes}
-                </p>
-              </div>
+              {marketEnded ? (
+                <div>
+                  <p className="text-slate-500">Votes</p>
+                  <p className="font-bold text-white">
+                    {typeof yesVotes === 'number' && typeof noVotes === 'number'
+                      ? `${yesVotes} YES / ${noVotes} NO`
+                      : loading
+                        ? 'loading...'
+                        : totalVotes}
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-slate-500">Votes</p>
+                  <p className="font-bold text-white">Hidden until end</p>
+                </div>
+              )}
               <div>
                 <p className="text-slate-500">Pool split</p>
                 <p className="font-bold text-white">{yesPercent}% / {noPercent}%</p>
@@ -236,7 +243,9 @@ export default function ResultsPage({
               <span className="text-2xl">🔥</span>
               <div>
                 <p className="text-white font-bold">
-                  {loading ? 'loading...' : `${stakerCount} ${stakerCount === 1 ? 'person' : 'people'} staking`}
+                  {marketEnded
+                    ? loading ? 'loading...' : `${stakerCount} ${stakerCount === 1 ? 'person' : 'people'} staked`
+                    : 'Votes hidden until market ends'}
                 </p>
                 <p className="text-slate-400 text-sm">${totalVolume.toFixed(2)} USDT total volume</p>
               </div>

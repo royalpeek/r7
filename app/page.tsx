@@ -145,10 +145,6 @@ export default function Home() {
           return totalB - totalA
         case 'lowest-volume':
           return totalA - totalB
-        case 'most-votes':
-          return (b.yes_votes + b.no_votes) - (a.yes_votes + a.no_votes)
-        case 'fewest-votes':
-          return (a.yes_votes + a.no_votes) - (b.yes_votes + b.no_votes)
         default:
           return 0
       }
@@ -441,8 +437,6 @@ export default function Home() {
                   { value: 'oldest', label: 'Oldest' },
                   { value: 'highest-volume', label: 'Highest Volume' },
                   { value: 'lowest-volume', label: 'Lowest Volume' },
-                  { value: 'most-votes', label: 'Most Votes' },
-                  { value: 'fewest-votes', label: 'Fewest Votes' },
                 ].map(option => (
                   <button
                     key={option.value}
