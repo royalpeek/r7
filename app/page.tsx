@@ -220,8 +220,8 @@ export default function Home() {
 
       {/* create poll modal */}
       {showCreatePoll && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-slate-950 overflow-y-auto">
-          <div className="flex-1 p-6 pb-12">
+        <div className="fixed inset-0 z-[70] flex flex-col bg-slate-950 overflow-y-auto">
+          <div className="flex-1 px-6 pt-6 pb-[calc(2rem+env(safe-area-inset-bottom))]">
             {/* back button */}
             <button
               onClick={() => {
