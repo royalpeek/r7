@@ -24,8 +24,8 @@ export function useMarketShare() {
 
     const appUrl = window.location.origin
     const marketPayload = `market_${pollId}`
-    const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME?.replace(/^@/, '')
-    const miniAppShortName = process.env.NEXT_PUBLIC_TELEGRAM_APP_SHORT_NAME
+    const botUsername = (process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'r7_opinionsbot').replace(/^@/, '')
+    const miniAppShortName = process.env.NEXT_PUBLIC_TELEGRAM_APP_SHORT_NAME || 'r7app'
     const deepLink = botUsername && miniAppShortName
       ? `https://t.me/${botUsername}/${miniAppShortName}?startapp=${encodeURIComponent(marketPayload)}`
       : `${appUrl}/?market=${encodeURIComponent(pollId)}`
