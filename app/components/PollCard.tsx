@@ -506,7 +506,7 @@ export default function PollCard({ polls, availableBalance = 0, onDetailChange, 
                   }}
                 >
                   {isActive && polls.length > 1 && (
-                    <div className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-slate-950/70 px-1.5 py-3 backdrop-blur-sm">
+                    <div className="absolute right-0 top-1/2 z-10 -translate-y-1/2 translate-x-1/2 rounded-l-full bg-slate-950/70 px-1.5 py-3 backdrop-blur-sm">
                       <div className="flex flex-col items-center gap-2">
                         {Array.from({ length: visibleIndicatorCount }).map((_, dotIndex) => (
                           <span
