@@ -260,50 +260,53 @@ export default function Portfolio() {
 
   if (showPerformance) {
     return (
-      <div className="h-screen overflow-y-auto bg-slate-950 px-4 pb-28 pt-5 text-white">
-        <div className="mb-5 flex items-center justify-between">
-          <button
-            onClick={() => {
-              haptics.selection()
-              setShowPerformance(false)
-            }}
-            className="rounded-full p-2 text-slate-300 active:scale-95 transition"
-            title="Back"
-          >
-            <ArrowLeft size={26} />
-          </button>
-          <h1 className="text-2xl font-bold">Performance</h1>
-          <div className="w-10" />
+      <div className="h-screen overflow-hidden bg-slate-950 text-white">
+        <div className="flex-shrink-0 bg-slate-950 px-4 pt-5 pb-4">
+          <div className="mb-5 flex items-center justify-between">
+            <button
+              onClick={() => {
+                haptics.selection()
+                setShowPerformance(false)
+              }}
+              className="rounded-full p-2 text-slate-300 active:scale-95 transition"
+              title="Back"
+            >
+              <ArrowLeft size={26} />
+            </button>
+            <h1 className="text-2xl font-bold">Performance</h1>
+            <div className="w-10" />
+          </div>
+
+          <div className="grid grid-cols-2 rounded-2xl bg-slate-900 p-1">
+            <button
+              onClick={() => {
+                haptics.selection()
+                setPerformanceTab('performance')
+              }}
+              className={`rounded-xl py-3 text-sm font-bold transition ${
+                performanceTab === 'performance' ? 'bg-slate-950 text-cyan-400' : 'text-slate-400'
+              }`}
+            >
+              Performance
+            </button>
+            <button
+              disabled={!canViewCreatorStats}
+              onClick={() => {
+                haptics.selection()
+                setPerformanceTab('creator')
+                fetchCreatorStats()
+              }}
+              className={`rounded-xl py-3 text-sm font-bold transition disabled:opacity-40 ${
+                performanceTab === 'creator' ? 'bg-slate-950 text-cyan-400' : 'text-slate-400'
+              }`}
+            >
+              Creator
+            </button>
+          </div>
         </div>
 
-        <div className="mb-7 grid grid-cols-2 rounded-2xl bg-slate-900 p-1">
-          <button
-            onClick={() => {
-              haptics.selection()
-              setPerformanceTab('performance')
-            }}
-            className={`rounded-xl py-3 text-sm font-bold transition ${
-              performanceTab === 'performance' ? 'bg-slate-950 text-cyan-400' : 'text-slate-400'
-            }`}
-          >
-            Performance
-          </button>
-          <button
-            disabled={!canViewCreatorStats}
-            onClick={() => {
-              haptics.selection()
-              setPerformanceTab('creator')
-              fetchCreatorStats()
-            }}
-            className={`rounded-xl py-3 text-sm font-bold transition disabled:opacity-40 ${
-              performanceTab === 'creator' ? 'bg-slate-950 text-cyan-400' : 'text-slate-400'
-            }`}
-          >
-            Creator
-          </button>
-        </div>
-
-        {performanceTab === 'performance' ? (
+        <div className="h-[calc(100vh-9.5rem)] overflow-y-auto px-4 pb-28 pt-4">
+          {performanceTab === 'performance' ? (
           <>
             <div className="mb-7 text-center">
               <p className={`text-5xl font-bold ${performance.profit >= 0 ? 'text-cyan-400' : 'text-pink-500'}`}>
@@ -404,10 +407,11 @@ export default function Portfolio() {
           </>
         )}
 
-        <button className="mt-8 flex w-full items-center justify-center gap-3 rounded-2xl bg-cyan-400 py-4 text-base font-bold text-black active:scale-95 transition">
-          <Share2 size={18} />
-          Share Stats
-        </button>
+          <button className="mt-8 flex w-full items-center justify-center gap-3 rounded-2xl bg-cyan-400 py-4 text-base font-bold text-black active:scale-95 transition">
+            <Share2 size={18} />
+            Share Stats
+          </button>
+        </div>
       </div>
     )
   }
