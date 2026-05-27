@@ -5,7 +5,7 @@ import ResultsPage from '../components/ResultsPage'
 import StakingModal from '../components/StakingModal'
 import Timer from '../components/Timer'
 import { createPortal } from 'react-dom'
-import { Gift } from 'lucide-react'
+import { ArrowLeft, Gift, Share2 } from 'lucide-react'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { getMarketLifecycleLabel, getMarketLifecycleStatus } from '@/lib/marketLifecycle'
@@ -30,6 +30,31 @@ type Position = {
 
 type SortOption = 'newest' | 'oldest' | 'highest_stake' | 'lowest_stake'
 
+type CreatorPoll = {
+  id: string
+  question: string
+  category?: string | null
+  status?: string | null
+  yes_pool: number
+  no_pool: number
+  yes_votes: number
+  no_votes: number
+  ends_at: string
+  created_at: string
+  creator_reward_amount?: number | null
+}
+
+type CreatorStats = {
+  totalFees: number
+  totalPolls: number
+  resolvedPolls: number
+  pendingPolls: number
+  avgPool: number
+  avgVotes: number
+  topPollReward: number
+  topPollQuestion: string
+}
+
 export default function Portfolio() {
   const haptics = useHapticFeedback()
   const [activeTab, setActiveTab] = useState(() => (
@@ -49,6 +74,13 @@ export default function Portfolio() {
   const [showStakingModal, setShowStakingModal] = useState(false)
   const [stakingDirection, setStakingDirection] = useState<'yes' | 'no' | null>(null)
   const [claimingPositionId, setClaimingPositionId] = useState<string | null>(null)
+  const [showPerformance, setShowPerformance] = useState(false)
+  const [performanceTab, setPerformanceTab] = useState<'performance' | 'creator'>('performance')
+  const [creatorStats, setCreatorStats] = useState<CreatorStats | null>(null)
+  const [creatorPolls, setCreatorPolls] = useState<CreatorPoll[]>([])
+  const [creatorLoading, setCreatorLoading] = useState(false)
+  const userRole = appUser?.role || (appUser?.is_creator ? 'creator' : 'user')
+  const canViewCreatorStats = userRole === 'creator' || userRole === 'admin'
 
   const fetchPositions = useCallback(async () => {
     try {
@@ -122,7 +154,6 @@ export default function Portfolio() {
     const status = getMarketLifecycleStatus(p.status, p.ends_at, now)
     return status === 'ended' || status === 'closed' || status === 'archived'
   })
-  const totalStaked = positions.reduce((sum, p) => sum + p.amount, 0)
   const claimablePositions = getClaimablePositions(positions)
   const totalClaimable = claimablePositions.reduce((sum, position) => {
     return sum + getPositionClaimBreakdown(position).claimablePayout
@@ -153,6 +184,28 @@ export default function Portfolio() {
     }
   }
 
+  const fetchCreatorStats = useCallback(async () => {
+    if (!canViewCreatorStats) return
+
+    try {
+      setCreatorLoading(true)
+      const response = await fetch('/api/me/creator-stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData }),
+      })
+      const data = await response.json()
+
+      if (!response.ok) throw new Error(data.error || 'failed to fetch creator stats')
+      setCreatorStats(data.stats)
+      setCreatorPolls(data.polls || [])
+    } catch (error) {
+      console.error('creator stats error:', error)
+    } finally {
+      setCreatorLoading(false)
+    }
+  }, [canViewCreatorStats, initData])
+
   const sortLabel: Record<SortOption, string> = {
     newest: 'Newest',
     oldest: 'Oldest',
@@ -171,6 +224,193 @@ export default function Portfolio() {
   const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric'
   })
+
+  const resolvedPositions = history.filter(position => {
+    const status = getMarketLifecycleStatus(position.status, position.ends_at, now)
+    return status === 'ended' || status === 'closed'
+  })
+  const totalResolvedStaked = resolvedPositions.reduce((sum, position) => sum + position.amount, 0)
+  const totalResolvedValue = resolvedPositions.reduce((sum, position) => {
+    if (position.claimed_at) return sum + Number(position.payout_amount || 0)
+    return sum + getPositionClaimBreakdown(position).claimablePayout
+  }, 0)
+  const performanceProfit = Number((totalResolvedValue - totalResolvedStaked).toFixed(2))
+  const performanceWins = resolvedPositions.filter(position => {
+    const breakdown = getPositionClaimBreakdown(position)
+    return breakdown.userWon && breakdown.winner !== 'draw'
+  }).length
+  const performanceDraws = resolvedPositions.filter(position => getPositionClaimBreakdown(position).winner === 'draw').length
+  const performanceLosses = Math.max(0, resolvedPositions.length - performanceWins - performanceDraws)
+  const performance = {
+    profit: performanceProfit,
+    totalResolvedStaked,
+    pnlPercent: totalResolvedStaked > 0 ? (performanceProfit / totalResolvedStaked) * 100 : 0,
+    wins: performanceWins,
+    losses: performanceLosses,
+    draws: performanceDraws,
+    winRate: resolvedPositions.length > 0 ? Math.round((performanceWins / resolvedPositions.length) * 100) : 0,
+    markets: positions.length,
+  }
+
+  const openPerformance = () => {
+    haptics.selection()
+    setShowPerformance(true)
+    if (canViewCreatorStats) fetchCreatorStats()
+  }
+
+  if (showPerformance) {
+    return (
+      <div className="h-screen overflow-y-auto bg-slate-950 px-4 pb-28 pt-5 text-white">
+        <div className="mb-5 flex items-center justify-between">
+          <button
+            onClick={() => {
+              haptics.selection()
+              setShowPerformance(false)
+            }}
+            className="rounded-full p-2 text-slate-300 active:scale-95 transition"
+            title="Back"
+          >
+            <ArrowLeft size={26} />
+          </button>
+          <h1 className="text-2xl font-bold">Performance</h1>
+          <div className="w-10" />
+        </div>
+
+        <div className="mb-7 grid grid-cols-2 rounded-2xl bg-slate-900 p-1">
+          <button
+            onClick={() => {
+              haptics.selection()
+              setPerformanceTab('performance')
+            }}
+            className={`rounded-xl py-3 text-sm font-bold transition ${
+              performanceTab === 'performance' ? 'bg-slate-950 text-cyan-400' : 'text-slate-400'
+            }`}
+          >
+            Performance
+          </button>
+          <button
+            disabled={!canViewCreatorStats}
+            onClick={() => {
+              haptics.selection()
+              setPerformanceTab('creator')
+              fetchCreatorStats()
+            }}
+            className={`rounded-xl py-3 text-sm font-bold transition disabled:opacity-40 ${
+              performanceTab === 'creator' ? 'bg-slate-950 text-cyan-400' : 'text-slate-400'
+            }`}
+          >
+            Creator
+          </button>
+        </div>
+
+        {performanceTab === 'performance' ? (
+          <>
+            <div className="mb-7 text-center">
+              <p className={`text-5xl font-bold ${performance.profit >= 0 ? 'text-cyan-400' : 'text-pink-500'}`}>
+                {performance.profit >= 0 ? '+' : '-'}${Math.abs(performance.profit).toFixed(2)}
+              </p>
+              <div className="mt-4 flex items-center justify-center gap-3 text-sm">
+                <span className={`rounded-xl px-3 py-2 font-bold ${
+                  performance.pnlPercent >= 0 ? 'bg-cyan-400/10 text-cyan-400' : 'bg-pink-500/10 text-pink-400'
+                }`}>
+                  {performance.pnlPercent >= 0 ? '+' : ''}{performance.pnlPercent.toFixed(1)}%
+                </span>
+                <span className="font-semibold text-slate-400">on ${performance.totalResolvedStaked.toFixed(2)} staked</span>
+              </div>
+            </div>
+
+            <PerformanceChart value={performance.profit} />
+
+            <div className="mt-7 grid grid-cols-2 gap-4">
+              <MetricCard label="ATH Gain" value={`+$${Math.max(0, performance.profit).toFixed(2)}`} accent />
+              <MetricCard label="Best Day" value={performance.profit > 0 ? `+$${performance.profit.toFixed(2)}` : '--'} accent={performance.profit > 0} />
+              <MetricCard label="Win Rate" value={`${performance.winRate}%`} sub={`${performance.wins}W / ${performance.losses}L / ${performance.draws}D`} />
+              <MetricCard label="Best Streak" value={performance.wins} sub="wins tracked" accent />
+              <MetricCard label="Markets" value={performance.markets} sub="total played" />
+              <MetricCard label="Worst Dip" value={performance.profit < 0 ? `-$${Math.abs(performance.profit).toFixed(2)}` : '--'} danger={performance.profit < 0} />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="mb-7 text-center">
+              <p className="text-5xl font-bold text-cyan-400">
+                ${Number(creatorStats?.totalFees || 0).toFixed(2)}
+              </p>
+              <div className="mt-4 flex items-center justify-center gap-3 text-sm">
+                <span className="rounded-xl bg-cyan-400/10 px-3 py-2 font-bold text-cyan-400">
+                  {creatorStats?.totalPolls ?? 0} polls
+                </span>
+                <span className="font-semibold text-slate-400">
+                  {creatorStats?.resolvedPolls ?? 0} resolved · all-time creator fees
+                </span>
+              </div>
+            </div>
+
+            <div className="mb-5 grid grid-cols-4 rounded-2xl bg-slate-900 p-1 text-sm font-bold text-slate-400">
+              {['7D', '30D', '90D', 'All'].map(range => (
+                <button
+                  key={range}
+                  className={`rounded-xl py-3 ${range === 'All' ? 'bg-slate-950 text-cyan-400' : ''}`}
+                >
+                  {range}
+                </button>
+              ))}
+            </div>
+
+            <PerformanceChart value={creatorStats?.totalFees || 0} />
+
+            <div className="mt-7 grid grid-cols-2 gap-4">
+              <MetricCard label="All-time fees" value={`$${Number(creatorStats?.totalFees || 0).toFixed(2)}`} sub={`${creatorStats?.resolvedPolls ?? 0} resolved`} accent />
+              <MetricCard label="Avg pool" value={`$${Number(creatorStats?.avgPool || 0).toFixed(0)}`} sub="per market" />
+              <MetricCard label="Avg votes" value={creatorStats?.avgVotes ?? 0} sub="per market" />
+              <MetricCard label="Top poll" value={`$${Number(creatorStats?.topPollReward || 0).toFixed(2)}`} sub={creatorStats?.topPollQuestion || 'No resolved poll'} accent />
+              <MetricCard label="Polls created" value={creatorStats?.totalPolls ?? 0} sub="all time" />
+              <MetricCard label="Pending" value={creatorStats?.pendingPolls ?? 0} sub="not yet resolved" />
+            </div>
+
+            <div className="mt-8">
+              <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-white">Polls</h2>
+              <div className="space-y-3">
+                {creatorLoading ? (
+                  <p className="rounded-2xl bg-slate-900 p-4 text-sm text-slate-400">loading creator stats...</p>
+                ) : creatorPolls.length === 0 ? (
+                  <p className="rounded-2xl bg-slate-900 p-4 text-sm text-slate-400">No creator markets yet.</p>
+                ) : creatorPolls.map(poll => {
+                  const totalPool = Number(poll.yes_pool || 0) + Number(poll.no_pool || 0)
+                  const totalVotes = Number(poll.yes_votes || 0) + Number(poll.no_votes || 0)
+                  const reward = Number(poll.creator_reward_amount || 0)
+                  const status = getMarketLifecycleStatus(poll.status, poll.ends_at)
+
+                  return (
+                    <div key={poll.id} className="rounded-2xl bg-slate-900 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="flex-1 text-sm font-bold text-white">{poll.question}</p>
+                        <p className="text-sm font-bold text-cyan-400">
+                          {reward > 0 ? `$${reward.toFixed(2)}` : '--'}
+                        </p>
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                        <span className="rounded-md border border-slate-700 px-2 py-0.5 text-slate-300">{getMarketLifecycleLabel(status)}</span>
+                        <span>{poll.category || 'general'}</span>
+                        <span>${totalPool.toFixed(2)} pool</span>
+                        <span>{totalVotes} votes</span>
+                        <span>{formatDate(poll.created_at)}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </>
+        )}
+
+        <button className="mt-8 flex w-full items-center justify-center gap-3 rounded-2xl bg-cyan-400 py-4 text-base font-bold text-black active:scale-95 transition">
+          <Share2 size={18} />
+          Share Stats
+        </button>
+      </div>
+    )
+  }
 
   // show results page when a card is tapped
   if (selectedPosition) {
@@ -246,17 +486,22 @@ export default function Portfolio() {
     <div className="bg-slate-950 h-screen flex flex-col overflow-hidden">
       <div className="flex-shrink-0 bg-slate-950 px-4 pt-2 pb-0 space-y-2.5">
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <p className="text-slate-400 text-xs mb-1">Total Staked</p>
+          <p className="text-slate-400 text-xs mb-1">Balance</p>
           <p className="text-white text-3xl font-bold">
-            {loading ? '...' : `$${totalStaked.toLocaleString()}`}
+            ${balance.toFixed(2)}
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-2.5">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5">
+          <button
+            onClick={openPerformance}
+            className="rounded-xl border border-slate-800 bg-slate-900 p-3.5 text-left active:scale-[0.99] transition"
+          >
             <p className="text-slate-400 text-xs mb-1">P&L</p>
-            <p className="text-slate-500 text-xl font-bold">--</p>
-          </div>
+            <p className={`text-xl font-bold ${performance.profit >= 0 ? 'text-cyan-400' : 'text-pink-500'}`}>
+              {loading ? '...' : `${performance.profit >= 0 ? '+' : '-'}$${Math.abs(performance.profit).toFixed(2)}`}
+            </p>
+          </button>
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5">
             <p className="text-slate-400 text-xs mb-1">Claimable</p>
             <p className={`text-xl font-bold ${totalClaimable > 0 ? 'text-cyan-400' : 'text-slate-500'}`}>
@@ -457,6 +702,62 @@ export default function Portfolio() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function PerformanceChart({ value }: { value: number }) {
+  const positive = value >= 0
+  const points = positive
+    ? '5,86 25,80 45,78 65,72 85,70 105,66 125,62 145,54 165,45 185,35 205,30 225,22 245,16'
+    : '5,42 25,47 45,51 65,55 85,60 105,64 125,70 145,73 165,78 185,82 205,86 225,88 245,90'
+
+  return (
+    <div className="rounded-2xl bg-slate-900 p-4">
+      <div className="relative h-56 overflow-hidden rounded-xl bg-slate-950/50">
+        <div className="absolute inset-x-4 top-8 border-t border-slate-800" />
+        <div className="absolute inset-x-4 top-24 border-t border-slate-800" />
+        <div className="absolute inset-x-4 bottom-8 border-t border-dashed border-slate-600" />
+        <svg className="absolute inset-0 h-full w-full" viewBox="0 0 250 110" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="performanceFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={positive ? '#22d3ee' : '#ec4899'} stopOpacity="0.45" />
+              <stop offset="100%" stopColor={positive ? '#22d3ee' : '#ec4899'} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <polygon points={`5,100 ${points} 245,100`} fill="url(#performanceFill)" />
+          <polyline points={points} fill="none" stroke={positive ? '#22d3ee' : '#ec4899'} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="245" cy={positive ? '16' : '90'} r="5" fill={positive ? '#22d3ee' : '#ec4899'} />
+        </svg>
+        <div className="absolute bottom-3 left-4 right-4 flex justify-between text-xs font-bold text-slate-600">
+          <span>Start</span>
+          <span>Now</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MetricCard({
+  label,
+  value,
+  sub,
+  accent = false,
+  danger = false,
+}: {
+  label: string
+  value: string | number
+  sub?: string
+  accent?: boolean
+  danger?: boolean
+}) {
+  return (
+    <div className="min-h-28 rounded-2xl bg-slate-900 p-4">
+      <p className="mb-4 text-sm font-bold text-slate-400">{label}</p>
+      <p className={`text-2xl font-bold ${danger ? 'text-pink-500' : accent ? 'text-cyan-400' : 'text-white'}`}>
+        {value}
+      </p>
+      {sub && <p className="mt-2 text-sm font-semibold text-slate-500">{sub}</p>}
     </div>
   )
 }
