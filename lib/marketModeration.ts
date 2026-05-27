@@ -8,18 +8,12 @@ export const MARKET_CATEGORIES = [
   { value: 'science', label: 'Science' },
 ] as const
 
-export const MARKET_DURATIONS = [
-  { value: 6, label: '6h' },
-  { value: 12, label: '12h' },
-  { value: 24, label: '24h' },
-  { value: 48, label: '48h' },
-] as const
+export const MARKET_DURATION_HOURS = 24
 
 export type MarketModerationResult = {
   approved: boolean
   normalizedQuestion: string
   category: string
-  durationHours: number
   reasons: string[]
   similarMarket?: {
     id: string
@@ -82,6 +76,9 @@ const stopWords = new Set([
 ])
 
 const blockedPatterns: Array<{ pattern: RegExp; reason: string }> = [
+  { pattern: /\b\w+\b\s+(?:or|\/)\s+\b\w+\b/i, reason: 'This is not a clean YES/NO question. Rephrase A-or-B choices using "over" or "more than".' },
+  { pattern: /\b(reduce|lower|increase|improve|affect|impact)\b.*\b(cost|costs|prices|effectiveness|effective)\b/i, reason: 'This question needs more nuance than a simple YES or NO.' },
+  { pattern: /\b(will|would|could|can|does|do)\b.*\b(make|become|lead to|result in)\b.*\b(fairer|fairness|fair)\b/i, reason: 'No prediction-style markets about whether a system will become fairer.' },
   { pattern: /\b(kill|murder|assassinate|bomb|terrorist|terrorism|shoot|stab)\b/i, reason: 'No violence, threats, or violent-event markets.' },
   { pattern: /\b(suicide|self[-\s]?harm|cut myself|overdose)\b/i, reason: 'No self-harm markets.' },
   { pattern: /\b(rape|porn|sex tape|nude|nudes|explicit sex)\b/i, reason: 'No sexual or explicit markets.' },
@@ -123,38 +120,50 @@ function similarityScore(a: string, b: string) {
   return overlap / union
 }
 
-function normalizeCategory(category: unknown) {
-  const value = String(category || 'other').toLowerCase()
-  return MARKET_CATEGORIES.some(item => item.value === value) ? value : 'other'
-}
+function detectCategory(question: string, description?: string) {
+  const text = `${question} ${description || ''}`.toLowerCase()
 
-function normalizeDurationHours(durationHours: unknown) {
-  const value = Number(durationHours || 24)
-  return MARKET_DURATIONS.some(item => item.value === value) ? value : 24
+  if (/\b(crypto|bitcoin|btc|ethereum|eth|solana|sol|token|coin|web3|defi|dao|nft|blockchain)\b/.test(text)) {
+    return 'crypto'
+  }
+  if (/\b(ai|robot|robots|tech|software|app|internet|algorithm|automation|machine|computer)\b/.test(text)) {
+    return 'tech'
+  }
+  if (/\b(sport|sports|football|soccer|basketball|nba|nfl|world cup|team|league|match)\b/.test(text)) {
+    return 'sports'
+  }
+  if (/\b(politics|government|election|president|senate|congress|policy|democracy|law)\b/.test(text)) {
+    return 'politics'
+  }
+  if (/\b(economy|economic|money|inflation|market|markets|jobs|workers|salary|wage|business|invest|schools teach students how to invest)\b/.test(text)) {
+    return 'economy'
+  }
+  if (/\b(science|mosquito|mosquitoes|climate|space|biology|physics|research|medicine)\b/.test(text)) {
+    return 'science'
+  }
+
+  return 'other'
 }
 
 export function moderateMarketQuestion({
   question,
-  category,
-  durationHours,
+  description,
   existingMarkets = [],
 }: {
   question: string
-  category?: unknown
-  durationHours?: unknown
+  description?: string
   existingMarkets?: ExistingMarket[]
 }): MarketModerationResult {
   const normalizedQuestion = normalizeQuestion(question)
-  const normalizedCategory = normalizeCategory(category)
-  const normalizedDurationHours = normalizeDurationHours(durationHours)
+  const normalizedCategory = detectCategory(normalizedQuestion, description)
   const reasons: string[] = []
 
   if (normalizedQuestion.length < 16) {
     reasons.push('Make the question more specific.')
   }
 
-  if (normalizedQuestion.length > 96) {
-    reasons.push('Keep the market title under 96 characters.')
+  if (normalizedQuestion.length > 64) {
+    reasons.push('Keep the market title under 64 characters.')
   }
 
   if (!normalizedQuestion.endsWith('?')) {
@@ -196,7 +205,6 @@ export function moderateMarketQuestion({
     approved: reasons.length === 0,
     normalizedQuestion,
     category: normalizedCategory,
-    durationHours: normalizedDurationHours,
     reasons,
     similarMarket: similarMarket && similarMarket.score >= 0.72 ? similarMarket : undefined,
   }

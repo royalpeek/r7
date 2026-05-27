@@ -10,7 +10,6 @@ import { usePolls } from './hooks/usePolls'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { getMarketLifecycleStatus } from '@/lib/marketLifecycle'
 import { parseMarketStartParam } from '@/lib/marketDeepLink'
-import { MARKET_CATEGORIES, MARKET_DURATIONS } from '@/lib/marketModeration'
 
 const CATEGORIES = ['Trending', 'New', 'Politics', 'Crypto', 'Sports', 'Tech']
 
@@ -38,8 +37,6 @@ export default function Home() {
   // create poll form state
   const [pollTitle, setPollTitle] = useState('')
   const [pollDescription, setPollDescription] = useState('')
-  const [createCategory, setCreateCategory] = useState('other')
-  const [durationHours, setDurationHours] = useState(24)
   const [isPrivate, setIsPrivate] = useState(false)
   const [isLocal, setIsLocal] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -185,8 +182,6 @@ export default function Home() {
           question: pollTitle,
           initData,
           description: pollDescription,
-          category: createCategory,
-          durationHours,
           is_private: isPrivate,
         }),
       })
@@ -197,8 +192,6 @@ export default function Home() {
       // reset form and close modal
       setPollTitle('')
       setPollDescription('')
-      setCreateCategory('other')
-      setDurationHours(24)
       setIsPrivate(false)
       setIsLocal(false)
       setShowCreatePoll(false)
@@ -375,8 +368,6 @@ export default function Home() {
                 setCreateError(null)
                 setPollTitle('')
                 setPollDescription('')
-                setCreateCategory('other')
-                setDurationHours(24)
                 setIsPrivate(false)
                 setIsLocal(false)
               }}
@@ -402,11 +393,11 @@ export default function Home() {
             {/* title input */}
             <div className="mb-5">
               <p className="text-white text-sm font-medium mb-2">
-                Title <span className="text-slate-500">{pollTitle.length}/96</span>
+                Title <span className="text-slate-500">{pollTitle.length}/64</span>
               </p>
               <input
                 type="text"
-                maxLength={96}
+                maxLength={64}
                 value={pollTitle}
                 onChange={e => setPollTitle(e.target.value)}
                 placeholder="Should robots replace workers at scale?"
@@ -427,44 +418,6 @@ export default function Home() {
                 rows={3}
                 className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 resize-none"
               />
-            </div>
-
-            <div className="mb-5">
-              <p className="text-white text-sm font-medium mb-2">Category</p>
-              <div className="grid grid-cols-2 gap-2">
-                {MARKET_CATEGORIES.map(category => (
-                  <button
-                    key={category.value}
-                    onClick={() => setCreateCategory(category.value)}
-                    className={`rounded-xl border px-3 py-3 text-sm font-bold transition active:scale-95 ${
-                      createCategory === category.value
-                        ? 'border-cyan-400 bg-cyan-400/10 text-cyan-300'
-                        : 'border-slate-700 bg-slate-900 text-slate-400'
-                    }`}
-                  >
-                    {category.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mb-5">
-              <p className="text-white text-sm font-medium mb-2">Duration</p>
-              <div className="grid grid-cols-4 gap-2">
-                {MARKET_DURATIONS.map(duration => (
-                  <button
-                    key={duration.value}
-                    onClick={() => setDurationHours(duration.value)}
-                    className={`rounded-xl border px-3 py-3 text-sm font-bold transition active:scale-95 ${
-                      durationHours === duration.value
-                        ? 'border-cyan-400 bg-cyan-400/10 text-cyan-300'
-                        : 'border-slate-700 bg-slate-900 text-slate-400'
-                    }`}
-                  >
-                    {duration.label}
-                  </button>
-                ))}
-              </div>
             </div>
 
             {/* private poll toggle */}
@@ -517,10 +470,10 @@ export default function Home() {
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-bold text-cyan-300">
-                  {MARKET_CATEGORIES.find(category => category.value === createCategory)?.label || 'Other'}
+                  Theme auto-detected
                 </span>
                 <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-bold text-slate-300">
-                  {durationHours}h market
+                  24h market
                 </span>
                 <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-bold text-slate-300">
                   YES / NO only

@@ -4,7 +4,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
 import { CREATOR_OPEN_MARKET_LIMIT, getOpenMarketCutoff } from '@/lib/creatorQuota'
 import { closeExpiredMarkets } from '@/lib/marketLifecycle'
-import { moderateMarketQuestion } from '@/lib/marketModeration'
+import { MARKET_DURATION_HOURS, moderateMarketQuestion } from '@/lib/marketModeration'
 
 export async function GET() {
   try {
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const telegramUser = getRequestTelegramUser(body.initData)
     const userId = String(telegramUser.id)
-    const { question, category, durationHours } = body
+    const { question } = body
     const admin = getSupabaseAdmin()
 
     if (!question || question.trim().length === 0) {
@@ -81,8 +81,7 @@ export async function POST(request: NextRequest) {
 
     const moderation = moderateMarketQuestion({
       question,
-      category,
-      durationHours,
+      description: String(body.description || ''),
       existingMarkets: existingMarkets || [],
     })
 
@@ -94,7 +93,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const ends_at = new Date(Date.now() + moderation.durationHours * 60 * 60 * 1000).toISOString()
+    const ends_at = new Date(Date.now() + MARKET_DURATION_HOURS * 60 * 60 * 1000).toISOString()
 
     const { data, error } = await admin
       .from('polls')
