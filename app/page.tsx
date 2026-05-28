@@ -234,7 +234,8 @@ export default function Home() {
     }
   }
 
-  const loading = userLoading || pollsLoading
+  const loading = (userLoading || pollsLoading) && polls.length === 0
+  const showPollsError = Boolean(pollsError && polls.length === 0)
   const deepLinkedPoll = deepLinkedMarketId
     ? polls.find(poll => poll.id === deepLinkedMarketId)
     : null
@@ -357,7 +358,7 @@ export default function Home() {
               <p className="text-slate-500 text-sm mt-1">Getting the latest polls ready.</p>
             </div>
           </div>
-        ) : pollsError ? (
+        ) : showPollsError ? (
           <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
             <div className="rounded-2xl border border-pink-500/40 bg-pink-500/10 px-5 py-4">
               <p className="text-white font-semibold">Could not load markets</p>

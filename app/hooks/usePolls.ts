@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
 export type Poll = {
@@ -38,10 +38,11 @@ export function usePolls(userId?: string | null, initData = '') {
   ))
   const [loading, setLoading] = useState(() => !cachedPolls)
   const [error, setError] = useState<string | null>(null)
+  const pollsRef = useRef<Poll[]>(cachedPolls || [])
 
   const fetchPolls = useCallback(async (showLoading = false) => {
     try {
-      if (showLoading) setLoading(true)
+      if (showLoading && pollsRef.current.length === 0) setLoading(true)
       setError(null)
       const response = await fetch('/api/polls')
       const data = await response.json()
@@ -49,10 +50,15 @@ export function usePolls(userId?: string | null, initData = '') {
       if (!response.ok) throw new Error(data.error || 'failed to fetch polls')
       const nextPolls = (data.polls || []) as Poll[]
       cachedPolls = nextPolls
+      pollsRef.current = nextPolls
       setPolls(nextPolls)
       setError(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'failed to fetch polls')
+      if (pollsRef.current.length === 0) {
+        setError(err instanceof Error ? err.message : 'failed to fetch polls')
+      } else {
+        console.error('background polls refresh error:', err)
+      }
     } finally {
       setLoading(false)
     }
