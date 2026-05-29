@@ -41,6 +41,20 @@ Profile invite links use this format:
 https://t.me/your_bot_username/your_mini_app_short_name?startapp=ref_REFERRAL_CODE
 ```
 
+## Custodial TON wallet
+
+The wallet screen can show a shared custody deposit address plus a unique memo for each Telegram user.
+
+Set these Vercel environment variables before accepting deposits:
+
+```bash
+TON_CUSTODY_DEPOSIT_ADDRESS=your_ton_custody_address
+TON_CUSTODY_MEMO_SECRET=your_private_random_secret
+TON_NETWORK=mainnet
+```
+
+`TON_CUSTODY_DEPOSIT_ADDRESS` is the TON address users send USDT on TON to. `TON_CUSTODY_MEMO_SECRET` keeps each user's memo stable without exposing how it is generated. Deposits still need a server-side scanner or admin reconciliation step before balances are credited inside the app.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

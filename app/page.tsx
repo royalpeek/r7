@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
-import { X, Wallet, RefreshCw, PlusCircle, Send, QrCode, Filter, Lock, MapPin, Zap, ReceiptText } from 'lucide-react'
+import { X, Wallet, RefreshCw, PlusCircle, Send, Filter, Lock, MapPin, Zap, ReceiptText } from 'lucide-react'
 import PollCard from './components/PollCard'
 import Toast from './components/Toast'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
@@ -30,6 +30,14 @@ type WalletTransaction = {
   balance_after?: number | null
   description?: string | null
   created_at: string
+}
+
+type TonWalletInfo = {
+  network: string
+  asset: string
+  address: string
+  memo: string
+  configured: boolean
 }
 
 export default function Home() {
@@ -71,6 +79,9 @@ export default function Home() {
   const balance = balanceOverride ?? Number(appUser?.balance ?? 0)
   const [transactions, setTransactions] = useState<WalletTransaction[]>([])
   const [transactionsLoading, setTransactionsLoading] = useState(false)
+  const [tonWallet, setTonWallet] = useState<TonWalletInfo | null>(null)
+  const [tonWalletLoading, setTonWalletLoading] = useState(false)
+  const [walletNotice, setWalletNotice] = useState<string | null>(null)
 
   const fetchTransactions = useCallback(async () => {
     if (!userId) return
@@ -89,6 +100,26 @@ export default function Home() {
       console.error('fetch transactions error:', error)
     } finally {
       setTransactionsLoading(false)
+    }
+  }, [initData, userId])
+
+  const fetchTonWallet = useCallback(async () => {
+    if (!userId) return
+
+    try {
+      setTonWalletLoading(true)
+      const response = await fetch('/api/me/ton-wallet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData }),
+      })
+      const data = await response.json()
+
+      if (response.ok) setTonWallet(data as TonWalletInfo)
+    } catch (error) {
+      console.error('fetch TON wallet error:', error)
+    } finally {
+      setTonWalletLoading(false)
     }
   }, [initData, userId])
 
@@ -125,10 +156,11 @@ export default function Home() {
 
     const timeout = window.setTimeout(() => {
       fetchTransactions()
+      fetchTonWallet()
     }, 0)
 
     return () => window.clearTimeout(timeout)
-  }, [fetchTransactions, showWallet])
+  }, [fetchTonWallet, fetchTransactions, showWallet])
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -170,8 +202,12 @@ export default function Home() {
     return () => window.clearTimeout(timeout)
   }, [deepLinkedReferralCode, initData, userId, userLoading])
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText('3wbjCZ...kDdM')
+  const copyWalletValue = async (value: string, label: string) => {
+    if (!value) return
+
+    await navigator.clipboard.writeText(value)
+    haptics.selection()
+    setWalletNotice(`${label} copied`)
   }
 
   const handleCreatePoll = async () => {
@@ -667,15 +703,67 @@ export default function Home() {
               <X size={20} />
             </button>
             <p className="text-white text-2xl font-bold mb-1">Wallet</p>
-            <p className="text-slate-400 text-sm mb-6">yourname@gmail.com</p>
-            <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Wallet size={18} className="text-cyan-400" />
-                <p className="text-white font-mono text-sm">3wbjCZ...kDdM</p>
+            <p className="text-slate-400 text-sm mb-6">Custodial TON wallet</p>
+            {walletNotice && (
+              <div className="mb-4 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3">
+                <p className="text-sm font-semibold text-cyan-100">{walletNotice}</p>
               </div>
-              <button onClick={handleCopy}>
-                <QrCode size={18} className="text-slate-400" />
-              </button>
+            )}
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 mb-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <Wallet size={18} className="text-cyan-400" />
+                  <div>
+                    <p className="text-white text-sm font-bold">{tonWallet?.asset || 'USDT on TON'}</p>
+                    <p className="text-slate-500 text-xs">{tonWallet?.network || 'mainnet'} custody deposit</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => fetchTonWallet()}
+                  className="rounded-full bg-slate-800 p-2 text-slate-400 active:scale-95 transition"
+                  title="Refresh TON wallet"
+                >
+                  <RefreshCw size={14} />
+                </button>
+              </div>
+              {tonWalletLoading ? (
+                <p className="rounded-xl bg-slate-800 px-3 py-3 text-sm text-slate-400">loading TON deposit details...</p>
+              ) : tonWallet?.configured ? (
+                <div className="space-y-3">
+                  <div className="rounded-xl bg-slate-800 px-3 py-3">
+                    <div className="mb-1 flex items-center justify-between gap-3">
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Deposit address</p>
+                      <button
+                        onClick={() => copyWalletValue(tonWallet.address, 'Address')}
+                        className="text-xs font-bold text-cyan-300 active:scale-95 transition"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                    <p className="break-all font-mono text-xs text-white">{tonWallet.address}</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-800 px-3 py-3">
+                    <div className="mb-1 flex items-center justify-between gap-3">
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Required memo/comment</p>
+                      <button
+                        onClick={() => copyWalletValue(tonWallet.memo, 'Memo')}
+                        className="text-xs font-bold text-cyan-300 active:scale-95 transition"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                    <p className="font-mono text-sm font-bold text-white">{tonWallet.memo}</p>
+                  </div>
+                  <p className="text-xs leading-relaxed text-slate-500">
+                    Send only USDT on TON to this custody address and include the memo so your account can be credited.
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-3">
+                  <p className="text-sm font-semibold text-amber-100">TON custody address is not configured yet.</p>
+                  <p className="mt-1 text-xs text-amber-100/70">Add TON_CUSTODY_DEPOSIT_ADDRESS in Vercel before accepting deposits.</p>
+                </div>
+              )}
             </div>
             <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 mb-6">
               <p className="text-slate-400 text-xs mb-2">USDT Balance</p>
@@ -687,9 +775,13 @@ export default function Home() {
               </div>
             </div>
             <div className="flex gap-3">
-              <button disabled className="flex-1 bg-slate-800 text-slate-500 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 cursor-not-allowed">
+              <button
+                disabled={!tonWallet?.configured}
+                onClick={() => tonWallet && copyWalletValue(`${tonWallet.address}\nMemo: ${tonWallet.memo}`, 'Deposit details')}
+                className="flex-1 bg-cyan-400 text-black font-bold py-4 rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed"
+              >
                 <PlusCircle size={18} />
-                Add Funds Soon
+                Add Funds
               </button>
               <button disabled className="flex-1 bg-slate-900 border border-slate-700 text-slate-500 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 cursor-not-allowed">
                 <Send size={18} />
