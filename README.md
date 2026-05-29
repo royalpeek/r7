@@ -50,10 +50,11 @@ Set these Vercel environment variables before accepting deposits:
 ```bash
 TON_CUSTODY_DEPOSIT_ADDRESS=your_ton_custody_address
 TON_CUSTODY_MEMO_SECRET=your_private_random_secret
-TON_NETWORK=mainnet
+TON_NETWORK=testnet
+TON_CUSTODY_ASSET_NAME=Testnet TON
 ```
 
-`TON_CUSTODY_DEPOSIT_ADDRESS` is the TON address users send USDT on TON to. `TON_CUSTODY_MEMO_SECRET` keeps each user's memo stable without exposing how it is generated. Deposits still need a server-side scanner or admin reconciliation step before balances are credited inside the app.
+`TON_CUSTODY_DEPOSIT_ADDRESS` is the TON address users send funds to. `TON_CUSTODY_MEMO_SECRET` keeps each user's memo stable without exposing how it is generated. `TON_CUSTODY_ASSET_NAME` controls the wallet label, so testnet can show `Testnet TON` and mainnet can later show `USDT on TON`. Deposits still need a server-side scanner or admin reconciliation step before balances are credited inside the app.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

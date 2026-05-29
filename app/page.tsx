@@ -755,7 +755,7 @@ export default function Home() {
                     <p className="font-mono text-sm font-bold text-white">{tonWallet.memo}</p>
                   </div>
                   <p className="text-xs leading-relaxed text-slate-500">
-                    Send only USDT on TON to this custody address and include the memo so your account can be credited.
+                    Send only {tonWallet.asset} to this custody address and include the memo so your account can be credited.
                   </p>
                 </div>
               ) : (
