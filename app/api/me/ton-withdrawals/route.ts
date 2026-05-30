@@ -56,6 +56,12 @@ function getToncenterApiV3Endpoint() {
   return getToncenterApiV2Endpoint().replace(/\/api\/v2$/, '/api/v3')
 }
 
+function getTonApiBaseUrl() {
+  return getTonNetwork() === 'testnet'
+    ? 'https://testnet.tonapi.io'
+    : 'https://tonapi.io'
+}
+
 async function runTonStep<T>(step: string, action: () => Promise<T>) {
   try {
     return await action()
@@ -106,27 +112,22 @@ function tonFromNanotons(value: string | undefined) {
   return Number((nanotons / NANOTON_PER_TON).toFixed(9))
 }
 
-async function sendMessageV3(apiBaseUrl: string, apiKey: string | undefined, boc: Buffer) {
+async function sendMessageTonApi(apiBaseUrl: string, apiKey: string | undefined, boc: Buffer) {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   }
-  if (apiKey) headers['X-API-Key'] = apiKey
+  if (apiKey) headers.Authorization = `Bearer ${apiKey}`
 
-  const response = await fetch(`${apiBaseUrl}/message`, {
+  const response = await fetch(`${apiBaseUrl}/v2/blockchain/message`, {
     method: 'POST',
     headers,
     cache: 'no-store',
     body: JSON.stringify({
-      boc: boc.toString('base64'),
+      boc: boc.toString('hex'),
     }),
   })
   const text = await response.text()
-  let data: {
-    message_hash?: string
-    message_hash_norm?: string
-    error?: string
-    code?: number
-  } = {}
+  let data: { error?: string; error_code?: number } = {}
 
   try {
     data = JSON.parse(text)
@@ -134,11 +135,9 @@ async function sendMessageV3(apiBaseUrl: string, apiKey: string | undefined, boc
     data = {}
   }
 
-  if (!response.ok || !data.message_hash) {
-    throw new Error(data.error || text || `TONCenter returned ${response.status}`)
+  if (!response.ok) {
+    throw new Error(data.error || text || `TonAPI returned ${response.status}`)
   }
-
-  return data.message_hash_norm || data.message_hash
 }
 
 export async function POST(request: NextRequest) {
@@ -261,16 +260,21 @@ export async function POST(request: NextRequest) {
       body: transfer,
     })
     const boc = beginCell().store(storeMessage(message)).endCell().toBoc()
+    const messageHash = message.body.hash().toString('hex')
     const txHash = await runTonStep(
       'Submit send to TON',
-      () => sendMessageV3(
-        getToncenterApiV3Endpoint(),
-        process.env.TONCENTER_API_KEY,
-        boc
-      )
+      async () => {
+        await sendMessageTonApi(
+          getTonApiBaseUrl(),
+          process.env.TONAPI_KEY,
+          boc
+        )
+
+        return messageHash
+      }
     )
 
-    console.info('TON withdrawal submitted', { traceId, seqno, txHash, walletType })
+    console.info('TON withdrawal submitted through TonAPI', { traceId, seqno, txHash, walletType })
 
     let confirmedSeqno = seqno
     for (let attempt = 0; attempt < CONFIRMATION_ATTEMPTS; attempt += 1) {
