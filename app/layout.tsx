@@ -33,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const analyticsToken = process.env.NEXT_PUBLIC_TG_ANALYTICS_TOKEN
-  const analyticsAppName = process.env.NEXT_PUBLIC_TG_ANALYTICS_APP_NAME || 'r7'
+  const analyticsAppName = process.env.NEXT_PUBLIC_TG_ANALYTICS_APP_NAME || 'r7app'
 
   return (
     <html

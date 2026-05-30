@@ -14,7 +14,7 @@ type TelegramAnalyticsProps = {
   appName?: string
 }
 
-export default function TelegramAnalytics({ token, appName = 'r7' }: TelegramAnalyticsProps) {
+export default function TelegramAnalytics({ token, appName = 'r7app' }: TelegramAnalyticsProps) {
   const initialized = useRef(false)
 
   if (!token) return null
