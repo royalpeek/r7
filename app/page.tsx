@@ -778,9 +778,9 @@ export default function Home() {
                     Send only {tonWallet.asset} to this custody address and include the memo so your account can be credited.
                   </p>
                   <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-3 py-3">
-                    <p className="text-xs font-bold uppercase tracking-wide text-cyan-200">Automatic credit</p>
+                    <p className="text-xs font-bold uppercase tracking-wide text-cyan-200">Deposit update</p>
                     <p className="mt-1 text-xs leading-relaxed text-cyan-100/75">
-                      Deposits usually appear after the next scanner run. If the balance has not updated yet, wait a few minutes and tap refresh.
+                      Your balance may take a few minutes to update. Tap refresh to check.
                     </p>
                   </div>
                 </div>
