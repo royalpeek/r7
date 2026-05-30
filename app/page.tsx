@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
 import QRCode from 'qrcode'
-import { X, Wallet, RefreshCw, PlusCircle, Send, Filter, Lock, MapPin, Zap, ReceiptText, QrCode, Copy, Repeat2 } from 'lucide-react'
+import { X, Wallet, RefreshCw, PlusCircle, Send, Filter, Lock, MapPin, Zap, ReceiptText, QrCode, Copy, Repeat2, Share2 } from 'lucide-react'
 import PollCard from './components/PollCard'
 import Toast from './components/Toast'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
@@ -94,6 +94,7 @@ export default function Home() {
   const [walletSuccess, setWalletSuccess] = useState<string | null>(null)
   const [showWithdrawForm, setShowWithdrawForm] = useState(false)
   const [showDepositForm, setShowDepositForm] = useState(false)
+  const [showWalletDeposit, setShowWalletDeposit] = useState(false)
   const [showWalletHistory, setShowWalletHistory] = useState(false)
   const [depositQr, setDepositQr] = useState('')
   const [withdrawAddress, setWithdrawAddress] = useState('')
@@ -244,7 +245,7 @@ export default function Home() {
   }, [deepLinkedReferralCode, initData, userId, userLoading])
 
   useEffect(() => {
-    if (!showDepositForm || !tonWallet?.address) return
+    if ((!showDepositForm && !showWalletDeposit) || !tonWallet?.address) return
 
     let cancelled = false
     QRCode.toDataURL(tonWallet.address, {
@@ -265,7 +266,7 @@ export default function Home() {
     return () => {
       cancelled = true
     }
-  }, [showDepositForm, tonWallet?.address])
+  }, [showDepositForm, showWalletDeposit, tonWallet?.address])
 
   useEffect(() => {
     if (!walletSuccess) return
@@ -280,6 +281,27 @@ export default function Home() {
     await navigator.clipboard.writeText(value)
     haptics.selection()
     setWalletNotice(`${label} copied`)
+    setWalletSuccess(`${label} copied`)
+  }
+
+  const shareWalletAddress = async () => {
+    if (!tonWallet?.address) return
+
+    haptics.selection()
+    const shareText = `R7 Testnet TON address: ${tonWallet.address}`
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'R7 wallet address',
+          text: shareText,
+        })
+        return
+      } catch {
+        return
+      }
+    }
+
+    await copyWalletValue(tonWallet.address, 'Address')
   }
 
   const handleWithdraw = async () => {
@@ -462,7 +484,10 @@ export default function Home() {
 
         <div className="flex items-center gap-2">
         <button
-          onClick={() => setShowWallet(true)}
+          onClick={() => {
+            haptics.selection()
+            setShowWallet(true)
+          }}
           className="h-10 rounded-xl bg-slate-800 px-3 text-xs font-medium text-slate-300 whitespace-nowrap active:scale-95 transition"
         >
           ${balance.toFixed(2)} USDT
@@ -817,16 +842,16 @@ export default function Home() {
             className="absolute inset-0 bg-black/60"
             onClick={() => setShowWallet(false)}
           />
-          <div className="relative z-10 max-h-[88dvh] overflow-y-auto rounded-t-3xl bg-slate-950 px-6 pt-5 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
-            <div className="w-10 h-1 bg-slate-700 rounded-full mx-auto mb-6" />
+          <div className="relative z-10 max-h-[82dvh] overflow-y-auto rounded-t-3xl bg-slate-950 px-5 pt-4 pb-[calc(2rem+env(safe-area-inset-bottom))]">
+            <div className="w-10 h-1 bg-slate-700 rounded-full mx-auto mb-5" />
             <button
               onClick={() => setShowWallet(false)}
-              className="absolute top-6 right-6 text-slate-400"
+              className="absolute top-5 right-5 text-slate-400"
             >
               <X size={20} />
             </button>
-            <p className="text-white text-4xl font-bold mb-2">Wallet</p>
-            <p className="text-slate-500 text-base font-semibold mb-7">
+            <p className="text-white text-3xl font-bold mb-1">Wallet</p>
+            <p className="text-slate-500 text-sm font-semibold mb-5">
               {appUser?.username ? `@${appUser.username}` : 'Custodial TON wallet'}
             </p>
             {walletNotice && (
@@ -836,20 +861,24 @@ export default function Home() {
             )}
             <button
               disabled={!tonWallet?.address}
-              onClick={() => tonWallet && setShowDepositForm(true)}
-              className="mb-6 flex w-full items-center justify-between rounded-3xl bg-slate-900/90 px-5 py-5 text-left active:scale-[0.99] transition disabled:opacity-60"
+              onClick={() => {
+                if (!tonWallet?.address) return
+                haptics.selection()
+                setShowWalletDeposit(true)
+              }}
+              className="mb-5 flex w-full items-center justify-between rounded-2xl bg-slate-900/90 px-4 py-4 text-left active:scale-[0.99] transition disabled:opacity-60"
             >
-              <div className="flex min-w-0 items-center gap-4">
-                <Wallet size={26} className="shrink-0 text-emerald-300" />
-                <p className="truncate text-xl font-bold text-white">{shortAddress(tonWallet?.address)}</p>
+              <div className="flex min-w-0 items-center gap-3">
+                <Wallet size={22} className="shrink-0 text-emerald-300" />
+                <p className="truncate text-lg font-bold text-white">{shortAddress(tonWallet?.address)}</p>
               </div>
-              <QrCode size={25} className="shrink-0 text-slate-500" />
+              <QrCode size={22} className="shrink-0 text-slate-500" />
             </button>
-            <div className="mb-6 rounded-3xl bg-slate-900/90 p-6">
+            <div className="mb-5 rounded-2xl bg-slate-900/90 p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-slate-500 text-base font-bold">Testnet TON Balance</p>
-                  <p className="mt-3 text-white text-4xl font-bold">{balance.toFixed(3)} TON</p>
+                  <p className="text-slate-500 text-sm font-bold">Testnet TON Balance</p>
+                  <p className="mt-2 text-white text-3xl font-bold">{balance.toFixed(3)} TON</p>
                 </div>
                 <button
                   onClick={() => {
@@ -857,26 +886,26 @@ export default function Home() {
                     fetchWalletBalance()
                     fetchTonWallet()
                   }}
-                  className="rounded-2xl bg-slate-800 p-4 text-slate-400 active:scale-95 transition"
+                  className="rounded-2xl bg-slate-800 p-3 text-slate-400 active:scale-95 transition"
                   title="Refresh wallet"
                 >
-                  <RefreshCw size={24} />
+                  <RefreshCw size={20} />
                 </button>
               </div>
               {tonWalletLoading && (
-                <p className="mt-4 text-sm font-semibold text-slate-500">Refreshing wallet...</p>
+                <p className="mt-3 text-xs font-semibold text-slate-500">Refreshing wallet...</p>
               )}
             </div>
-            <div className="mb-6 grid grid-cols-2 gap-3">
+            <div className="mb-5 grid grid-cols-2 gap-3">
               <button
                 disabled={!tonWallet?.configured}
                 onClick={() => {
                   haptics.selection()
                   setShowDepositForm(true)
                 }}
-                className="flex items-center justify-center gap-3 rounded-3xl bg-cyan-400 py-5 text-lg font-bold text-black active:scale-95 transition disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed"
+                className="flex items-center justify-center gap-2 rounded-2xl bg-cyan-400 py-4 text-base font-bold text-black active:scale-95 transition disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed"
               >
-                <PlusCircle size={24} />
+                <PlusCircle size={20} />
                 Add Funds
               </button>
               <button
@@ -885,20 +914,20 @@ export default function Home() {
                   setShowWithdrawForm(true)
                   setWithdrawError(null)
                 }}
-                className="flex items-center justify-center gap-3 rounded-3xl border border-emerald-400/30 bg-slate-950 py-5 text-lg font-bold text-emerald-300 active:scale-95 transition"
+                className="flex items-center justify-center gap-2 rounded-2xl border border-emerald-400/30 bg-slate-950 py-4 text-base font-bold text-emerald-300 active:scale-95 transition"
               >
-                <Send size={24} />
+                <Send size={20} />
                 Send TON
               </button>
             </div>
-            <div className="mt-6">
+            <div className="mt-4">
               <button
                 onClick={() => {
                   haptics.selection()
                   setShowWalletHistory(true)
                   fetchTransactions()
                 }}
-                className="flex w-full items-center justify-between border-t border-slate-800 py-5 text-left active:scale-[0.99] transition"
+                className="flex w-full items-center justify-between border-t border-slate-800 py-4 text-left active:scale-[0.99] transition"
               >
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-cyan-300">
@@ -999,6 +1028,61 @@ export default function Home() {
         </div>
       )}
 
+      {showWalletDeposit && (
+        <div className="fixed inset-0 z-[90] flex flex-col bg-slate-950">
+          <div className="flex items-center justify-between border-b border-slate-900 px-5 py-4">
+            <button
+              onClick={() => setShowWalletDeposit(false)}
+              className="rounded-full bg-slate-900 p-3 text-slate-300 active:scale-95 transition"
+            >
+              <X size={18} />
+            </button>
+            <p className="text-lg font-bold text-white">Wallet</p>
+            <div className="h-10 w-10" />
+          </div>
+          <div className="flex-1 overflow-y-auto px-5 py-5">
+            <div className="mb-5 rounded-3xl bg-slate-900 p-4">
+              <div className="mx-auto flex h-56 w-56 max-w-full items-center justify-center rounded-3xl bg-white p-4">
+                {depositQr ? (
+                  <Image src={depositQr} alt="Wallet QR code" width={224} height={224} className="h-full w-full" unoptimized />
+                ) : (
+                  <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-300 border-t-slate-900" />
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-3xl bg-slate-900 p-5">
+              <p className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Your testnet TON address</p>
+              <p className="break-all text-sm font-bold leading-relaxed text-white">{tonWallet?.address}</p>
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <button
+                  disabled={!tonWallet?.address}
+                  onClick={() => tonWallet && copyWalletValue(tonWallet.address, 'Address')}
+                  className="flex items-center justify-center gap-2 rounded-2xl bg-cyan-400 py-4 text-base font-bold text-black active:scale-95 transition disabled:opacity-50"
+                >
+                  <Copy size={18} />
+                  Copy
+                </button>
+                <button
+                  disabled={!tonWallet?.address}
+                  onClick={shareWalletAddress}
+                  className="flex items-center justify-center gap-2 rounded-2xl border border-emerald-400/40 py-4 text-base font-bold text-emerald-300 active:scale-95 transition disabled:opacity-50"
+                >
+                  <Share2 size={18} />
+                  Share
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-2 rounded-3xl bg-amber-400/10 px-5 py-4 text-sm font-semibold leading-relaxed text-amber-100">
+              <p>Only send Testnet TON to this address.</p>
+              <p>No memo is needed.</p>
+              <p>Wrong sends cannot be reversed.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showDepositForm && (
         <div className="fixed inset-0 z-[90] flex flex-col bg-slate-950">
           <div className="flex items-center justify-between border-b border-slate-900 px-5 py-5">
@@ -1013,41 +1097,64 @@ export default function Home() {
           </div>
           <div className="flex-1 overflow-y-auto px-5 py-6">
             <div className="mb-6 grid grid-cols-2 gap-3">
-              <div className="rounded-3xl bg-cyan-400 px-4 py-5 text-center text-black">
-                <Wallet size={27} className="mx-auto mb-2" />
-                <p className="text-base font-bold">Wallet</p>
+              <div className="rounded-2xl bg-cyan-400 px-4 py-4 text-center text-black">
+                <Repeat2 size={24} className="mx-auto mb-2" />
+                <p className="text-sm font-bold">Exchange</p>
               </div>
-              <div className="rounded-3xl bg-slate-900 px-4 py-5 text-center text-slate-400">
-                <Repeat2 size={27} className="mx-auto mb-2" />
-                <p className="text-base font-bold">Exchange</p>
-                <p className="mt-1 text-xs font-semibold text-slate-600">Later</p>
-              </div>
+              <button
+                onClick={() => {
+                  haptics.selection()
+                  setShowDepositForm(false)
+                  setShowWalletDeposit(true)
+                }}
+                className="rounded-2xl bg-slate-900 px-4 py-4 text-center text-slate-400 active:scale-95 transition"
+              >
+                <Wallet size={24} className="mx-auto mb-2" />
+                <p className="text-sm font-bold">Wallet</p>
+              </button>
             </div>
 
-            <div className="mb-6 rounded-3xl bg-slate-900 p-5">
-              <div className="mx-auto flex h-64 w-64 max-w-full items-center justify-center rounded-3xl bg-white p-4">
+            <div className="mb-5 space-y-4 rounded-3xl bg-slate-900 p-5">
+              {[
+                'Open your exchange or testnet wallet.',
+                'Choose Send or Withdraw.',
+                'Send Testnet TON to your R7 address below.',
+              ].map((step, index) => (
+                <div key={step} className="flex gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-400/15 text-sm font-bold text-emerald-300">
+                    {index + 1}
+                  </div>
+                  <p className="pt-1 text-sm font-semibold leading-relaxed text-slate-200">{step}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mb-5 grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3 rounded-3xl bg-slate-900 p-4">
+              <div className="flex h-24 w-24 items-center justify-center rounded-2xl bg-white p-2">
                 {depositQr ? (
-                  <Image src={depositQr} alt="Deposit QR code" width={256} height={256} className="h-full w-full" unoptimized />
+                  <Image src={depositQr} alt="Deposit QR code" width={96} height={96} className="h-full w-full" unoptimized />
                 ) : (
-                  <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-300 border-t-slate-900" />
+                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-slate-900" />
                 )}
               </div>
+              <div className="min-w-0">
+                <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">R7 address</p>
+                <p className="break-all text-sm font-bold leading-relaxed text-white">{tonWallet?.address}</p>
+              </div>
             </div>
 
-            <div className="rounded-3xl bg-slate-900 p-5">
-              <p className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Your testnet TON address</p>
-              <p className="break-all text-base font-bold leading-relaxed text-white">{tonWallet?.address}</p>
+            <div className="rounded-3xl bg-slate-900 p-4">
               <button
                 disabled={!tonWallet?.address}
                 onClick={() => tonWallet && copyWalletValue(tonWallet.address, 'Deposit address')}
-                className="mt-5 flex w-full items-center justify-center gap-3 rounded-2xl bg-cyan-400 py-4 text-base font-bold text-black active:scale-95 transition disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-cyan-400 py-4 text-base font-bold text-black active:scale-95 transition disabled:opacity-50"
               >
-                <Copy size={20} />
+                <Copy size={18} />
                 Copy address
               </button>
             </div>
 
-            <div className="mt-5 space-y-3 rounded-3xl bg-amber-400/10 px-5 py-5 text-sm font-semibold leading-relaxed text-amber-100">
+            <div className="mt-5 space-y-2 rounded-3xl bg-amber-400/10 px-5 py-4 text-sm font-semibold leading-relaxed text-amber-100">
               <p>Only send Testnet TON to this address.</p>
               <p>No memo is needed.</p>
               <p>Wrong sends cannot be reversed.</p>
