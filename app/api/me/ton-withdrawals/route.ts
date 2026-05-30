@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Address, internal, toNano } from '@ton/core'
+import { Address, SendMode, internal, toNano } from '@ton/core'
 import { mnemonicToPrivateKey } from '@ton/crypto'
 import { TonClient, WalletContractV4 } from '@ton/ton'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
@@ -71,16 +71,18 @@ export async function POST(request: NextRequest) {
       apiKey: process.env.TONCENTER_API_KEY,
     })
     const openedWallet = client.open(wallet)
-    const chainBalance = Number(await openedWallet.getBalance()) / 1_000_000_000
+    const chainBalance = Number(await client.getBalance(wallet.address)) / 1_000_000_000
 
     if (amount + TESTNET_GAS_RESERVE > chainBalance) {
       return NextResponse.json({ error: 'Wallet needs more testnet TON for this send' }, { status: 400 })
     }
 
-    const seqno = await openedWallet.getSeqno()
+    const isDeployed = await client.isContractDeployed(wallet.address)
+    const seqno = isDeployed ? await openedWallet.getSeqno() : 0
     await openedWallet.sendTransfer({
       seqno,
       secretKey: keyPair.secretKey,
+      sendMode: SendMode.PAY_GAS_SEPARATELY,
       messages: [
         internal({
           to: destination,
