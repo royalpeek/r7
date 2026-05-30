@@ -40,6 +40,10 @@ function getToncenterApiV2Endpoint() {
   return getToncenterJsonRpcEndpoint().replace(/\/jsonRPC$/, '')
 }
 
+function getToncenterApiV3Endpoint() {
+  return getToncenterApiV2Endpoint().replace(/\/api\/v2$/, '/api/v3')
+}
+
 async function runTonStep<T>(step: string, action: () => Promise<T>) {
   try {
     return await action()
@@ -49,13 +53,13 @@ async function runTonStep<T>(step: string, action: () => Promise<T>) {
   }
 }
 
-async function sendBocReturnHash(apiBaseUrl: string, apiKey: string | undefined, boc: Buffer) {
+async function sendMessageV3(apiBaseUrl: string, apiKey: string | undefined, boc: Buffer) {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   }
   if (apiKey) headers['X-API-Key'] = apiKey
 
-  const response = await fetch(`${apiBaseUrl}/sendBocReturnHash`, {
+  const response = await fetch(`${apiBaseUrl}/message`, {
     method: 'POST',
     headers,
     cache: 'no-store',
@@ -65,8 +69,8 @@ async function sendBocReturnHash(apiBaseUrl: string, apiKey: string | undefined,
   })
   const text = await response.text()
   let data: {
-    ok?: boolean
-    result?: string | { hash?: string }
+    message_hash?: string
+    message_hash_norm?: string
     error?: string
     code?: number
   } = {}
@@ -77,12 +81,11 @@ async function sendBocReturnHash(apiBaseUrl: string, apiKey: string | undefined,
     data = {}
   }
 
-  if (!response.ok || !data.ok) {
+  if (!response.ok || !data.message_hash) {
     throw new Error(data.error || text || `TONCenter returned ${response.status}`)
   }
 
-  if (typeof data.result === 'string') return data.result
-  return data.result?.hash || null
+  return data.message_hash_norm || data.message_hash
 }
 
 export async function POST(request: NextRequest) {
@@ -184,8 +187,8 @@ export async function POST(request: NextRequest) {
     const boc = beginCell().store(storeMessage(message)).endCell().toBoc()
     const txHash = await runTonStep(
       'Submit send to TON',
-      () => sendBocReturnHash(
-        getToncenterApiV2Endpoint(),
+      () => sendMessageV3(
+        getToncenterApiV3Endpoint(),
         process.env.TONCENTER_API_KEY,
         boc
       )
