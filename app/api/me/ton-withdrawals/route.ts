@@ -328,7 +328,9 @@ export async function POST(request: NextRequest) {
       type: 'ton_withdrawal',
       amount: -amount,
       balanceAfter: nextBalance,
-      description: `${getTonAssetName()} withdrawal`,
+      description: `${getTonAssetName()} send`,
+      status: isPending ? 'pending' : 'confirmed',
+      txHash,
     })
 
     return NextResponse.json({

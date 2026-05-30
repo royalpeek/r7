@@ -9,16 +9,34 @@ export async function POST(request: NextRequest) {
     const userId = String(user.id)
     const supabase = getSupabaseAdmin()
 
-    const { data, error } = await supabase
+    let transactions: unknown[] | null = null
+    let queryError: { message: string } | null = null
+
+    const primary = await supabase
       .from('user_transactions')
-      .select('id, type, amount, balance_after, poll_id, description, created_at')
+      .select('id, type, amount, balance_after, poll_id, description, status, tx_hash, created_at')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(50)
 
-    if (error) throw error
+    transactions = primary.data
+    queryError = primary.error
 
-    return NextResponse.json({ transactions: data || [] })
+    if (queryError && (queryError.message.includes('status') || queryError.message.includes('tx_hash'))) {
+      const fallback = await supabase
+        .from('user_transactions')
+        .select('id, type, amount, balance_after, poll_id, description, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+      transactions = fallback.data
+      queryError = fallback.error
+    }
+
+    if (queryError) throw queryError
+
+    return NextResponse.json({ transactions: transactions || [] })
   } catch (error) {
     console.error('Transactions error:', error)
     return NextResponse.json({ error: 'Failed to fetch transactions' }, { status: 400 })

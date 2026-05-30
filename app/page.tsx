@@ -30,6 +30,8 @@ type WalletTransaction = {
   amount: number
   balance_after?: number | null
   description?: string | null
+  status?: 'pending' | 'confirmed' | 'failed' | null
+  tx_hash?: string | null
   created_at: string
 }
 
@@ -47,6 +49,36 @@ function shortAddress(address?: string) {
   if (address.length <= 14) return address
 
   return `${address.slice(0, 6)}...${address.slice(-6)}`
+}
+
+function getTransactionLabel(transaction: WalletTransaction) {
+  switch (transaction.type) {
+    case 'ton_deposit':
+      return 'Deposit'
+    case 'ton_withdrawal':
+      return 'Send'
+    case 'stake':
+      return transaction.description || 'Vote'
+    case 'fee':
+      return 'Voting fee'
+    case 'claim_payout':
+      return 'Claim'
+    case 'creator_reward':
+      return 'Creator reward'
+    case 'test_credit':
+      return 'Test credit'
+    default:
+      return transaction.description || 'Transaction'
+  }
+}
+
+function getTransactionUnit(transaction: WalletTransaction) {
+  return transaction.type.startsWith('ton_') ? 'TON' : 'USDT'
+}
+
+function getTransactionStatus(transaction: WalletTransaction) {
+  if (transaction.status) return transaction.status
+  return 'confirmed'
 }
 
 export default function Home() {
@@ -1201,18 +1233,37 @@ export default function Home() {
             ) : transactions.map(transaction => {
               const amount = Number(transaction.amount || 0)
               const positive = amount > 0
+              const status = getTransactionStatus(transaction)
+              const unit = getTransactionUnit(transaction)
+              const amountText = `${positive ? '+' : '-'}${Math.abs(amount).toFixed(unit === 'TON' ? 3 : 2)} ${unit}`
+              const balanceText = typeof transaction.balance_after === 'number'
+                ? `${Number(transaction.balance_after).toFixed(unit === 'TON' ? 3 : 2)} ${unit}`
+                : null
 
               return (
                 <div key={transaction.id} className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900 p-4">
                   <div className="flex items-center gap-3">
                     <div className={`flex h-9 w-9 items-center justify-center rounded-full ${
-                      positive ? 'bg-cyan-400/10 text-cyan-400' : 'bg-pink-500/10 text-pink-400'
+                      status === 'pending'
+                        ? 'bg-amber-400/10 text-amber-300'
+                        : positive ? 'bg-cyan-400/10 text-cyan-400' : 'bg-pink-500/10 text-pink-400'
                     }`}>
                       <ReceiptText size={17} />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-white">{transaction.description || transaction.type}</p>
-                      <p className="text-xs text-slate-500">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-white">{getTransactionLabel(transaction)}</p>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                          status === 'pending'
+                            ? 'bg-amber-400/10 text-amber-300'
+                            : status === 'failed'
+                              ? 'bg-pink-500/10 text-pink-300'
+                              : 'bg-emerald-400/10 text-emerald-300'
+                        }`}>
+                          {status === 'pending' ? 'Pending' : status === 'failed' ? 'Failed' : 'Done'}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">
                         {new Date(transaction.created_at).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
@@ -1223,11 +1274,13 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className={`text-sm font-bold ${positive ? 'text-cyan-400' : 'text-pink-400'}`}>
-                      {positive ? '+' : '-'}${Math.abs(amount).toFixed(2)}
+                    <p className={`text-sm font-bold ${
+                      status === 'pending' ? 'text-amber-300' : positive ? 'text-cyan-400' : 'text-pink-400'
+                    }`}>
+                      {amountText}
                     </p>
-                    {typeof transaction.balance_after === 'number' && (
-                      <p className="text-xs text-slate-500">${transaction.balance_after.toFixed(2)}</p>
+                    {balanceText && (
+                      <p className="text-xs text-slate-500">{balanceText}</p>
                     )}
                   </div>
                 </div>

@@ -12,6 +12,18 @@ create table if not exists public.user_transactions (
 create index if not exists user_transactions_user_created_idx
 on public.user_transactions (user_id, created_at desc);
 
+alter table public.user_transactions
+add column if not exists status text not null default 'confirmed';
+
+alter table public.user_transactions
+add column if not exists tx_hash text;
+
+alter table public.user_transactions
+add column if not exists updated_at timestamptz not null default now();
+
+create index if not exists user_transactions_status_created_idx
+on public.user_transactions (status, created_at desc);
+
 alter table public.user_transactions enable row level security;
 
 drop policy if exists "Block direct transaction reads" on public.user_transactions;

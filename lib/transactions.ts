@@ -18,6 +18,8 @@ export async function recordTransaction(
     balanceAfter,
     pollId,
     description,
+    status = 'confirmed',
+    txHash,
   }: {
     userId: string
     type: TransactionType
@@ -25,20 +27,41 @@ export async function recordTransaction(
     balanceAfter?: number
     pollId?: string
     description: string
+    status?: 'pending' | 'confirmed' | 'failed'
+    txHash?: string
   }
 ) {
+  const payload = {
+    user_id: userId,
+    type,
+    amount,
+    balance_after: typeof balanceAfter === 'number' ? balanceAfter : null,
+    poll_id: pollId || null,
+    description,
+    status,
+    tx_hash: txHash || null,
+  }
+
   const { error } = await supabase
     .from('user_transactions')
-    .insert({
-      user_id: userId,
-      type,
-      amount,
-      balance_after: typeof balanceAfter === 'number' ? balanceAfter : null,
-      poll_id: pollId || null,
-      description,
-    })
+    .insert(payload)
 
   if (error) {
+    if (error.message.includes('status') || error.message.includes('tx_hash')) {
+      const { error: fallbackError } = await supabase
+        .from('user_transactions')
+        .insert({
+          user_id: userId,
+          type,
+          amount,
+          balance_after: typeof balanceAfter === 'number' ? balanceAfter : null,
+          poll_id: pollId || null,
+          description,
+        })
+
+      if (!fallbackError) return
+    }
+
     console.error('transaction ledger insert error:', error)
   }
 }
