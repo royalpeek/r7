@@ -50,15 +50,16 @@ Set these Vercel environment variables before accepting deposits:
 ```bash
 TON_CUSTODY_DEPOSIT_ADDRESS=your_ton_custody_address
 TON_CUSTODY_MEMO_SECRET=your_private_random_secret
+TON_WALLET_ENCRYPTION_KEY=your_private_wallet_encryption_secret
 TON_NETWORK=testnet
 TON_CUSTODY_ASSET_NAME=Testnet TON
 TONCENTER_API_KEY=your_toncenter_api_key_optional
 CRON_SECRET=your_private_cron_secret
 ```
 
-`TON_CUSTODY_DEPOSIT_ADDRESS` is the TON address users send funds to. `TON_CUSTODY_MEMO_SECRET` keeps each user's memo stable without exposing how it is generated. `TON_CUSTODY_ASSET_NAME` controls the wallet label, so testnet can show `Testnet TON` and mainnet can later show `USDT on TON`.
+Each user now gets a unique TON deposit address, so memo is no longer required. `TON_WALLET_ENCRYPTION_KEY` encrypts the server-held wallet secret phrase. `TON_CUSTODY_DEPOSIT_ADDRESS` and `TON_CUSTODY_MEMO_SECRET` remain as a fallback for old shared-address test deposits. `TON_CUSTODY_ASSET_NAME` controls the wallet label, so testnet can show `Testnet TON` and mainnet can later show `USDT on TON`.
 
-Run `supabase/ton-deposits.sql` in Supabase before enabling automatic deposit crediting. Vercel Hobby can only run the built-in cron slowly, so use an external scheduler for faster testnet scans. Call this URL every few minutes:
+Run `supabase/user-ton-wallets.sql` and `supabase/ton-deposits.sql` in Supabase before enabling automatic deposit crediting. Vercel Hobby can only run the built-in cron slowly, so use an external scheduler for faster testnet scans. Call this URL every few minutes:
 
 ```text
 https://your-domain.vercel.app/api/cron/ton-deposits?secret=YOUR_CRON_SECRET

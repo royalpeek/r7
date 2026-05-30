@@ -1,4 +1,16 @@
 import crypto from 'node:crypto'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { mnemonicNew, mnemonicToPrivateKey } from '@ton/crypto'
+import { WalletContractV4 } from '@ton/ton'
+
+type StoredTonWallet = {
+  id: string
+  user_id: string
+  network: string
+  address: string
+  raw_address: string
+  public_key: string
+}
 
 export function makeTonDepositMemo(userId: string) {
   const secret = process.env.TON_CUSTODY_MEMO_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || 'r7-dev-secret'
@@ -21,4 +33,75 @@ export function getTonAssetName() {
   const defaultAsset = network === 'testnet' ? 'Testnet TON' : 'USDT on TON'
 
   return process.env.TON_CUSTODY_ASSET_NAME || defaultAsset
+}
+
+function getEncryptionKey() {
+  const secret =
+    process.env.TON_WALLET_ENCRYPTION_KEY ||
+    process.env.TON_CUSTODY_MEMO_SECRET ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!secret) throw new Error('missing TON wallet encryption secret')
+
+  return crypto.createHash('sha256').update(secret).digest()
+}
+
+function encryptSecret(value: string) {
+  const iv = crypto.randomBytes(12)
+  const cipher = crypto.createCipheriv('aes-256-gcm', getEncryptionKey(), iv)
+  const encrypted = Buffer.concat([
+    cipher.update(value, 'utf8'),
+    cipher.final(),
+  ])
+  const tag = cipher.getAuthTag()
+
+  return [
+    iv.toString('base64'),
+    tag.toString('base64'),
+    encrypted.toString('base64'),
+  ].join(':')
+}
+
+export async function getOrCreateUserTonWallet(supabase: SupabaseClient, userId: string) {
+  const network = getTonNetwork()
+  const { data: existingWallet, error: existingError } = await supabase
+    .from('user_ton_wallets')
+    .select('id, user_id, network, address, raw_address, public_key')
+    .eq('user_id', userId)
+    .eq('network', network)
+    .maybeSingle()
+
+  if (existingError) throw existingError
+  if (existingWallet) return existingWallet as StoredTonWallet
+
+  const mnemonic = await mnemonicNew(24)
+  const keyPair = await mnemonicToPrivateKey(mnemonic)
+  const wallet = WalletContractV4.create({
+    workchain: 0,
+    publicKey: keyPair.publicKey,
+  })
+  const address = wallet.address.toString({
+    bounceable: false,
+    testOnly: network === 'testnet',
+  })
+  const rawAddress = wallet.address.toRawString()
+  const publicKey = Buffer.from(keyPair.publicKey).toString('hex')
+
+  const { data: createdWallet, error: createError } = await supabase
+    .from('user_ton_wallets')
+    .insert({
+      user_id: userId,
+      network,
+      address,
+      raw_address: rawAddress,
+      public_key: publicKey,
+      mnemonic_encrypted: encryptSecret(mnemonic.join(' ')),
+      status: 'active',
+    })
+    .select('id, user_id, network, address, raw_address, public_key')
+    .single()
+
+  if (createError) throw createError
+
+  return createdWallet as StoredTonWallet
 }

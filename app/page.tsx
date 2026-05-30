@@ -37,6 +37,7 @@ type TonWalletInfo = {
   asset: string
   address: string
   memo: string
+  memoRequired?: boolean
   configured: boolean
 }
 
@@ -762,20 +763,27 @@ export default function Home() {
                     </div>
                     <p className="break-all font-mono text-xs text-white">{tonWallet.address}</p>
                   </div>
-                  <div className="rounded-xl bg-slate-800 px-3 py-3">
-                    <div className="mb-1 flex items-center justify-between gap-3">
-                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Required memo/comment</p>
-                      <button
-                        onClick={() => copyWalletValue(tonWallet.memo, 'Memo')}
-                        className="text-xs font-bold text-cyan-300 active:scale-95 transition"
-                      >
-                        Copy
-                      </button>
+                  {tonWallet.memoRequired ? (
+                    <div className="rounded-xl bg-slate-800 px-3 py-3">
+                      <div className="mb-1 flex items-center justify-between gap-3">
+                        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Required memo/comment</p>
+                        <button
+                          onClick={() => copyWalletValue(tonWallet.memo, 'Memo')}
+                          className="text-xs font-bold text-cyan-300 active:scale-95 transition"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                      <p className="font-mono text-sm font-bold text-white">{tonWallet.memo}</p>
                     </div>
-                    <p className="font-mono text-sm font-bold text-white">{tonWallet.memo}</p>
-                  </div>
+                  ) : (
+                    <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-3">
+                      <p className="text-xs font-bold uppercase tracking-wide text-emerald-200">No memo needed</p>
+                      <p className="mt-1 text-xs leading-relaxed text-emerald-100/75">This address is yours. Send directly to it.</p>
+                    </div>
+                  )}
                   <p className="text-xs leading-relaxed text-slate-500">
-                    Send only {tonWallet.asset} to this custody address and include the memo so your account can be credited.
+                    Send only {tonWallet.asset} to this deposit address.
                   </p>
                   <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-3 py-3">
                     <p className="text-xs font-bold uppercase tracking-wide text-cyan-200">Deposit update</p>
@@ -810,7 +818,7 @@ export default function Home() {
             <div className="flex gap-3">
               <button
                 disabled={!tonWallet?.configured}
-                onClick={() => tonWallet && copyWalletValue(`${tonWallet.address}\nMemo: ${tonWallet.memo}`, 'Deposit details')}
+                onClick={() => tonWallet && copyWalletValue(tonWallet.address, 'Deposit address')}
                 className="flex-1 bg-cyan-400 text-black font-bold py-4 rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed"
               >
                 <PlusCircle size={18} />

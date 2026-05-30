@@ -6,6 +6,7 @@ create table if not exists public.ton_deposits (
   amount numeric not null,
   asset text not null default 'Testnet TON',
   memo text not null,
+  deposit_address text,
   source_address text,
   raw jsonb,
   status text not null default 'processing',
@@ -18,6 +19,9 @@ on public.ton_deposits (user_id, created_at desc);
 
 create index if not exists ton_deposits_status_created_idx
 on public.ton_deposits (status, created_at desc);
+
+alter table public.ton_deposits
+add column if not exists deposit_address text;
 
 alter table public.ton_deposits enable row level security;
 
