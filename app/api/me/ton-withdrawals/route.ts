@@ -36,22 +36,31 @@ function wait(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-async function sendBocReturnHash(endpoint: string, apiKey: string | undefined, boc: Buffer) {
+function getToncenterApiV2Endpoint() {
+  return getToncenterJsonRpcEndpoint().replace(/\/jsonRPC$/, '')
+}
+
+async function runTonStep<T>(step: string, action: () => Promise<T>) {
+  try {
+    return await action()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'unknown error'
+    throw new Error(`${step}: ${message}`)
+  }
+}
+
+async function sendBocReturnHash(apiBaseUrl: string, apiKey: string | undefined, boc: Buffer) {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   }
   if (apiKey) headers['X-API-Key'] = apiKey
 
-  const response = await fetch(endpoint, {
+  const response = await fetch(`${apiBaseUrl}/sendBocReturnHash`, {
     method: 'POST',
     headers,
+    cache: 'no-store',
     body: JSON.stringify({
-      id: '1',
-      jsonrpc: '2.0',
-      method: 'sendBocReturnHash',
-      params: {
-        boc: boc.toString('base64'),
-      },
+      boc: boc.toString('base64'),
     }),
   })
   const text = await response.text()
@@ -69,7 +78,7 @@ async function sendBocReturnHash(endpoint: string, apiKey: string | undefined, b
   }
 
   if (!response.ok || !data.ok) {
-    throw new Error(data.error || text || `TONCenter send failed with status ${response.status}`)
+    throw new Error(data.error || text || `TONCenter returned ${response.status}`)
   }
 
   if (typeof data.result === 'string') return data.result
@@ -130,7 +139,10 @@ export async function POST(request: NextRequest) {
       apiKey: process.env.TONCENTER_API_KEY,
     })
     const openedWallet = client.open(wallet)
-    const chainBalance = Number(await client.getBalance(wallet.address)) / 1_000_000_000
+    const chainBalance = Number(await runTonStep(
+      'Check wallet balance',
+      () => client.getBalance(wallet.address)
+    )) / 1_000_000_000
 
     console.info('TON withdrawal wallet checked', {
       traceId,
@@ -143,8 +155,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Wallet needs more testnet TON for this send' }, { status: 400 })
     }
 
-    const isDeployed = await client.isContractDeployed(wallet.address)
-    const seqno = isDeployed ? await openedWallet.getSeqno() : 0
+    const isDeployed = await runTonStep(
+      'Check wallet status',
+      () => client.isContractDeployed(wallet.address)
+    )
+    const seqno = isDeployed ? await runTonStep(
+      'Read wallet seqno',
+      () => openedWallet.getSeqno()
+    ) : 0
     const transfer = await wallet.createTransfer({
       seqno,
       secretKey: keyPair.secretKey,
@@ -164,10 +182,13 @@ export async function POST(request: NextRequest) {
       body: transfer,
     })
     const boc = beginCell().store(storeMessage(message)).endCell().toBoc()
-    const txHash = await sendBocReturnHash(
-      getToncenterJsonRpcEndpoint(),
-      process.env.TONCENTER_API_KEY,
-      boc
+    const txHash = await runTonStep(
+      'Submit send to TON',
+      () => sendBocReturnHash(
+        getToncenterApiV2Endpoint(),
+        process.env.TONCENTER_API_KEY,
+        boc
+      )
     )
 
     console.info('TON withdrawal submitted', { traceId, seqno, txHash })

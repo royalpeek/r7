@@ -268,6 +268,8 @@ export default function Home() {
   }
 
   const handleWithdraw = async () => {
+    if (withdrawLoading) return
+
     try {
       haptics.selection()
       setWithdrawLoading(true)
