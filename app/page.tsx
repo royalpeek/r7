@@ -84,8 +84,10 @@ export default function Home() {
   const [tonWalletLoading, setTonWalletLoading] = useState(false)
   const [walletNotice, setWalletNotice] = useState<string | null>(null)
   const [showWithdrawForm, setShowWithdrawForm] = useState(false)
+  const [showWalletHistory, setShowWalletHistory] = useState(false)
   const [withdrawAddress, setWithdrawAddress] = useState('')
   const [withdrawAmount, setWithdrawAmount] = useState('')
+  const [withdrawComment, setWithdrawComment] = useState('')
   const [withdrawLoading, setWithdrawLoading] = useState(false)
   const [withdrawError, setWithdrawError] = useState<string | null>(null)
 
@@ -251,6 +253,7 @@ export default function Home() {
           initData,
           address: withdrawAddress,
           amount: withdrawAmount,
+          comment: withdrawComment,
         }),
       })
       const data = await response.json()
@@ -260,6 +263,7 @@ export default function Home() {
       if (typeof data.balance === 'number') setBalanceOverride(data.balance)
       setWithdrawAddress('')
       setWithdrawAmount('')
+      setWithdrawComment('')
       setShowWithdrawForm(false)
       setWalletNotice('Sent successfully')
       haptics.notification('success')
@@ -868,7 +872,7 @@ export default function Home() {
               <button
                 onClick={() => {
                   haptics.selection()
-                  setShowWithdrawForm(prev => !prev)
+                  setShowWithdrawForm(true)
                   setWithdrawError(null)
                 }}
                 className="flex-1 bg-slate-900 border border-slate-700 text-slate-300 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition"
@@ -877,111 +881,157 @@ export default function Home() {
                 Send
               </button>
             </div>
-            {showWithdrawForm && (
-              <div className="mt-4 rounded-2xl border border-slate-700 bg-slate-900 p-4">
-                <p className="mb-3 text-sm font-bold text-white">Send testnet TON</p>
-                <div className="space-y-3">
-                  <input
-                    value={withdrawAddress}
-                    onChange={event => setWithdrawAddress(event.target.value)}
-                    placeholder="TON address"
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none focus:border-cyan-400"
-                  />
-                  <input
-                    value={withdrawAmount}
-                    onChange={event => setWithdrawAmount(event.target.value)}
-                    placeholder="Amount"
-                    inputMode="decimal"
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none focus:border-cyan-400"
-                  />
-                  {withdrawError && (
-                    <p className="rounded-xl border border-pink-500/40 bg-pink-500/10 px-3 py-2 text-xs font-semibold text-pink-100">
-                      {withdrawError}
-                    </p>
-                  )}
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => {
-                        setShowWithdrawForm(false)
-                        setWithdrawError(null)
-                      }}
-                      className="flex-1 rounded-xl border border-slate-700 bg-slate-950 py-3 text-sm font-bold text-slate-300 active:scale-95 transition"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      disabled={withdrawLoading || !withdrawAddress.trim() || !withdrawAmount.trim()}
-                      onClick={handleWithdraw}
-                      className="flex-1 rounded-xl bg-cyan-400 py-3 text-sm font-bold text-black active:scale-95 transition disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {withdrawLoading ? 'Sending...' : 'Send'}
-                    </button>
+            <div className="mt-6">
+              <button
+                onClick={() => {
+                  haptics.selection()
+                  setShowWalletHistory(true)
+                  fetchTransactions()
+                }}
+                className="flex w-full items-center justify-between rounded-2xl border border-slate-700 bg-slate-900 p-4 text-left active:scale-[0.99] transition"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-cyan-300">
+                    <ReceiptText size={18} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-white">Transaction history</p>
+                    <p className="text-xs text-slate-500">{transactions.length} records</p>
                   </div>
                 </div>
-              </div>
-            )}
-            <div className="mt-6">
-              <div className="mb-3 flex items-center justify-between">
-                <p className="text-sm font-bold text-white">Transaction history</p>
-                <button
-                  onClick={() => {
-                    haptics.selection()
-                    fetchTransactions()
-                    fetchWalletBalance()
-                  }}
-                  className="rounded-full bg-slate-900 p-2 text-slate-400 active:scale-95 transition"
-                  title="Refresh transactions"
-                >
-                  <RefreshCw size={14} />
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                {transactionsLoading && transactions.length === 0 ? (
-                  <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 text-sm text-slate-400">
-                    loading transactions...
-                  </div>
-                ) : transactions.length === 0 ? (
-                  <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 text-sm text-slate-400">
-                    No transactions yet.
-                  </div>
-                ) : transactions.map(transaction => {
-                  const amount = Number(transaction.amount || 0)
-                  const positive = amount > 0
-
-                  return (
-                    <div key={transaction.id} className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900 p-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`flex h-9 w-9 items-center justify-center rounded-full ${
-                          positive ? 'bg-cyan-400/10 text-cyan-400' : 'bg-pink-500/10 text-pink-400'
-                        }`}>
-                          <ReceiptText size={17} />
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-white">{transaction.description || transaction.type}</p>
-                          <p className="text-xs text-slate-500">
-                            {new Date(transaction.created_at).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className={`text-sm font-bold ${positive ? 'text-cyan-400' : 'text-pink-400'}`}>
-                          {positive ? '+' : '-'}${Math.abs(amount).toFixed(2)}
-                        </p>
-                        {typeof transaction.balance_after === 'number' && (
-                          <p className="text-xs text-slate-500">${transaction.balance_after.toFixed(2)}</p>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+                <span className="text-xl text-slate-500">›</span>
+              </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showWithdrawForm && (
+        <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/70 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6">
+          <div className="w-full max-w-md rounded-3xl border border-slate-700 bg-slate-950 p-5 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <p className="text-xl font-bold text-white">Send</p>
+                <p className="text-xs text-slate-500">Testnet TON only</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowWithdrawForm(false)
+                  setWithdrawError(null)
+                }}
+                className="rounded-full bg-slate-900 p-2 text-slate-400 active:scale-95 transition"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <input
+                value={withdrawAddress}
+                onChange={event => setWithdrawAddress(event.target.value)}
+                placeholder="TON address"
+                className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none focus:border-cyan-400"
+              />
+              <input
+                value={withdrawAmount}
+                onChange={event => setWithdrawAmount(event.target.value)}
+                placeholder="Amount"
+                inputMode="decimal"
+                className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none focus:border-cyan-400"
+              />
+              <input
+                value={withdrawComment}
+                onChange={event => setWithdrawComment(event.target.value)}
+                placeholder="Comment (optional)"
+                maxLength={120}
+                className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none focus:border-cyan-400"
+              />
+              {withdrawError && (
+                <p className="rounded-xl border border-pink-500/40 bg-pink-500/10 px-3 py-2 text-xs font-semibold text-pink-100">
+                  {withdrawError}
+                </p>
+              )}
+              <button
+                disabled={withdrawLoading || !withdrawAddress.trim() || !withdrawAmount.trim()}
+                onClick={handleWithdraw}
+                className="w-full rounded-2xl bg-cyan-400 py-4 text-sm font-bold text-black active:scale-95 transition disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {withdrawLoading ? 'Sending...' : 'Send'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showWalletHistory && (
+        <div className="fixed inset-0 z-[90] flex flex-col bg-slate-950 px-5 pt-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <p className="text-2xl font-bold text-white">History</p>
+              <p className="text-xs text-slate-500">Wallet transactions</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  haptics.selection()
+                  fetchTransactions()
+                  fetchWalletBalance()
+                }}
+                className="rounded-full bg-slate-900 p-3 text-slate-400 active:scale-95 transition"
+              >
+                <RefreshCw size={16} />
+              </button>
+              <button
+                onClick={() => setShowWalletHistory(false)}
+                className="rounded-full bg-slate-900 p-3 text-slate-400 active:scale-95 transition"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto space-y-2">
+            {transactionsLoading && transactions.length === 0 ? (
+              <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 text-sm text-slate-400">
+                Loading history...
+              </div>
+            ) : transactions.length === 0 ? (
+              <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 text-sm text-slate-400">
+                No transactions yet.
+              </div>
+            ) : transactions.map(transaction => {
+              const amount = Number(transaction.amount || 0)
+              const positive = amount > 0
+
+              return (
+                <div key={transaction.id} className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`flex h-9 w-9 items-center justify-center rounded-full ${
+                      positive ? 'bg-cyan-400/10 text-cyan-400' : 'bg-pink-500/10 text-pink-400'
+                    }`}>
+                      <ReceiptText size={17} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-white">{transaction.description || transaction.type}</p>
+                      <p className="text-xs text-slate-500">
+                        {new Date(transaction.created_at).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-sm font-bold ${positive ? 'text-cyan-400' : 'text-pink-400'}`}>
+                      {positive ? '+' : '-'}${Math.abs(amount).toFixed(2)}
+                    </p>
+                    {typeof transaction.balance_after === 'number' && (
+                      <p className="text-xs text-slate-500">${transaction.balance_after.toFixed(2)}</p>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}

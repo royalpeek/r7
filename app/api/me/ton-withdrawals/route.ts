@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
     const userId = String(telegramUser.id)
     const amount = parseAmount(body.amount)
     const destination = parseDestination(body.address)
+    const comment = typeof body.comment === 'string' ? body.comment.trim().slice(0, 120) : ''
     const withdrawLimit = Number(process.env.TON_TESTNET_WITHDRAW_LIMIT || DEFAULT_TESTNET_WITHDRAW_LIMIT)
 
     if (amount > withdrawLimit) {
@@ -85,6 +86,7 @@ export async function POST(request: NextRequest) {
           to: destination,
           value: toNano(amount.toString()),
           bounce: false,
+          body: comment || undefined,
         }),
       ],
     })
