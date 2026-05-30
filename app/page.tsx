@@ -84,6 +84,7 @@ export default function Home() {
   const [tonWallet, setTonWallet] = useState<TonWalletInfo | null>(null)
   const [tonWalletLoading, setTonWalletLoading] = useState(false)
   const [walletNotice, setWalletNotice] = useState<string | null>(null)
+  const [walletSuccess, setWalletSuccess] = useState<string | null>(null)
   const [showWithdrawForm, setShowWithdrawForm] = useState(false)
   const [showDepositForm, setShowDepositForm] = useState(false)
   const [showWalletHistory, setShowWalletHistory] = useState(false)
@@ -259,6 +260,13 @@ export default function Home() {
     }
   }, [showDepositForm, tonWallet?.address])
 
+  useEffect(() => {
+    if (!walletSuccess) return
+
+    const timeout = window.setTimeout(() => setWalletSuccess(null), 3500)
+    return () => window.clearTimeout(timeout)
+  }, [walletSuccess])
+
   const copyWalletValue = async (value: string, label: string) => {
     if (!value) return
 
@@ -302,7 +310,8 @@ export default function Home() {
       setWithdrawAmount('')
       setWithdrawComment('')
       setShowWithdrawForm(false)
-      setWalletNotice('Send submitted')
+      setWalletNotice(`${withdrawAmount} TON sent`)
+      setWalletSuccess(`${withdrawAmount} TON sent successfully`)
       haptics.notification('success')
       await Promise.all([fetchTransactions(), fetchWalletBalance()])
     } catch (error) {
@@ -543,6 +552,7 @@ export default function Home() {
 
       {/* error feedback */}
       <Toast message={createError} onClose={() => setCreateError(null)} />
+      <Toast message={walletSuccess} type="success" onClose={() => setWalletSuccess(null)} />
 
       {/* create poll modal */}
       {showCreatePoll && (
