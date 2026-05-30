@@ -9,8 +9,8 @@ import { getTonAssetName, getTonNetwork, getToncenterJsonRpcEndpoint, getUserTon
 
 const TESTNET_GAS_RESERVE = 0.05
 const DEFAULT_TESTNET_WITHDRAW_LIMIT = 5
-const CONFIRMATION_ATTEMPTS = 20
-const CONFIRMATION_DELAY_MS = 1500
+const CONFIRMATION_ATTEMPTS = 5
+const CONFIRMATION_DELAY_MS = 1000
 
 function parseAmount(value: unknown) {
   const amount = Number(value)
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     await openedWallet.sendTransfer({
       seqno,
       secretKey: keyPair.secretKey,
-      sendMode: SendMode.PAY_GAS_SEPARATELY,
+      sendMode: SendMode.PAY_GAS_SEPARATELY | SendMode.IGNORE_ERRORS,
       messages: [
         internal({
           to: destination,
@@ -102,13 +102,17 @@ export async function POST(request: NextRequest) {
     let confirmedSeqno = seqno
     for (let attempt = 0; attempt < CONFIRMATION_ATTEMPTS; attempt += 1) {
       await wait(CONFIRMATION_DELAY_MS)
-      confirmedSeqno = await openedWallet.getSeqno()
+      try {
+        confirmedSeqno = await openedWallet.getSeqno()
+      } catch (error) {
+        console.error('TON confirmation check error:', error)
+      }
       if (confirmedSeqno > seqno) break
     }
 
     if (confirmedSeqno <= seqno) {
       return NextResponse.json({
-        error: 'Send was submitted but not confirmed yet. Please wait a minute and refresh.',
+        error: 'TON is still processing this send. Please wait a minute before trying again.',
       }, { status: 400 })
     }
 

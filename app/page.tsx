@@ -283,9 +283,16 @@ export default function Home() {
           comment: withdrawComment,
         }),
       })
-      const data = await response.json()
+      let data: { error?: string; balance?: number } = {}
+      try {
+        data = await response.json()
+      } catch {
+        data = {}
+      }
 
-      if (!response.ok) throw new Error(data.error || 'Send failed')
+      if (!response.ok) {
+        throw new Error(data.error || 'Send did not complete. Please wait a minute and try again.')
+      }
 
       if (typeof data.balance === 'number') setBalanceOverride(data.balance)
       setWithdrawAddress('')
