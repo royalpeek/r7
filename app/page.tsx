@@ -104,11 +104,13 @@ export default function Home() {
     }
   }, [initData, userId])
 
-  const fetchTonWallet = useCallback(async () => {
+  const fetchTonWallet = useCallback(async (options?: { forceLoader?: boolean }) => {
     if (!userId) return
 
+    const shouldShowLoader = options?.forceLoader || !tonWallet
+
     try {
-      setTonWalletLoading(true)
+      if (shouldShowLoader) setTonWalletLoading(true)
       const response = await fetch('/api/me/ton-wallet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -120,9 +122,9 @@ export default function Home() {
     } catch (error) {
       console.error('fetch TON wallet error:', error)
     } finally {
-      setTonWalletLoading(false)
+      if (shouldShowLoader) setTonWalletLoading(false)
     }
-  }, [initData, userId])
+  }, [initData, tonWallet, userId])
 
   const fetchWalletBalance = useCallback(async () => {
     if (!userId) return
