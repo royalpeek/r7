@@ -27,25 +27,28 @@ export function useHapticFeedback() {
   return {
     selection() {
       const haptics = getHaptics()
-      if (haptics?.selectionChanged) {
-        haptics.selectionChanged()
-        return
+      try {
+        haptics?.selectionChanged?.()
+      } catch {
+        // Some Telegram clients expose the API before it is ready.
       }
       vibrate(8)
     },
     impact(style: ImpactStyle = 'light') {
       const haptics = getHaptics()
-      if (haptics?.impactOccurred) {
-        haptics.impactOccurred(style)
-        return
+      try {
+        haptics?.impactOccurred?.(style)
+      } catch {
+        // Fall back to browser vibration when native haptics are unavailable.
       }
       vibrate(style === 'heavy' ? 35 : style === 'medium' ? 22 : 12)
     },
     notification(type: NotificationType) {
       const haptics = getHaptics()
-      if (haptics?.notificationOccurred) {
-        haptics.notificationOccurred(type)
-        return
+      try {
+        haptics?.notificationOccurred?.(type)
+      } catch {
+        // Keep feedback alive on Telegram clients with partial haptic support.
       }
       vibrate(type === 'error' ? [20, 40, 20] : type === 'warning' ? [15, 30, 15] : 25)
     },

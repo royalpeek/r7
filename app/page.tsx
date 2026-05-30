@@ -485,7 +485,7 @@ export default function Home() {
         <div className="flex items-center gap-2">
         <button
           onClick={() => {
-            haptics.selection()
+            haptics.impact('medium')
             setShowWallet(true)
           }}
           className="h-10 rounded-xl bg-slate-800 px-3 text-xs font-medium text-slate-300 whitespace-nowrap active:scale-95 transition"
@@ -863,7 +863,7 @@ export default function Home() {
               disabled={!tonWallet?.address}
               onClick={() => {
                 if (!tonWallet?.address) return
-                haptics.selection()
+                haptics.impact('medium')
                 setShowWalletDeposit(true)
               }}
               className="mb-5 flex w-full items-center justify-between rounded-2xl bg-slate-900/90 px-4 py-4 text-left active:scale-[0.99] transition disabled:opacity-60"
