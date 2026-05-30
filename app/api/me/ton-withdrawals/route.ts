@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'node:crypto'
-import { Address, SendMode, internal, toNano } from '@ton/core'
+import { Address, SendMode, beginCell, external, internal, storeMessage, toNano } from '@ton/core'
 import { mnemonicToPrivateKey } from '@ton/crypto'
 import { TonClient, WalletContractV4 } from '@ton/ton'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
@@ -12,6 +12,8 @@ export const runtime = 'nodejs'
 
 const TESTNET_GAS_RESERVE = 0.05
 const DEFAULT_TESTNET_WITHDRAW_LIMIT = 5
+const CONFIRMATION_ATTEMPTS = 3
+const CONFIRMATION_DELAY_MS = 1200
 
 function parseAmount(value: unknown) {
   const amount = Number(value)
@@ -28,6 +30,50 @@ function parseDestination(value: unknown) {
   } catch {
     throw new Error('Enter a valid TON address')
   }
+}
+
+function wait(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function sendBocReturnHash(endpoint: string, apiKey: string | undefined, boc: Buffer) {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+  if (apiKey) headers['X-API-Key'] = apiKey
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      id: '1',
+      jsonrpc: '2.0',
+      method: 'sendBocReturnHash',
+      params: {
+        boc: boc.toString('base64'),
+      },
+    }),
+  })
+  const text = await response.text()
+  let data: {
+    ok?: boolean
+    result?: string | { hash?: string }
+    error?: string
+    code?: number
+  } = {}
+
+  try {
+    data = JSON.parse(text)
+  } catch {
+    data = {}
+  }
+
+  if (!response.ok || !data.ok) {
+    throw new Error(data.error || text || `TONCenter send failed with status ${response.status}`)
+  }
+
+  if (typeof data.result === 'string') return data.result
+  return data.result?.hash || null
 }
 
 export async function POST(request: NextRequest) {
@@ -80,6 +126,7 @@ export async function POST(request: NextRequest) {
     })
     const client = new TonClient({
       endpoint: getToncenterJsonRpcEndpoint(),
+      timeout: 10000,
       apiKey: process.env.TONCENTER_API_KEY,
     })
     const openedWallet = client.open(wallet)
@@ -98,7 +145,7 @@ export async function POST(request: NextRequest) {
 
     const isDeployed = await client.isContractDeployed(wallet.address)
     const seqno = isDeployed ? await openedWallet.getSeqno() : 0
-    await openedWallet.sendTransfer({
+    const transfer = await wallet.createTransfer({
       seqno,
       secretKey: keyPair.secretKey,
       sendMode: SendMode.PAY_GAS_SEPARATELY | SendMode.IGNORE_ERRORS,
@@ -111,8 +158,38 @@ export async function POST(request: NextRequest) {
         }),
       ],
     })
+    const message = external({
+      to: wallet.address,
+      init: isDeployed ? undefined : wallet.init,
+      body: transfer,
+    })
+    const boc = beginCell().store(storeMessage(message)).endCell().toBoc()
+    const txHash = await sendBocReturnHash(
+      getToncenterJsonRpcEndpoint(),
+      process.env.TONCENTER_API_KEY,
+      boc
+    )
 
-    console.info('TON withdrawal submitted', { traceId, seqno })
+    console.info('TON withdrawal submitted', { traceId, seqno, txHash })
+
+    let confirmedSeqno = seqno
+    for (let attempt = 0; attempt < CONFIRMATION_ATTEMPTS; attempt += 1) {
+      await wait(CONFIRMATION_DELAY_MS)
+      try {
+        confirmedSeqno = await openedWallet.getSeqno()
+      } catch (error) {
+        console.error('TON confirmation check error:', { traceId, error })
+      }
+      if (confirmedSeqno > seqno) break
+    }
+
+    if (confirmedSeqno <= seqno) {
+      return NextResponse.json({
+        error: 'Send reached TON but is still confirming. Wait a minute before trying again.',
+        traceId,
+        txHash,
+      }, { status: 400 })
+    }
 
     const nextBalance = Number((currentBalance - amount).toFixed(9))
     const { error: balanceError } = await supabase
@@ -135,6 +212,7 @@ export async function POST(request: NextRequest) {
       balance: nextBalance,
       amount,
       seqno,
+      txHash,
       traceId,
     })
   } catch (error) {
