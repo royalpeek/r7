@@ -848,7 +848,7 @@ export default function Home() {
               </div>
 
               <div className="space-y-2">
-                {transactionsLoading ? (
+                {transactionsLoading && transactions.length === 0 ? (
                   <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 text-sm text-slate-400">
                     loading transactions...
                   </div>
