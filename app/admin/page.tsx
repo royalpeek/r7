@@ -1,12 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { RefreshCw, ShieldCheck, Users, BarChart3, Vote, WalletCards, Radar, Send } from 'lucide-react'
+import { RefreshCw, ShieldCheck, Users, BarChart3, Vote, WalletCards, Radar, Send, ShieldAlert } from 'lucide-react'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { getMarketLifecycleLabel, getMarketLifecycleStatus } from '@/lib/marketLifecycle'
 
 type Role = 'user' | 'creator' | 'admin'
+type AdminTab = 'overview' | 'wallet' | 'users' | 'markets'
 
 type AdminUser = {
   id: string
@@ -37,6 +38,24 @@ type AdminOverview = {
   }
   users: AdminUser[]
   polls: AdminPoll[]
+  walletAuditLogs: WalletAuditLog[]
+}
+
+type WalletAuditLog = {
+  id: string
+  event: string
+  actor_user_id: string | null
+  target_user_id: string | null
+  wallet_address: string | null
+  tx_hash: string | null
+  status: 'success' | 'failed' | string
+  details?: {
+    amount?: number
+    pending?: boolean
+    traceId?: string
+    reason?: string
+  } | null
+  created_at: string
 }
 
 type TonScanResult = {
@@ -48,6 +67,26 @@ type TonScanResult = {
 }
 
 const roles: Role[] = ['user', 'creator', 'admin']
+
+const adminTabs: Array<{ value: AdminTab; label: string }> = [
+  { value: 'overview', label: 'Overview' },
+  { value: 'wallet', label: 'Wallet' },
+  { value: 'users', label: 'Users' },
+  { value: 'markets', label: 'Markets' },
+]
+
+function formatAuditEvent(event: string) {
+  return event
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+function shortValue(value?: string | null) {
+  if (!value) return '--'
+  if (value.length <= 14) return value
+  return `${value.slice(0, 6)}...${value.slice(-6)}`
+}
 
 export default function AdminPage() {
   const haptics = useHapticFeedback()
@@ -64,6 +103,7 @@ export default function AdminPage() {
   const [recoveryAmount, setRecoveryAmount] = useState('')
   const [recoveryLoading, setRecoveryLoading] = useState(false)
   const [recoveryResult, setRecoveryResult] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<AdminTab>('overview')
 
   const isAdmin = appUser?.role === 'admin'
 
@@ -301,204 +341,356 @@ export default function AdminPage() {
         </div>
       )}
 
-      <div className="mb-5 grid grid-cols-2 gap-2.5">
-        <StatCard icon={<Users size={18} />} label="Users" value={overview?.stats.totalUsers ?? 0} />
-        <StatCard icon={<BarChart3 size={18} />} label="Polls" value={overview?.stats.totalPolls ?? 0} />
-        <StatCard icon={<Vote size={18} />} label="Votes" value={overview?.stats.totalVotes ?? 0} />
-        <StatCard icon={<WalletCards size={18} />} label="Volume" value={`$${(overview?.stats.totalVolume ?? 0).toFixed(2)}`} />
-      </div>
-
-      <section className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-4">
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-bold text-white">TON Deposits</h2>
-            <p className="mt-1 text-xs leading-relaxed text-slate-500">Run the testnet deposit scanner immediately and credit matching memo deposits.</p>
-          </div>
-          <button
-            disabled={tonScanLoading}
-            onClick={scanTonDepositsNow}
-            className="flex items-center gap-2 rounded-xl bg-cyan-400 px-4 py-3 text-sm font-bold text-black transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {tonScanLoading ? <RefreshCw size={16} className="animate-spin" /> : <Radar size={16} />}
-            Scan
-          </button>
-        </div>
-        {tonScanResult && (
-          <div className="grid grid-cols-4 gap-2 rounded-xl bg-slate-950 p-3 text-center">
-            <div>
-              <p className="text-xs text-slate-500">Network</p>
-              <p className="text-sm font-bold text-cyan-300">{tonScanResult.network}</p>
-            </div>
-            <div>
-              <p className="text-xs text-slate-500">Checked</p>
-              <p className="text-sm font-bold text-white">{tonScanResult.checked}</p>
-            </div>
-            <div>
-              <p className="text-xs text-slate-500">Credited</p>
-              <p className="text-sm font-bold text-emerald-300">{tonScanResult.credited}</p>
-            </div>
-            <div>
-              <p className="text-xs text-slate-500">Skipped</p>
-              <p className="text-sm font-bold text-slate-300">{tonScanResult.skipped}</p>
-            </div>
-          </div>
-        )}
-      </section>
-
-      <section className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-4">
-        <div className="mb-4">
-          <h2 className="text-lg font-bold text-white">TON Recovery</h2>
-          <p className="mt-1 text-xs leading-relaxed text-slate-500">Verify the user first. This signs in memory and never shows the mnemonic.</p>
-        </div>
-        <div className="space-y-3">
-          <input
-            value={recoveryUserId}
-            onChange={event => setRecoveryUserId(event.target.value)}
-            placeholder="User Telegram ID"
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-400"
-          />
-          <input
-            value={recoveryAddress}
-            onChange={event => setRecoveryAddress(event.target.value)}
-            placeholder="Destination TON address"
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-400"
-          />
-          <input
-            value={recoveryAmount}
-            onChange={event => setRecoveryAmount(event.target.value)}
-            placeholder="Amount"
-            inputMode="decimal"
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-400"
-          />
-          <button
-            disabled={recoveryLoading || !recoveryUserId.trim() || !recoveryAddress.trim() || !recoveryAmount.trim()}
-            onClick={recoverTonWallet}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-400 px-4 py-3 text-sm font-bold text-black transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {recoveryLoading ? <RefreshCw size={16} className="animate-spin" /> : <Send size={16} />}
-            Recover Funds
-          </button>
-          {recoveryResult && (
-            <p className="rounded-xl bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-200">{recoveryResult}</p>
-          )}
-        </div>
-      </section>
-
-      <section className="mb-6">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-white">Users</h2>
-          <p className="text-xs text-slate-500">recent 50</p>
-        </div>
-        <div className="space-y-3">
-          {(overview?.users || []).map(user => (
-            <div key={user.id} className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-              <div className="mb-3 flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-semibold text-white">@{user.username || 'unknown'}</p>
-                  <p className="text-xs text-slate-500">{user.id}</p>
-                </div>
-                <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-bold text-cyan-400">
-                  {user.role}
-                </span>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {roles.map(role => (
-                  <button
-                    key={role}
-                    disabled={user.role === role || updatingUserId === user.id}
-                    onClick={() => updateRole(user.id, role)}
-                    className={`rounded-lg px-2 py-2 text-xs font-bold transition disabled:cursor-not-allowed ${
-                      user.role === role
-                        ? 'bg-cyan-400 text-black'
-                        : 'bg-slate-800 text-slate-300 active:scale-95'
-                    }`}
-                  >
-                    {role}
-                  </button>
-                ))}
-              </div>
-            </div>
+      <div className="sticky top-0 z-10 -mx-4 mb-5 border-b border-slate-900 bg-slate-950/95 px-4 pb-3 pt-1 backdrop-blur">
+        <div className="grid grid-cols-4 rounded-2xl bg-slate-900 p-1">
+          {adminTabs.map(tab => (
+            <button
+              key={tab.value}
+              onClick={() => {
+                haptics.selection()
+                setActiveTab(tab.value)
+              }}
+              className={`rounded-xl px-2 py-2 text-xs font-bold transition ${
+                activeTab === tab.value
+                  ? 'bg-cyan-400 text-black'
+                  : 'text-slate-400 active:scale-95'
+              }`}
+            >
+              {tab.label}
+            </button>
           ))}
         </div>
-      </section>
+      </div>
 
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-white">Recent Polls</h2>
-          <p className="text-xs text-slate-500">recent 25</p>
-        </div>
-        <div className="space-y-3">
-          {(overview?.polls || []).map(poll => {
-            const totalPool = Number(poll.yes_pool || 0) + Number(poll.no_pool || 0)
-            const status = getMarketLifecycleStatus(poll.status, poll.ends_at)
-            const isBusy = updatingPollId === poll.id
+      {activeTab === 'overview' && (
+        <>
+          <div className="mb-5 grid grid-cols-2 gap-2.5">
+            <StatCard icon={<Users size={18} />} label="Users" value={overview?.stats.totalUsers ?? 0} />
+            <StatCard icon={<BarChart3 size={18} />} label="Polls" value={overview?.stats.totalPolls ?? 0} />
+            <StatCard icon={<Vote size={18} />} label="Votes" value={overview?.stats.totalVotes ?? 0} />
+            <StatCard icon={<WalletCards size={18} />} label="Volume" value={`$${(overview?.stats.totalVolume ?? 0).toFixed(2)}`} />
+          </div>
 
-            return (
-              <div key={poll.id} className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${
-                    status === 'archived'
-                      ? 'bg-violet-500/15 text-violet-300'
-                      : status === 'paused'
-                      ? 'bg-amber-500/15 text-amber-300'
-                      : status === 'closed' || status === 'ended'
-                        ? 'bg-slate-800 text-slate-400'
-                        : 'bg-cyan-400 text-black'
-                  }`}>
-                    {getMarketLifecycleLabel(status)}
-                  </span>
-                  <span className="text-xs text-slate-500">${totalPool.toFixed(2)} vol</span>
+          <section className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+            <h2 className="text-lg font-bold text-white">Today</h2>
+            <p className="mt-1 text-sm leading-relaxed text-slate-500">
+              Use the Wallet tab for money movement and audit logs, Users for roles, and Markets for test market cleanup.
+            </p>
+            <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+              <button
+                onClick={() => {
+                  haptics.selection()
+                  setActiveTab('wallet')
+                }}
+                className="rounded-xl bg-slate-950 px-2 py-3 text-xs font-bold text-cyan-300 active:scale-95"
+              >
+                Wallet
+              </button>
+              <button
+                onClick={() => {
+                  haptics.selection()
+                  setActiveTab('users')
+                }}
+                className="rounded-xl bg-slate-950 px-2 py-3 text-xs font-bold text-cyan-300 active:scale-95"
+              >
+                Users
+              </button>
+              <button
+                onClick={() => {
+                  haptics.selection()
+                  setActiveTab('markets')
+                }}
+                className="rounded-xl bg-slate-950 px-2 py-3 text-xs font-bold text-cyan-300 active:scale-95"
+              >
+                Markets
+              </button>
+            </div>
+          </section>
+        </>
+      )}
+
+      {activeTab === 'wallet' && (
+        <>
+          <section className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-4">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-white">TON Deposits</h2>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                  Run the testnet deposit scanner now and credit matching deposits.
+                </p>
+              </div>
+              <button
+                disabled={tonScanLoading}
+                onClick={scanTonDepositsNow}
+                className="flex items-center gap-2 rounded-xl bg-cyan-400 px-4 py-3 text-sm font-bold text-black transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {tonScanLoading ? <RefreshCw size={16} className="animate-spin" /> : <Radar size={16} />}
+                Scan
+              </button>
+            </div>
+            {tonScanResult && (
+              <div className="grid grid-cols-4 gap-2 rounded-xl bg-slate-950 p-3 text-center">
+                <div>
+                  <p className="text-xs text-slate-500">Network</p>
+                  <p className="text-sm font-bold text-cyan-300">{tonScanResult.network}</p>
                 </div>
-                <p className="mb-3 font-semibold text-white">{poll.question}</p>
-                <div className="flex justify-between text-xs">
-                  <span className="text-cyan-400">{poll.yes_votes} YES</span>
-                  <span className="text-pink-500">{poll.no_votes} NO</span>
+                <div>
+                  <p className="text-xs text-slate-500">Checked</p>
+                  <p className="text-sm font-bold text-white">{tonScanResult.checked}</p>
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-2">
-                  {status === 'paused' || status === 'archived' ? (
-                    <button
-                      disabled={isBusy}
-                      onClick={() => updatePoll(poll.id, 'resume')}
-                      className="rounded-lg bg-cyan-400 px-3 py-2 text-xs font-bold text-black transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Resume
-                    </button>
-                  ) : (
-                    <button
-                      disabled={isBusy || status === 'closed' || status === 'ended'}
-                      onClick={() => updatePoll(poll.id, 'pause')}
-                      className="rounded-lg bg-slate-800 px-3 py-2 text-xs font-bold text-slate-300 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Pause
-                    </button>
-                  )}
-                  <button
-                    disabled={isBusy || status === 'closed' || status === 'archived' || status === 'ended'}
-                    onClick={() => updatePoll(poll.id, 'close')}
-                    className="rounded-lg bg-slate-800 px-3 py-2 text-xs font-bold text-slate-300 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Close
-                  </button>
-                  <button
-                    disabled={isBusy || status === 'archived'}
-                    onClick={() => updatePoll(poll.id, 'archive')}
-                    className="col-span-2 rounded-lg bg-violet-500/15 px-3 py-2 text-xs font-bold text-violet-200 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Archive / Hide
-                  </button>
-                  <button
-                    disabled={isBusy}
-                    onClick={() => updatePoll(poll.id, 'delete')}
-                    className="col-span-2 rounded-lg border border-pink-500/50 bg-pink-500/10 px-3 py-2 text-xs font-bold text-pink-200 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Delete Test Market
-                  </button>
+                <div>
+                  <p className="text-xs text-slate-500">Credited</p>
+                  <p className="text-sm font-bold text-emerald-300">{tonScanResult.credited}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Skipped</p>
+                  <p className="text-sm font-bold text-slate-300">{tonScanResult.skipped}</p>
                 </div>
               </div>
-            )
-          })}
-        </div>
-      </section>
+            )}
+          </section>
+
+          <section className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-4">
+            <div className="mb-4">
+              <h2 className="text-lg font-bold text-white">TON Recovery</h2>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                Verify the user first. This signs in memory and never shows the mnemonic.
+              </p>
+            </div>
+            <div className="space-y-3">
+              <input
+                value={recoveryUserId}
+                onChange={event => setRecoveryUserId(event.target.value)}
+                placeholder="User Telegram ID"
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-400"
+              />
+              <input
+                value={recoveryAddress}
+                onChange={event => setRecoveryAddress(event.target.value)}
+                placeholder="Destination TON address"
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-400"
+              />
+              <input
+                value={recoveryAmount}
+                onChange={event => setRecoveryAmount(event.target.value)}
+                placeholder="Amount"
+                inputMode="decimal"
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-400"
+              />
+              <button
+                disabled={recoveryLoading || !recoveryUserId.trim() || !recoveryAddress.trim() || !recoveryAmount.trim()}
+                onClick={recoverTonWallet}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-400 px-4 py-3 text-sm font-bold text-black transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {recoveryLoading ? <RefreshCw size={16} className="animate-spin" /> : <Send size={16} />}
+                Recover Funds
+              </button>
+              {recoveryResult && (
+                <p className="rounded-xl bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-200">
+                  {recoveryResult}
+                </p>
+              )}
+            </div>
+          </section>
+
+          <section className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-4">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-white">Wallet Audit</h2>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                  Recent security events. No wallet secrets are shown here.
+                </p>
+              </div>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-950 text-cyan-300">
+                <ShieldAlert size={18} />
+              </div>
+            </div>
+
+            {(overview?.walletAuditLogs || []).length === 0 ? (
+              <div className="rounded-xl bg-slate-950 px-4 py-4 text-sm text-slate-500">
+                No wallet audit events yet.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {(overview?.walletAuditLogs || []).map(log => {
+                  const amount = typeof log.details?.amount === 'number'
+                    ? `${log.details.amount.toFixed(3)} TON`
+                    : null
+                  const isFailed = log.status === 'failed' || log.event.endsWith('_failed')
+
+                  return (
+                    <div key={log.id} className="rounded-xl bg-slate-950 p-4">
+                      <div className="mb-3 flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-bold text-white">{formatAuditEvent(log.event)}</p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {new Date(log.created_at).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </p>
+                        </div>
+                        <span className={`rounded-full px-3 py-1 text-xs font-bold ${
+                          isFailed ? 'bg-pink-500/15 text-pink-300' : 'bg-emerald-400/10 text-emerald-300'
+                        }`}>
+                          {isFailed ? 'Failed' : log.details?.pending ? 'Pending' : 'Done'}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="rounded-lg bg-slate-900 px-3 py-2">
+                          <p className="text-slate-500">User</p>
+                          <p className="mt-1 font-semibold text-slate-200">{log.target_user_id || '--'}</p>
+                        </div>
+                        <div className="rounded-lg bg-slate-900 px-3 py-2">
+                          <p className="text-slate-500">Actor</p>
+                          <p className="mt-1 font-semibold text-slate-200">{log.actor_user_id || '--'}</p>
+                        </div>
+                        <div className="rounded-lg bg-slate-900 px-3 py-2">
+                          <p className="text-slate-500">Amount</p>
+                          <p className="mt-1 font-semibold text-slate-200">{amount || '--'}</p>
+                        </div>
+                        <div className="rounded-lg bg-slate-900 px-3 py-2">
+                          <p className="text-slate-500">Tx</p>
+                          <p className="mt-1 font-semibold text-slate-200">{shortValue(log.tx_hash)}</p>
+                        </div>
+                      </div>
+
+                      {log.details?.reason && (
+                        <p className="mt-3 rounded-lg bg-pink-500/10 px-3 py-2 text-xs font-semibold text-pink-200">
+                          {log.details.reason}
+                        </p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+        </>
+      )}
+
+      {activeTab === 'users' && (
+        <section className="mb-6">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-white">Users</h2>
+            <p className="text-xs text-slate-500">recent 25</p>
+          </div>
+          <div className="space-y-3">
+            {(overview?.users || []).map(user => (
+              <div key={user.id} className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-white">@{user.username || 'unknown'}</p>
+                    <p className="text-xs text-slate-500">{user.id}</p>
+                  </div>
+                  <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-bold text-cyan-400">
+                    {user.role}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {roles.map(role => (
+                    <button
+                      key={role}
+                      disabled={user.role === role || updatingUserId === user.id}
+                      onClick={() => updateRole(user.id, role)}
+                      className={`rounded-lg px-2 py-2 text-xs font-bold transition disabled:cursor-not-allowed ${
+                        user.role === role
+                          ? 'bg-cyan-400 text-black'
+                          : 'bg-slate-800 text-slate-300 active:scale-95'
+                      }`}
+                    >
+                      {role}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {activeTab === 'markets' && (
+        <section>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-white">Recent Polls</h2>
+            <p className="text-xs text-slate-500">recent 50</p>
+          </div>
+          <div className="space-y-3">
+            {(overview?.polls || []).map(poll => {
+              const totalPool = Number(poll.yes_pool || 0) + Number(poll.no_pool || 0)
+              const status = getMarketLifecycleStatus(poll.status, poll.ends_at)
+              const isBusy = updatingPollId === poll.id
+
+              return (
+                <div key={poll.id} className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${
+                      status === 'archived'
+                        ? 'bg-violet-500/15 text-violet-300'
+                        : status === 'paused'
+                          ? 'bg-amber-500/15 text-amber-300'
+                          : status === 'closed' || status === 'ended'
+                            ? 'bg-slate-800 text-slate-400'
+                            : 'bg-cyan-400 text-black'
+                    }`}>
+                      {getMarketLifecycleLabel(status)}
+                    </span>
+                    <span className="text-xs text-slate-500">${totalPool.toFixed(2)} vol</span>
+                  </div>
+                  <p className="mb-3 font-semibold text-white">{poll.question}</p>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-cyan-400">{poll.yes_votes} YES</span>
+                    <span className="text-pink-500">{poll.no_votes} NO</span>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    {status === 'paused' || status === 'archived' ? (
+                      <button
+                        disabled={isBusy}
+                        onClick={() => updatePoll(poll.id, 'resume')}
+                        className="rounded-lg bg-cyan-400 px-3 py-2 text-xs font-bold text-black transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Resume
+                      </button>
+                    ) : (
+                      <button
+                        disabled={isBusy || status === 'closed' || status === 'ended'}
+                        onClick={() => updatePoll(poll.id, 'pause')}
+                        className="rounded-lg bg-slate-800 px-3 py-2 text-xs font-bold text-slate-300 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Pause
+                      </button>
+                    )}
+                    <button
+                      disabled={isBusy || status === 'closed' || status === 'archived' || status === 'ended'}
+                      onClick={() => updatePoll(poll.id, 'close')}
+                      className="rounded-lg bg-slate-800 px-3 py-2 text-xs font-bold text-slate-300 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Close
+                    </button>
+                    <button
+                      disabled={isBusy || status === 'archived'}
+                      onClick={() => updatePoll(poll.id, 'archive')}
+                      className="col-span-2 rounded-lg bg-violet-500/15 px-3 py-2 text-xs font-bold text-violet-200 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Archive / Hide
+                    </button>
+                    <button
+                      disabled={isBusy}
+                      onClick={() => updatePoll(poll.id, 'delete')}
+                      className="col-span-2 rounded-lg border border-pink-500/50 bg-pink-500/10 px-3 py-2 text-xs font-bold text-pink-200 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Delete Test Market
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
     </div>
   )
 }
