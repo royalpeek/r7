@@ -283,7 +283,7 @@ export default function Home() {
           comment: withdrawComment,
         }),
       })
-      let data: { error?: string; balance?: number } = {}
+      let data: { error?: string; balance?: number; traceId?: string } = {}
       try {
         data = await response.json()
       } catch {
@@ -291,7 +291,8 @@ export default function Home() {
       }
 
       if (!response.ok) {
-        throw new Error(data.error || 'Send did not complete. Please wait a minute and try again.')
+        const traceText = data.traceId ? ` (${data.traceId})` : ''
+        throw new Error(`${data.error || 'Send did not complete. Please wait a minute and try again.'}${traceText}`)
       }
 
       if (typeof data.balance === 'number') setBalanceOverride(data.balance)
@@ -299,7 +300,7 @@ export default function Home() {
       setWithdrawAmount('')
       setWithdrawComment('')
       setShowWithdrawForm(false)
-      setWalletNotice('Sent successfully')
+      setWalletNotice('Send submitted')
       haptics.notification('success')
       await Promise.all([fetchTransactions(), fetchWalletBalance()])
     } catch (error) {

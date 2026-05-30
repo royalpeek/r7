@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import crypto from 'node:crypto'
 import { Address, SendMode, internal, toNano } from '@ton/core'
 import { mnemonicToPrivateKey } from '@ton/crypto'
 import { TonClient, WalletContractV4 } from '@ton/ton'
@@ -7,10 +8,10 @@ import { getRequestTelegramUser } from '@/lib/telegramAuth'
 import { recordTransaction } from '@/lib/transactions'
 import { getTonAssetName, getTonNetwork, getToncenterJsonRpcEndpoint, getUserTonWalletSecret } from '@/lib/tonWallet'
 
+export const runtime = 'nodejs'
+
 const TESTNET_GAS_RESERVE = 0.05
 const DEFAULT_TESTNET_WITHDRAW_LIMIT = 5
-const CONFIRMATION_ATTEMPTS = 5
-const CONFIRMATION_DELAY_MS = 1000
 
 function parseAmount(value: unknown) {
   const amount = Number(value)
@@ -29,11 +30,9 @@ function parseDestination(value: unknown) {
   }
 }
 
-function wait(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-
 export async function POST(request: NextRequest) {
+  const traceId = crypto.randomUUID().slice(0, 8)
+
   try {
     if (getTonNetwork() !== 'testnet') {
       return NextResponse.json({ error: 'Withdrawals are testnet only for now' }, { status: 403 })
@@ -50,6 +49,13 @@ export async function POST(request: NextRequest) {
     if (amount > withdrawLimit) {
       return NextResponse.json({ error: `Max test withdrawal is ${withdrawLimit} TON` }, { status: 400 })
     }
+
+    console.info('TON withdrawal started', {
+      traceId,
+      userId,
+      amount,
+      destination: destination.toString({ bounceable: false, testOnly: true }),
+    })
 
     const supabase = getSupabaseAdmin()
     const { data: user, error: userError } = await supabase
@@ -79,6 +85,13 @@ export async function POST(request: NextRequest) {
     const openedWallet = client.open(wallet)
     const chainBalance = Number(await client.getBalance(wallet.address)) / 1_000_000_000
 
+    console.info('TON withdrawal wallet checked', {
+      traceId,
+      wallet: wallet.address.toString({ bounceable: false, testOnly: true }),
+      appBalance: currentBalance,
+      chainBalance,
+    })
+
     if (amount + TESTNET_GAS_RESERVE > chainBalance) {
       return NextResponse.json({ error: 'Wallet needs more testnet TON for this send' }, { status: 400 })
     }
@@ -99,22 +112,7 @@ export async function POST(request: NextRequest) {
       ],
     })
 
-    let confirmedSeqno = seqno
-    for (let attempt = 0; attempt < CONFIRMATION_ATTEMPTS; attempt += 1) {
-      await wait(CONFIRMATION_DELAY_MS)
-      try {
-        confirmedSeqno = await openedWallet.getSeqno()
-      } catch (error) {
-        console.error('TON confirmation check error:', error)
-      }
-      if (confirmedSeqno > seqno) break
-    }
-
-    if (confirmedSeqno <= seqno) {
-      return NextResponse.json({
-        error: 'TON is still processing this send. Please wait a minute before trying again.',
-      }, { status: 400 })
-    }
+    console.info('TON withdrawal submitted', { traceId, seqno })
 
     const nextBalance = Number((currentBalance - amount).toFixed(9))
     const { error: balanceError } = await supabase
@@ -137,11 +135,13 @@ export async function POST(request: NextRequest) {
       balance: nextBalance,
       amount,
       seqno,
+      traceId,
     })
   } catch (error) {
-    console.error('TON withdrawal error:', error)
+    console.error('TON withdrawal error:', { traceId, error })
     return NextResponse.json({
       error: error instanceof Error ? error.message : 'Failed to send testnet TON',
+      traceId,
     }, { status: 400 })
   }
 }
