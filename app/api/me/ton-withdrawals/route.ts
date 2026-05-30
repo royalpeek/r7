@@ -136,7 +136,24 @@ async function sendMessageTonApi(apiBaseUrl: string, apiKey: string | undefined,
   }
 
   if (!response.ok) {
-    throw new Error(data.error || text || `TonAPI returned ${response.status}`)
+    const message = data.error || text || `TonAPI returned ${response.status}`
+    const lowerMessage = message.toLowerCase()
+    const rejected = lowerMessage.includes('not accepted') || lowerMessage.includes('was not accepted')
+    const looksSubmitted =
+      !rejected &&
+      (
+        lowerMessage.includes('already') ||
+        lowerMessage.includes('accepted') ||
+        lowerMessage.includes('received') ||
+        (lowerMessage.includes('transaction') && lowerMessage.includes('try again'))
+      )
+
+    if (looksSubmitted) {
+      console.info('TonAPI reports message is already pending', { message })
+      return
+    }
+
+    throw new Error(message)
   }
 }
 
@@ -296,13 +313,7 @@ export async function POST(request: NextRequest) {
       if (confirmedSeqno > seqno) break
     }
 
-    if (confirmedSeqno <= seqno) {
-      return NextResponse.json({
-        error: 'Send reached TON but is still confirming. Wait a minute before trying again.',
-        traceId,
-        txHash,
-      }, { status: 400 })
-    }
+    const isPending = confirmedSeqno <= seqno
 
     const nextBalance = Number((currentBalance - amount).toFixed(9))
     const { error: balanceError } = await supabase
@@ -327,6 +338,7 @@ export async function POST(request: NextRequest) {
       seqno,
       txHash,
       traceId,
+      pending: isPending,
     })
   } catch (error) {
     console.error('TON withdrawal error:', { traceId, error })

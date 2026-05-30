@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
 import QRCode from 'qrcode'
-import { X, Wallet, RefreshCw, PlusCircle, Send, Filter, Lock, MapPin, Zap, ReceiptText } from 'lucide-react'
+import { X, Wallet, RefreshCw, PlusCircle, Send, Filter, Lock, MapPin, Zap, ReceiptText, QrCode, Copy, Repeat2 } from 'lucide-react'
 import PollCard from './components/PollCard'
 import Toast from './components/Toast'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
@@ -40,6 +40,13 @@ type TonWalletInfo = {
   memo: string
   memoRequired?: boolean
   configured: boolean
+}
+
+function shortAddress(address?: string) {
+  if (!address) return 'Wallet not ready'
+  if (address.length <= 14) return address
+
+  return `${address.slice(0, 6)}...${address.slice(-6)}`
 }
 
 export default function Home() {
@@ -293,7 +300,7 @@ export default function Home() {
           comment: withdrawComment,
         }),
       })
-      let data: { error?: string; balance?: number; traceId?: string } = {}
+      let data: { error?: string; balance?: number; traceId?: string; pending?: boolean } = {}
       try {
         data = await response.json()
       } catch {
@@ -310,8 +317,11 @@ export default function Home() {
       setWithdrawAmount('')
       setWithdrawComment('')
       setShowWithdrawForm(false)
-      setWalletNotice(`${withdrawAmount} TON sent`)
-      setWalletSuccess(`${withdrawAmount} TON sent successfully`)
+      setWalletNotice(data.pending ? `${withdrawAmount} TON submitted` : `${withdrawAmount} TON sent`)
+      setWalletSuccess(data.pending
+        ? `${withdrawAmount} TON submitted. It may take a minute to appear.`
+        : `${withdrawAmount} TON sent successfully`
+      )
       haptics.notification('success')
       await Promise.all([fetchTransactions(), fetchWalletBalance()])
     } catch (error) {
@@ -807,7 +817,7 @@ export default function Home() {
             className="absolute inset-0 bg-black/60"
             onClick={() => setShowWallet(false)}
           />
-          <div className="relative z-10 max-h-[86dvh] overflow-y-auto rounded-t-3xl bg-slate-950 px-6 pt-5 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
+          <div className="relative z-10 max-h-[88dvh] overflow-y-auto rounded-t-3xl bg-slate-950 px-6 pt-5 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
             <div className="w-10 h-1 bg-slate-700 rounded-full mx-auto mb-6" />
             <button
               onClick={() => setShowWallet(false)}
@@ -815,108 +825,58 @@ export default function Home() {
             >
               <X size={20} />
             </button>
-            <p className="text-white text-2xl font-bold mb-1">Wallet</p>
-            <p className="text-slate-400 text-sm mb-6">Custodial TON wallet</p>
+            <p className="text-white text-4xl font-bold mb-2">Wallet</p>
+            <p className="text-slate-500 text-base font-semibold mb-7">
+              {appUser?.username ? `@${appUser.username}` : 'Custodial TON wallet'}
+            </p>
             {walletNotice && (
-              <div className="mb-4 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3">
+              <div className="mb-5 rounded-2xl border border-cyan-400/25 bg-cyan-400/10 px-4 py-3">
                 <p className="text-sm font-semibold text-cyan-100">{walletNotice}</p>
               </div>
             )}
-            <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 mb-4">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <Wallet size={18} className="text-cyan-400" />
-                  <div>
-                    <p className="text-white text-sm font-bold">{tonWallet?.asset || 'USDT on TON'}</p>
-                    <p className="text-slate-500 text-xs">{tonWallet?.network || 'mainnet'} custody deposit</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => fetchTonWallet()}
-                  className="rounded-full bg-slate-800 p-2 text-slate-400 active:scale-95 transition"
-                  title="Refresh TON wallet"
-                >
-                  <RefreshCw size={14} />
-                </button>
+            <button
+              disabled={!tonWallet?.address}
+              onClick={() => tonWallet && setShowDepositForm(true)}
+              className="mb-6 flex w-full items-center justify-between rounded-3xl bg-slate-900/90 px-5 py-5 text-left active:scale-[0.99] transition disabled:opacity-60"
+            >
+              <div className="flex min-w-0 items-center gap-4">
+                <Wallet size={26} className="shrink-0 text-emerald-300" />
+                <p className="truncate text-xl font-bold text-white">{shortAddress(tonWallet?.address)}</p>
               </div>
-              {tonWalletLoading ? (
-                <p className="rounded-xl bg-slate-800 px-3 py-3 text-sm text-slate-400">loading TON deposit details...</p>
-              ) : tonWallet?.configured ? (
-                <div className="space-y-3">
-                  <div className="rounded-xl bg-slate-800 px-3 py-3">
-                    <div className="mb-1 flex items-center justify-between gap-3">
-                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Deposit address</p>
-                      <button
-                        onClick={() => copyWalletValue(tonWallet.address, 'Address')}
-                        className="text-xs font-bold text-cyan-300 active:scale-95 transition"
-                      >
-                        Copy
-                      </button>
-                    </div>
-                    <p className="break-all font-mono text-xs text-white">{tonWallet.address}</p>
-                  </div>
-                  {tonWallet.memoRequired ? (
-                    <div className="rounded-xl bg-slate-800 px-3 py-3">
-                      <div className="mb-1 flex items-center justify-between gap-3">
-                        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Required memo/comment</p>
-                        <button
-                          onClick={() => copyWalletValue(tonWallet.memo, 'Memo')}
-                          className="text-xs font-bold text-cyan-300 active:scale-95 transition"
-                        >
-                          Copy
-                        </button>
-                      </div>
-                      <p className="font-mono text-sm font-bold text-white">{tonWallet.memo}</p>
-                    </div>
-                  ) : (
-                    <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-3">
-                      <p className="text-xs font-bold uppercase tracking-wide text-emerald-200">No memo needed</p>
-                      <p className="mt-1 text-xs leading-relaxed text-emerald-100/75">This address is yours. Send directly to it.</p>
-                    </div>
-                  )}
-                  <p className="text-xs leading-relaxed text-slate-500">
-                    Send only {tonWallet.asset} to this deposit address.
-                  </p>
-                  <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-3 py-3">
-                    <p className="text-xs font-bold uppercase tracking-wide text-cyan-200">Deposit update</p>
-                    <p className="mt-1 text-xs leading-relaxed text-cyan-100/75">
-                      Your balance may take a few minutes to update. Tap refresh to check.
-                    </p>
-                  </div>
+              <QrCode size={25} className="shrink-0 text-slate-500" />
+            </button>
+            <div className="mb-6 rounded-3xl bg-slate-900/90 p-6">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-slate-500 text-base font-bold">Testnet TON Balance</p>
+                  <p className="mt-3 text-white text-4xl font-bold">{balance.toFixed(3)} TON</p>
                 </div>
-              ) : (
-                <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-3">
-                  <p className="text-sm font-semibold text-amber-100">TON custody address is not configured yet.</p>
-                  <p className="mt-1 text-xs text-amber-100/70">Add TON_CUSTODY_DEPOSIT_ADDRESS in Vercel before accepting deposits.</p>
-                </div>
-              )}
-            </div>
-            <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 mb-6">
-              <p className="text-slate-400 text-xs mb-2">USDT Balance</p>
-              <div className="flex items-center justify-between">
-              <p className="text-white text-3xl font-bold">${balance.toFixed(2)}</p>
                 <button
                   onClick={() => {
                     haptics.selection()
                     fetchWalletBalance()
+                    fetchTonWallet()
                   }}
-                  className="bg-slate-800 p-2 rounded-full active:scale-95 transition"
-                  title="Refresh balance"
+                  className="rounded-2xl bg-slate-800 p-4 text-slate-400 active:scale-95 transition"
+                  title="Refresh wallet"
                 >
-                  <RefreshCw size={16} className="text-slate-400" />
+                  <RefreshCw size={24} />
                 </button>
               </div>
+              {tonWalletLoading && (
+                <p className="mt-4 text-sm font-semibold text-slate-500">Refreshing wallet...</p>
+              )}
             </div>
-            <div className="flex gap-3">
+            <div className="mb-6 grid grid-cols-2 gap-3">
               <button
                 disabled={!tonWallet?.configured}
                 onClick={() => {
                   haptics.selection()
                   setShowDepositForm(true)
                 }}
-                className="flex-1 bg-cyan-400 text-black font-bold py-4 rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed"
+                className="flex items-center justify-center gap-3 rounded-3xl bg-cyan-400 py-5 text-lg font-bold text-black active:scale-95 transition disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed"
               >
-                <PlusCircle size={18} />
+                <PlusCircle size={24} />
                 Add Funds
               </button>
               <button
@@ -925,10 +885,10 @@ export default function Home() {
                   setShowWithdrawForm(true)
                   setWithdrawError(null)
                 }}
-                className="flex-1 bg-slate-900 border border-slate-700 text-slate-300 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition"
+                className="flex items-center justify-center gap-3 rounded-3xl border border-emerald-400/30 bg-slate-950 py-5 text-lg font-bold text-emerald-300 active:scale-95 transition"
               >
-                <Send size={18} />
-                Send
+                <Send size={24} />
+                Send TON
               </button>
             </div>
             <div className="mt-6">
@@ -938,10 +898,10 @@ export default function Home() {
                   setShowWalletHistory(true)
                   fetchTransactions()
                 }}
-                className="flex w-full items-center justify-between rounded-2xl border border-slate-700 bg-slate-900 p-4 text-left active:scale-[0.99] transition"
+                className="flex w-full items-center justify-between border-t border-slate-800 py-5 text-left active:scale-[0.99] transition"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-cyan-300">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-cyan-300">
                     <ReceiptText size={18} />
                   </div>
                   <div>
@@ -1052,32 +1012,45 @@ export default function Home() {
             <div className="h-11 w-11" />
           </div>
           <div className="flex-1 overflow-y-auto px-5 py-6">
-            <div className="mb-6 rounded-3xl bg-slate-900 px-5 py-6 text-center">
-              <p className="text-sm font-bold text-slate-500">{tonWallet?.asset || 'Testnet TON'}</p>
-              <p className="mt-3 text-3xl font-bold text-white">Deposit</p>
+            <div className="mb-6 grid grid-cols-2 gap-3">
+              <div className="rounded-3xl bg-cyan-400 px-4 py-5 text-center text-black">
+                <Wallet size={27} className="mx-auto mb-2" />
+                <p className="text-base font-bold">Wallet</p>
+              </div>
+              <div className="rounded-3xl bg-slate-900 px-4 py-5 text-center text-slate-400">
+                <Repeat2 size={27} className="mx-auto mb-2" />
+                <p className="text-base font-bold">Exchange</p>
+                <p className="mt-1 text-xs font-semibold text-slate-600">Later</p>
+              </div>
             </div>
-            <div className="rounded-3xl border border-slate-800 bg-slate-900 p-5">
-              <div className="mx-auto mb-5 flex h-56 w-56 items-center justify-center rounded-3xl bg-white p-4">
+
+            <div className="mb-6 rounded-3xl bg-slate-900 p-5">
+              <div className="mx-auto flex h-64 w-64 max-w-full items-center justify-center rounded-3xl bg-white p-4">
                 {depositQr ? (
-                  <Image src={depositQr} alt="Deposit QR code" width={220} height={220} className="h-full w-full" unoptimized />
+                  <Image src={depositQr} alt="Deposit QR code" width={256} height={256} className="h-full w-full" unoptimized />
                 ) : (
                   <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-300 border-t-slate-900" />
                 )}
               </div>
-              <p className="mb-2 text-sm font-bold text-slate-400">Your deposit address</p>
-              <p className="break-all rounded-2xl bg-slate-950 px-4 py-4 font-mono text-sm text-white">{tonWallet?.address}</p>
+            </div>
+
+            <div className="rounded-3xl bg-slate-900 p-5">
+              <p className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Your testnet TON address</p>
+              <p className="break-all text-base font-bold leading-relaxed text-white">{tonWallet?.address}</p>
               <button
                 disabled={!tonWallet?.address}
                 onClick={() => tonWallet && copyWalletValue(tonWallet.address, 'Deposit address')}
-                className="mt-4 w-full rounded-2xl bg-cyan-400 py-4 text-base font-bold text-black active:scale-95 transition disabled:opacity-50"
+                className="mt-5 flex w-full items-center justify-center gap-3 rounded-2xl bg-cyan-400 py-4 text-base font-bold text-black active:scale-95 transition disabled:opacity-50"
               >
-                Copy Address
+                <Copy size={20} />
+                Copy address
               </button>
             </div>
-            <div className="mt-5 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-4">
-              <p className="text-sm font-semibold leading-relaxed text-amber-100">
-                Send only TON testnet funds to this address.
-              </p>
+
+            <div className="mt-5 space-y-3 rounded-3xl bg-amber-400/10 px-5 py-5 text-sm font-semibold leading-relaxed text-amber-100">
+              <p>Only send Testnet TON to this address.</p>
+              <p>No memo is needed.</p>
+              <p>Wrong sends cannot be reversed.</p>
             </div>
           </div>
         </div>
