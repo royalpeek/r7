@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { RefreshCw, ShieldCheck, Users, BarChart3, Vote, WalletCards } from 'lucide-react'
+import { RefreshCw, ShieldCheck, Users, BarChart3, Vote, WalletCards, Radar } from 'lucide-react'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { getMarketLifecycleLabel, getMarketLifecycleStatus } from '@/lib/marketLifecycle'
@@ -39,6 +39,14 @@ type AdminOverview = {
   polls: AdminPoll[]
 }
 
+type TonScanResult = {
+  ok: boolean
+  network: string
+  checked: number
+  credited: number
+  skipped: number
+}
+
 const roles: Role[] = ['user', 'creator', 'admin']
 
 export default function AdminPage() {
@@ -49,6 +57,8 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null)
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null)
   const [updatingPollId, setUpdatingPollId] = useState<string | null>(null)
+  const [tonScanLoading, setTonScanLoading] = useState(false)
+  const [tonScanResult, setTonScanResult] = useState<TonScanResult | null>(null)
 
   const isAdmin = appUser?.role === 'admin'
 
@@ -173,6 +183,33 @@ export default function AdminPage() {
     }
   }
 
+  const scanTonDepositsNow = async () => {
+    try {
+      haptics.selection()
+      setTonScanLoading(true)
+      setTonScanResult(null)
+      setError(null)
+
+      const response = await fetch('/api/admin/ton-deposits/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData }),
+      })
+      const data = await response.json()
+
+      if (!response.ok) throw new Error(data.error || 'failed to scan TON deposits')
+
+      setTonScanResult(data as TonScanResult)
+      haptics.notification('success')
+      await fetchOverview()
+    } catch (error) {
+      haptics.notification('error')
+      setError(error instanceof Error ? error.message : 'failed to scan TON deposits')
+    } finally {
+      setTonScanLoading(false)
+    }
+  }
+
   if (userLoading || loading) {
     return (
       <div className="min-h-screen bg-slate-950 px-4 pb-28 pt-5">
@@ -227,6 +264,43 @@ export default function AdminPage() {
         <StatCard icon={<Vote size={18} />} label="Votes" value={overview?.stats.totalVotes ?? 0} />
         <StatCard icon={<WalletCards size={18} />} label="Volume" value={`$${(overview?.stats.totalVolume ?? 0).toFixed(2)}`} />
       </div>
+
+      <section className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-4">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold text-white">TON Deposits</h2>
+            <p className="mt-1 text-xs leading-relaxed text-slate-500">Run the testnet deposit scanner immediately and credit matching memo deposits.</p>
+          </div>
+          <button
+            disabled={tonScanLoading}
+            onClick={scanTonDepositsNow}
+            className="flex items-center gap-2 rounded-xl bg-cyan-400 px-4 py-3 text-sm font-bold text-black transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {tonScanLoading ? <RefreshCw size={16} className="animate-spin" /> : <Radar size={16} />}
+            Scan
+          </button>
+        </div>
+        {tonScanResult && (
+          <div className="grid grid-cols-4 gap-2 rounded-xl bg-slate-950 p-3 text-center">
+            <div>
+              <p className="text-xs text-slate-500">Network</p>
+              <p className="text-sm font-bold text-cyan-300">{tonScanResult.network}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Checked</p>
+              <p className="text-sm font-bold text-white">{tonScanResult.checked}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Credited</p>
+              <p className="text-sm font-bold text-emerald-300">{tonScanResult.credited}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Skipped</p>
+              <p className="text-sm font-bold text-slate-300">{tonScanResult.skipped}</p>
+            </div>
+          </div>
+        )}
+      </section>
 
       <section className="mb-6">
         <div className="mb-3 flex items-center justify-between">
