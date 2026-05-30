@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { RefreshCw, ShieldCheck, Users, BarChart3, Vote, WalletCards, Radar } from 'lucide-react'
+import { RefreshCw, ShieldCheck, Users, BarChart3, Vote, WalletCards, Radar, Send } from 'lucide-react'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { getMarketLifecycleLabel, getMarketLifecycleStatus } from '@/lib/marketLifecycle'
@@ -59,6 +59,11 @@ export default function AdminPage() {
   const [updatingPollId, setUpdatingPollId] = useState<string | null>(null)
   const [tonScanLoading, setTonScanLoading] = useState(false)
   const [tonScanResult, setTonScanResult] = useState<TonScanResult | null>(null)
+  const [recoveryUserId, setRecoveryUserId] = useState('')
+  const [recoveryAddress, setRecoveryAddress] = useState('')
+  const [recoveryAmount, setRecoveryAmount] = useState('')
+  const [recoveryLoading, setRecoveryLoading] = useState(false)
+  const [recoveryResult, setRecoveryResult] = useState<string | null>(null)
 
   const isAdmin = appUser?.role === 'admin'
 
@@ -210,6 +215,44 @@ export default function AdminPage() {
     }
   }
 
+  const recoverTonWallet = async () => {
+    const confirmed = window.confirm('Send funds from this user custodial wallet? This never reveals their mnemonic.')
+    if (!confirmed) return
+
+    try {
+      haptics.selection()
+      setRecoveryLoading(true)
+      setRecoveryResult(null)
+      setError(null)
+
+      const response = await fetch('/api/admin/ton-recovery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          initData,
+          userId: recoveryUserId,
+          address: recoveryAddress,
+          amount: recoveryAmount,
+        }),
+      })
+      const data = await response.json()
+
+      if (!response.ok) throw new Error(data.error || 'recovery failed')
+
+      setRecoveryResult(data.pending ? 'Recovery submitted' : 'Recovery sent')
+      setRecoveryUserId('')
+      setRecoveryAddress('')
+      setRecoveryAmount('')
+      haptics.notification('success')
+      await fetchOverview()
+    } catch (error) {
+      haptics.notification('error')
+      setError(error instanceof Error ? error.message : 'recovery failed')
+    } finally {
+      setRecoveryLoading(false)
+    }
+  }
+
   if (userLoading || loading) {
     return (
       <div className="min-h-screen bg-slate-950 px-4 pb-28 pt-5">
@@ -300,6 +343,45 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+      </section>
+
+      <section className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-4">
+        <div className="mb-4">
+          <h2 className="text-lg font-bold text-white">TON Recovery</h2>
+          <p className="mt-1 text-xs leading-relaxed text-slate-500">Verify the user first. This signs in memory and never shows the mnemonic.</p>
+        </div>
+        <div className="space-y-3">
+          <input
+            value={recoveryUserId}
+            onChange={event => setRecoveryUserId(event.target.value)}
+            placeholder="User Telegram ID"
+            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-400"
+          />
+          <input
+            value={recoveryAddress}
+            onChange={event => setRecoveryAddress(event.target.value)}
+            placeholder="Destination TON address"
+            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-400"
+          />
+          <input
+            value={recoveryAmount}
+            onChange={event => setRecoveryAmount(event.target.value)}
+            placeholder="Amount"
+            inputMode="decimal"
+            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-400"
+          />
+          <button
+            disabled={recoveryLoading || !recoveryUserId.trim() || !recoveryAddress.trim() || !recoveryAmount.trim()}
+            onClick={recoverTonWallet}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-400 px-4 py-3 text-sm font-bold text-black transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {recoveryLoading ? <RefreshCw size={16} className="animate-spin" /> : <Send size={16} />}
+            Recover Funds
+          </button>
+          {recoveryResult && (
+            <p className="rounded-xl bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-200">{recoveryResult}</p>
+          )}
+        </div>
       </section>
 
       <section className="mb-6">

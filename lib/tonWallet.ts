@@ -2,6 +2,7 @@ import crypto from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { mnemonicNew, mnemonicToPrivateKey } from '@ton/crypto'
 import { WalletContractV4 } from '@ton/ton'
+import { recordSecurityAudit } from '@/lib/securityAudit'
 
 type StoredTonWallet = {
   id: string
@@ -16,8 +17,13 @@ type StoredTonWalletSecret = StoredTonWallet & {
   mnemonic_encrypted: string
 }
 
+/*
+ * R7 uses custodial TON wallets: the server creates and signs from wallets for users.
+ * TON_WALLET_ENCRYPTION_KEY is the master key protecting user wallet mnemonics.
+ * Never expose it with NEXT_PUBLIC_, never log it, and never return decrypted secrets.
+ */
 export function makeTonDepositMemo(userId: string) {
-  const secret = process.env.TON_CUSTODY_MEMO_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || 'r7-dev-secret'
+  const secret = process.env.TON_CUSTODY_MEMO_SECRET || 'r7-dev-secret'
   const digest = crypto
     .createHmac('sha256', secret)
     .update(userId)
@@ -40,12 +46,13 @@ export function getTonAssetName() {
 }
 
 function getEncryptionKey() {
-  const secret =
-    process.env.TON_WALLET_ENCRYPTION_KEY ||
-    process.env.TON_CUSTODY_MEMO_SECRET ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (process.env.NEXT_PUBLIC_TON_WALLET_ENCRYPTION_KEY) {
+    throw new Error('TON wallet encryption key must be server-only')
+  }
 
-  if (!secret) throw new Error('missing TON wallet encryption secret')
+  const secret = process.env.TON_WALLET_ENCRYPTION_KEY
+
+  if (!secret) throw new Error('missing TON_WALLET_ENCRYPTION_KEY')
 
   return crypto.createHash('sha256').update(secret).digest()
 }
@@ -124,6 +131,16 @@ export async function getOrCreateUserTonWallet(supabase: SupabaseClient, userId:
 
   if (createError) throw createError
 
+  await recordSecurityAudit(supabase, {
+    event: 'wallet_created',
+    actorUserId: userId,
+    targetUserId: userId,
+    walletAddress: address,
+    details: {
+      network,
+    },
+  })
+
   return createdWallet as StoredTonWallet
 }
 
@@ -139,9 +156,16 @@ export async function getUserTonWalletSecret(supabase: SupabaseClient, userId: s
 
   if (error) throw error
 
+  const storedWallet = wallet as StoredTonWalletSecret
+
   return {
-    ...(wallet as StoredTonWalletSecret),
-    mnemonic: decryptSecret((wallet as StoredTonWalletSecret).mnemonic_encrypted).split(' '),
+    id: storedWallet.id,
+    user_id: storedWallet.user_id,
+    network: storedWallet.network,
+    address: storedWallet.address,
+    raw_address: storedWallet.raw_address,
+    public_key: storedWallet.public_key,
+    mnemonic: decryptSecret(storedWallet.mnemonic_encrypted).split(' '),
   }
 }
 
