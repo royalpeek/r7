@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'node:crypto'
 import { Address, SendMode, beginCell, external, internal, storeMessage, toNano } from '@ton/core'
 import { mnemonicToPrivateKey } from '@ton/crypto'
-import { TonClient, WalletContractV4 } from '@ton/ton'
+import { WalletContractV4 } from '@ton/ton'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
 import { recordTransaction } from '@/lib/transactions'
@@ -14,6 +14,18 @@ const TESTNET_GAS_RESERVE = 0.05
 const DEFAULT_TESTNET_WITHDRAW_LIMIT = 5
 const CONFIRMATION_ATTEMPTS = 3
 const CONFIRMATION_DELAY_MS = 1200
+const NANOTON_PER_TON = 1_000_000_000
+
+type ToncenterAddressInformation = {
+  balance?: string
+  status?: string
+}
+
+type ToncenterWalletInformation = ToncenterAddressInformation & {
+  seqno?: number
+  wallet_id?: number
+  wallet_type?: string
+}
 
 function parseAmount(value: unknown) {
   const amount = Number(value)
@@ -51,6 +63,47 @@ async function runTonStep<T>(step: string, action: () => Promise<T>) {
     const message = error instanceof Error ? error.message : 'unknown error'
     throw new Error(`${step}: ${message}`)
   }
+}
+
+async function fetchToncenterV3<T>(
+  apiBaseUrl: string,
+  path: string,
+  apiKey: string | undefined,
+  params: Record<string, string>
+) {
+  const url = new URL(`${apiBaseUrl}/${path}`)
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value)
+  }
+
+  const headers: Record<string, string> = {}
+  if (apiKey) headers['X-API-Key'] = apiKey
+
+  const response = await fetch(url, {
+    headers,
+    cache: 'no-store',
+  })
+  const text = await response.text()
+  let data: { error?: string; code?: number } & Partial<T> = {}
+
+  try {
+    data = JSON.parse(text)
+  } catch {
+    data = {}
+  }
+
+  if (!response.ok) {
+    throw new Error(data.error || text || `TONCenter returned ${response.status}`)
+  }
+
+  return data as T
+}
+
+function tonFromNanotons(value: string | undefined) {
+  const nanotons = Number(value || 0)
+  if (!Number.isFinite(nanotons) || nanotons <= 0) return 0
+
+  return Number((nanotons / NANOTON_PER_TON).toFixed(9))
 }
 
 async function sendMessageV3(apiBaseUrl: string, apiKey: string | undefined, boc: Buffer) {
@@ -136,36 +189,59 @@ export async function POST(request: NextRequest) {
       workchain: 0,
       publicKey: keyPair.publicKey,
     })
-    const client = new TonClient({
-      endpoint: getToncenterJsonRpcEndpoint(),
-      timeout: 10000,
-      apiKey: process.env.TONCENTER_API_KEY,
+    const walletAddress = wallet.address.toString({
+      bounceable: false,
+      testOnly: true,
     })
-    const openedWallet = client.open(wallet)
-    const chainBalance = Number(await runTonStep(
-      'Check wallet balance',
-      () => client.getBalance(wallet.address)
-    )) / 1_000_000_000
+    const addressInfo = await runTonStep(
+      'Read wallet state',
+      () => fetchToncenterV3<ToncenterAddressInformation>(
+        getToncenterApiV3Endpoint(),
+        'addressInformation',
+        process.env.TONCENTER_API_KEY,
+        {
+          address: walletAddress,
+          use_v2: 'false',
+        }
+      )
+    )
+    const chainBalance = tonFromNanotons(addressInfo.balance)
 
     console.info('TON withdrawal wallet checked', {
       traceId,
-      wallet: wallet.address.toString({ bounceable: false, testOnly: true }),
+      wallet: walletAddress,
       appBalance: currentBalance,
       chainBalance,
+      status: addressInfo.status,
     })
 
     if (amount + TESTNET_GAS_RESERVE > chainBalance) {
       return NextResponse.json({ error: 'Wallet needs more testnet TON for this send' }, { status: 400 })
     }
 
-    const isDeployed = await runTonStep(
-      'Check wallet status',
-      () => client.isContractDeployed(wallet.address)
-    )
-    const seqno = isDeployed ? await runTonStep(
-      'Read wallet seqno',
-      () => openedWallet.getSeqno()
-    ) : 0
+    const isDeployed = addressInfo.status === 'active'
+    let seqno = 0
+    let walletType: string | null = null
+    if (isDeployed) {
+      const walletInfo = await runTonStep(
+        'Read wallet seqno',
+        () => fetchToncenterV3<ToncenterWalletInformation>(
+          getToncenterApiV3Endpoint(),
+          'walletInformation',
+          process.env.TONCENTER_API_KEY,
+          {
+            address: walletAddress,
+            use_v2: 'false',
+          }
+        )
+      )
+      seqno = Number(walletInfo.seqno ?? 0)
+      walletType = walletInfo.wallet_type || null
+
+      if (!Number.isFinite(seqno)) {
+        throw new Error('Read wallet seqno: TONCenter returned an invalid seqno')
+      }
+    }
     const transfer = await wallet.createTransfer({
       seqno,
       secretKey: keyPair.secretKey,
@@ -194,13 +270,22 @@ export async function POST(request: NextRequest) {
       )
     )
 
-    console.info('TON withdrawal submitted', { traceId, seqno, txHash })
+    console.info('TON withdrawal submitted', { traceId, seqno, txHash, walletType })
 
     let confirmedSeqno = seqno
     for (let attempt = 0; attempt < CONFIRMATION_ATTEMPTS; attempt += 1) {
       await wait(CONFIRMATION_DELAY_MS)
       try {
-        confirmedSeqno = await openedWallet.getSeqno()
+        const latestWalletInfo = await fetchToncenterV3<ToncenterWalletInformation>(
+          getToncenterApiV3Endpoint(),
+          'walletInformation',
+          process.env.TONCENTER_API_KEY,
+          {
+            address: walletAddress,
+            use_v2: 'false',
+          }
+        )
+        confirmedSeqno = Number(latestWalletInfo.seqno ?? 0)
       } catch (error) {
         console.error('TON confirmation check error:', { traceId, error })
       }
