@@ -83,6 +83,11 @@ export default function Home() {
   const [tonWallet, setTonWallet] = useState<TonWalletInfo | null>(null)
   const [tonWalletLoading, setTonWalletLoading] = useState(false)
   const [walletNotice, setWalletNotice] = useState<string | null>(null)
+  const [showWithdrawForm, setShowWithdrawForm] = useState(false)
+  const [withdrawAddress, setWithdrawAddress] = useState('')
+  const [withdrawAmount, setWithdrawAmount] = useState('')
+  const [withdrawLoading, setWithdrawLoading] = useState(false)
+  const [withdrawError, setWithdrawError] = useState<string | null>(null)
 
   const fetchTransactions = useCallback(async () => {
     if (!userId) return
@@ -231,6 +236,40 @@ export default function Home() {
     await navigator.clipboard.writeText(value)
     haptics.selection()
     setWalletNotice(`${label} copied`)
+  }
+
+  const handleWithdraw = async () => {
+    try {
+      haptics.selection()
+      setWithdrawLoading(true)
+      setWithdrawError(null)
+
+      const response = await fetch('/api/me/ton-withdrawals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          initData,
+          address: withdrawAddress,
+          amount: withdrawAmount,
+        }),
+      })
+      const data = await response.json()
+
+      if (!response.ok) throw new Error(data.error || 'Send failed')
+
+      if (typeof data.balance === 'number') setBalanceOverride(data.balance)
+      setWithdrawAddress('')
+      setWithdrawAmount('')
+      setShowWithdrawForm(false)
+      setWalletNotice('Sent successfully')
+      haptics.notification('success')
+      await Promise.all([fetchTransactions(), fetchWalletBalance()])
+    } catch (error) {
+      haptics.notification('error')
+      setWithdrawError(error instanceof Error ? error.message : 'Send failed')
+    } finally {
+      setWithdrawLoading(false)
+    }
   }
 
   const handleCreatePoll = async () => {
@@ -826,11 +865,61 @@ export default function Home() {
                 <PlusCircle size={18} />
                 Add Funds
               </button>
-              <button disabled className="flex-1 bg-slate-900 border border-slate-700 text-slate-500 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 cursor-not-allowed">
+              <button
+                onClick={() => {
+                  haptics.selection()
+                  setShowWithdrawForm(prev => !prev)
+                  setWithdrawError(null)
+                }}
+                className="flex-1 bg-slate-900 border border-slate-700 text-slate-300 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition"
+              >
                 <Send size={18} />
-                Send Soon
+                Send
               </button>
             </div>
+            {showWithdrawForm && (
+              <div className="mt-4 rounded-2xl border border-slate-700 bg-slate-900 p-4">
+                <p className="mb-3 text-sm font-bold text-white">Send testnet TON</p>
+                <div className="space-y-3">
+                  <input
+                    value={withdrawAddress}
+                    onChange={event => setWithdrawAddress(event.target.value)}
+                    placeholder="TON address"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none focus:border-cyan-400"
+                  />
+                  <input
+                    value={withdrawAmount}
+                    onChange={event => setWithdrawAmount(event.target.value)}
+                    placeholder="Amount"
+                    inputMode="decimal"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none focus:border-cyan-400"
+                  />
+                  {withdrawError && (
+                    <p className="rounded-xl border border-pink-500/40 bg-pink-500/10 px-3 py-2 text-xs font-semibold text-pink-100">
+                      {withdrawError}
+                    </p>
+                  )}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setShowWithdrawForm(false)
+                        setWithdrawError(null)
+                      }}
+                      className="flex-1 rounded-xl border border-slate-700 bg-slate-950 py-3 text-sm font-bold text-slate-300 active:scale-95 transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      disabled={withdrawLoading || !withdrawAddress.trim() || !withdrawAmount.trim()}
+                      onClick={handleWithdraw}
+                      className="flex-1 rounded-xl bg-cyan-400 py-3 text-sm font-bold text-black active:scale-95 transition disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {withdrawLoading ? 'Sending...' : 'Send'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="mt-6">
               <div className="mb-3 flex items-center justify-between">
                 <p className="text-sm font-bold text-white">Transaction history</p>

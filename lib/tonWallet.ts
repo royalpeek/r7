@@ -12,6 +12,10 @@ type StoredTonWallet = {
   public_key: string
 }
 
+type StoredTonWalletSecret = StoredTonWallet & {
+  mnemonic_encrypted: string
+}
+
 export function makeTonDepositMemo(userId: string) {
   const secret = process.env.TON_CUSTODY_MEMO_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || 'r7-dev-secret'
   const digest = crypto
@@ -62,6 +66,23 @@ function encryptSecret(value: string) {
   ].join(':')
 }
 
+function decryptSecret(value: string) {
+  const [iv, tag, encrypted] = value.split(':')
+  if (!iv || !tag || !encrypted) throw new Error('invalid encrypted TON secret')
+
+  const decipher = crypto.createDecipheriv(
+    'aes-256-gcm',
+    getEncryptionKey(),
+    Buffer.from(iv, 'base64')
+  )
+  decipher.setAuthTag(Buffer.from(tag, 'base64'))
+
+  return Buffer.concat([
+    decipher.update(Buffer.from(encrypted, 'base64')),
+    decipher.final(),
+  ]).toString('utf8')
+}
+
 export async function getOrCreateUserTonWallet(supabase: SupabaseClient, userId: string) {
   const network = getTonNetwork()
   const { data: existingWallet, error: existingError } = await supabase
@@ -104,4 +125,28 @@ export async function getOrCreateUserTonWallet(supabase: SupabaseClient, userId:
   if (createError) throw createError
 
   return createdWallet as StoredTonWallet
+}
+
+export async function getUserTonWalletSecret(supabase: SupabaseClient, userId: string) {
+  const network = getTonNetwork()
+  const { data: wallet, error } = await supabase
+    .from('user_ton_wallets')
+    .select('id, user_id, network, address, raw_address, public_key, mnemonic_encrypted')
+    .eq('user_id', userId)
+    .eq('network', network)
+    .eq('status', 'active')
+    .single()
+
+  if (error) throw error
+
+  return {
+    ...(wallet as StoredTonWalletSecret),
+    mnemonic: decryptSecret((wallet as StoredTonWalletSecret).mnemonic_encrypted).split(' '),
+  }
+}
+
+export function getToncenterJsonRpcEndpoint() {
+  return getTonNetwork() === 'testnet'
+    ? 'https://testnet.toncenter.com/api/v2/jsonRPC'
+    : 'https://toncenter.com/api/v2/jsonRPC'
 }
