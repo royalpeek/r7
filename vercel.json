@@ -3,7 +3,7 @@
   "crons": [
     {
       "path": "/api/cron/ton-deposits",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
