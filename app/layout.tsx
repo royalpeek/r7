@@ -3,6 +3,7 @@ import Script from 'next/script'
 import { Geist, Geist_Mono } from "next/font/google";
 import Navigation from "./components/Navigation";
 import ClaimRewardPrompt from "./components/ClaimRewardPrompt";
+import TelegramAnalytics from "./components/TelegramAnalytics";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -31,6 +32,9 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const analyticsToken = process.env.NEXT_PUBLIC_TG_ANALYTICS_TOKEN
+  const analyticsAppName = process.env.NEXT_PUBLIC_TG_ANALYTICS_APP_NAME || 'r7'
+
   return (
     <html
       lang="en"
@@ -38,6 +42,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
+        <TelegramAnalytics token={analyticsToken} appName={analyticsAppName} />
         {children}
         <ClaimRewardPrompt />
         <Navigation />

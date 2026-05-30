@@ -9,6 +9,8 @@ import { getTonAssetName, getTonNetwork, getToncenterJsonRpcEndpoint, getUserTon
 
 const TESTNET_GAS_RESERVE = 0.05
 const DEFAULT_TESTNET_WITHDRAW_LIMIT = 5
+const CONFIRMATION_ATTEMPTS = 20
+const CONFIRMATION_DELAY_MS = 1500
 
 function parseAmount(value: unknown) {
   const amount = Number(value)
@@ -25,6 +27,10 @@ function parseDestination(value: unknown) {
   } catch {
     throw new Error('Enter a valid TON address')
   }
+}
+
+function wait(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 export async function POST(request: NextRequest) {
@@ -92,6 +98,19 @@ export async function POST(request: NextRequest) {
         }),
       ],
     })
+
+    let confirmedSeqno = seqno
+    for (let attempt = 0; attempt < CONFIRMATION_ATTEMPTS; attempt += 1) {
+      await wait(CONFIRMATION_DELAY_MS)
+      confirmedSeqno = await openedWallet.getSeqno()
+      if (confirmedSeqno > seqno) break
+    }
+
+    if (confirmedSeqno <= seqno) {
+      return NextResponse.json({
+        error: 'Send was submitted but not confirmed yet. Please wait a minute and refresh.',
+      }, { status: 400 })
+    }
 
     const nextBalance = Number((currentBalance - amount).toFixed(9))
     const { error: balanceError } = await supabase
