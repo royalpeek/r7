@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type TransactionType =
   | 'test_credit'
+  | 'ton_deposit'
   | 'stake'
   | 'fee'
   | 'claim_payout'

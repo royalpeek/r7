@@ -123,6 +123,25 @@ export default function Home() {
     }
   }, [initData, userId])
 
+  const fetchWalletBalance = useCallback(async () => {
+    if (!userId) return
+
+    try {
+      const response = await fetch('/api/me/balance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData }),
+      })
+      const data = await response.json()
+
+      if (response.ok && typeof data.balance === 'number') {
+        setBalanceOverride(data.balance)
+      }
+    } catch (error) {
+      console.error('fetch wallet balance error:', error)
+    }
+  }, [initData, userId])
+
   const fetchCreatorQuota = useCallback(async () => {
     if (!canCreatePoll) return
 
@@ -157,10 +176,11 @@ export default function Home() {
     const timeout = window.setTimeout(() => {
       fetchTransactions()
       fetchTonWallet()
+      fetchWalletBalance()
     }, 0)
 
     return () => window.clearTimeout(timeout)
-  }, [fetchTonWallet, fetchTransactions, showWallet])
+  }, [fetchTonWallet, fetchTransactions, fetchWalletBalance, showWallet])
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -769,7 +789,14 @@ export default function Home() {
               <p className="text-slate-400 text-xs mb-2">USDT Balance</p>
               <div className="flex items-center justify-between">
               <p className="text-white text-3xl font-bold">${balance.toFixed(2)}</p>
-                <button className="bg-slate-800 p-2 rounded-full">
+                <button
+                  onClick={() => {
+                    haptics.selection()
+                    fetchWalletBalance()
+                  }}
+                  className="bg-slate-800 p-2 rounded-full active:scale-95 transition"
+                  title="Refresh balance"
+                >
                   <RefreshCw size={16} className="text-slate-400" />
                 </button>
               </div>
@@ -795,6 +822,7 @@ export default function Home() {
                   onClick={() => {
                     haptics.selection()
                     fetchTransactions()
+                    fetchWalletBalance()
                   }}
                   className="rounded-full bg-slate-900 p-2 text-slate-400 active:scale-95 transition"
                   title="Refresh transactions"

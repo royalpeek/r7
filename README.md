@@ -52,9 +52,13 @@ TON_CUSTODY_DEPOSIT_ADDRESS=your_ton_custody_address
 TON_CUSTODY_MEMO_SECRET=your_private_random_secret
 TON_NETWORK=testnet
 TON_CUSTODY_ASSET_NAME=Testnet TON
+TONCENTER_API_KEY=your_toncenter_api_key_optional
+CRON_SECRET=your_private_cron_secret
 ```
 
-`TON_CUSTODY_DEPOSIT_ADDRESS` is the TON address users send funds to. `TON_CUSTODY_MEMO_SECRET` keeps each user's memo stable without exposing how it is generated. `TON_CUSTODY_ASSET_NAME` controls the wallet label, so testnet can show `Testnet TON` and mainnet can later show `USDT on TON`. Deposits still need a server-side scanner or admin reconciliation step before balances are credited inside the app.
+`TON_CUSTODY_DEPOSIT_ADDRESS` is the TON address users send funds to. `TON_CUSTODY_MEMO_SECRET` keeps each user's memo stable without exposing how it is generated. `TON_CUSTODY_ASSET_NAME` controls the wallet label, so testnet can show `Testnet TON` and mainnet can later show `USDT on TON`.
+
+Run `supabase/ton-deposits.sql` in Supabase before enabling automatic deposit crediting. Vercel Cron calls `/api/cron/ton-deposits` every five minutes in production. `CRON_SECRET` protects that endpoint, and `TONCENTER_API_KEY` raises Toncenter rate limits.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
