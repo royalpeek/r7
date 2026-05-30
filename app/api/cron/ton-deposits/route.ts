@@ -7,7 +7,11 @@ function isAuthorized(request: NextRequest) {
 
   if (!cronSecret) return process.env.NODE_ENV !== 'production'
 
-  return request.headers.get('authorization') === `Bearer ${cronSecret}`
+  const bearerToken = request.headers.get('authorization') === `Bearer ${cronSecret}`
+  const headerToken = request.headers.get('x-cron-secret') === cronSecret
+  const queryToken = request.nextUrl.searchParams.get('secret') === cronSecret
+
+  return bearerToken || headerToken || queryToken
 }
 
 async function runCronScan(request: NextRequest) {

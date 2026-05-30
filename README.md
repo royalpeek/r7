@@ -58,7 +58,13 @@ CRON_SECRET=your_private_cron_secret
 
 `TON_CUSTODY_DEPOSIT_ADDRESS` is the TON address users send funds to. `TON_CUSTODY_MEMO_SECRET` keeps each user's memo stable without exposing how it is generated. `TON_CUSTODY_ASSET_NAME` controls the wallet label, so testnet can show `Testnet TON` and mainnet can later show `USDT on TON`.
 
-Run `supabase/ton-deposits.sql` in Supabase before enabling automatic deposit crediting. Vercel Cron calls `/api/cron/ton-deposits` every five minutes in production. `CRON_SECRET` protects that endpoint, and `TONCENTER_API_KEY` raises Toncenter rate limits.
+Run `supabase/ton-deposits.sql` in Supabase before enabling automatic deposit crediting. Vercel Hobby can only run the built-in cron slowly, so use an external scheduler for faster testnet scans. Call this URL every few minutes:
+
+```text
+https://your-domain.vercel.app/api/cron/ton-deposits?secret=YOUR_CRON_SECRET
+```
+
+`CRON_SECRET` protects that endpoint, and `TONCENTER_API_KEY` raises Toncenter rate limits.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
