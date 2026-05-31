@@ -10,6 +10,7 @@ type DeviceLogEvent =
   | 'admin_device_mismatch_warning'
   | 'admin_login_allowed'
   | 'admin_unlock_device'
+  | 'admin_release_shared_device'
   | 'admin_release_shared_phone'
   | 'devices_table_unavailable'
   | 'wallet_creation_checked'
@@ -242,7 +243,7 @@ async function upsertUserDevice(
   }
 }
 
-export type DeviceBlockReason = 'phone_taken' | 'mismatch' | null
+export type DeviceBlockReason = 'device_taken' | 'phone_taken' | 'mismatch' | null
 
 export type UserDeviceBlockStatus = {
   blockReason: DeviceBlockReason
@@ -275,7 +276,7 @@ export function getUserDeviceBlockStatus(log?: DeviceSecurityLogRow | null): Use
   if (log.event === 'multiple_account_blocked') {
     const ownerUserId = log.details?.ownerUserId
     return {
-      blockReason: 'phone_taken',
+      blockReason: 'device_taken',
       blockedByUserId: ownerUserId != null ? String(ownerUserId) : null,
     }
   }
@@ -324,8 +325,8 @@ export async function unlockUserDevice(
 
   if (blockedLogsError && !isMissingRelationError(blockedLogsError)) throw blockedLogsError
 
-  const sharedPhoneLog = (blockedLogs || []).find(log => log.event === 'multiple_account_blocked')
-  const ownerUserId = sharedPhoneLog?.details?.ownerUserId
+  const sharedDeviceLog = (blockedLogs || []).find(log => log.event === 'multiple_account_blocked')
+  const ownerUserId = sharedDeviceLog?.details?.ownerUserId
 
   if (ownerUserId != null) {
     const ownerId = String(ownerUserId)
@@ -340,7 +341,7 @@ export async function unlockUserDevice(
       clearedOwnerUserId = ownerId
 
       await recordDeviceLog(supabase, {
-        event: 'admin_release_shared_phone',
+        event: 'admin_release_shared_device',
         userId: targetUserId,
         status: 'success',
         details: {

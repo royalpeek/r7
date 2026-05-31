@@ -39,9 +39,9 @@ export async function POST(request: NextRequest) {
 
     let message = 'Device registration cleared. Ask them to reopen R7.'
     if (result.clearedOwnerUserId) {
-      message = `Phone released from user ${result.clearedOwnerUserId}. ${targetUserId} can log in on this device now. Your admin account is not blocked by device rules.`
+      message = `Device released from user ${result.clearedOwnerUserId}. ${targetUserId} can log in on this device now. Your admin account is not blocked by device rules.`
     } else if (!result.hadTargetDevice) {
-      message = `No device was on file for ${targetUserId}. If they were still locked, ask them to try again after you clear the account that owns this phone.`
+      message = `No device was on file for ${targetUserId}. If they are still locked, use this same reset box with the account that currently owns the device.`
     }
 
     return NextResponse.json({

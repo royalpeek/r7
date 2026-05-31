@@ -19,7 +19,7 @@ type AdminUser = {
   device_registered?: boolean
   device_last_seen_at?: string | null
   device_fingerprint?: string | null
-  device_block_reason?: 'phone_taken' | 'mismatch' | null
+  device_block_reason?: 'device_taken' | 'phone_taken' | 'mismatch' | null
   device_blocked_by_user_id?: string | null
   device_blocked_by_username?: string | null
 }
@@ -97,6 +97,7 @@ const adminTabs: Array<{ value: AdminTab; label: string }> = [
 
 function formatAuditEvent(event: string) {
   return event
+    .replaceAll('phone', 'device')
     .split('_')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ')
@@ -705,8 +706,8 @@ export default function AdminPage() {
           <section className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-4">
             <h2 className="text-lg font-bold text-white">Reset device registration</h2>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              Use when someone is stuck on “account locked.” If their phone is already tied to another R7 account,
-              this also releases that other registration so they can log in. R7 still allows only one Telegram account per phone.
+              Use this when someone is stuck on account locked. Enter their Telegram ID or @username even if they
+              are not showing a reset button below. R7 still allows only one Telegram account per device.
             </p>
             <div className="mt-4 flex gap-2">
               <input
@@ -762,20 +763,20 @@ export default function AdminPage() {
                       <p className={`mt-1 font-bold ${
                         recentlyClearedUserIds[user.id]
                           ? 'text-emerald-300'
-                          : user.device_block_reason === 'phone_taken'
+                          : user.device_block_reason === 'phone_taken' || user.device_block_reason === 'device_taken'
                             ? 'text-pink-300'
                             : user.device_registered
                               ? 'text-amber-200'
                               : 'text-slate-400'
                       }`}>
                         {recentlyClearedUserIds[user.id]
-                          ? 'Cleared just now — ask them to reopen R7'
-                          : user.device_block_reason === 'phone_taken'
-                            ? `Locked — phone used by @${user.device_blocked_by_username || user.device_blocked_by_user_id || 'another account'}`
+                          ? 'Cleared just now - ask them to reopen R7'
+                          : user.device_block_reason === 'phone_taken' || user.device_block_reason === 'device_taken'
+                            ? `Locked - device used by @${user.device_blocked_by_username || user.device_blocked_by_user_id || 'another account'}`
                             : user.device_block_reason === 'mismatch'
-                              ? 'Locked — different device on file'
+                              ? 'Locked - different device on file'
                               : user.device_registered
-                                ? `Linked${user.device_last_seen_at ? ` · ${formatDateTime(user.device_last_seen_at)}` : ''}`
+                                ? `Linked${user.device_last_seen_at ? ` - ${formatDateTime(user.device_last_seen_at)}` : ''}`
                                 : 'Not linked'}
                       </p>
                     </div>
@@ -809,8 +810,8 @@ export default function AdminPage() {
                     >
                       {unlockingUserId === user.id
                         ? 'Resetting...'
-                        : user.device_block_reason === 'phone_taken'
-                          ? 'Release phone for this user'
+                        : user.device_block_reason === 'phone_taken' || user.device_block_reason === 'device_taken'
+                          ? 'Release device for this user'
                           : 'Reset device access'}
                     </button>
                   ) : (
