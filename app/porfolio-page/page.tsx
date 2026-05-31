@@ -66,9 +66,19 @@ export default function Portfolio() {
   const [showSortMenu, setShowSortMenu] = useState(false)
   const [positions, setPositions] = useState<Position[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [claimError, setClaimError] = useState<string | null>(null)
   const [voteError, setVoteError] = useState<string | null>(null)
-  const { userId, appUser, initData, deviceFingerprint, updateBalance } = useTelegramUser()
+  const {
+    userId,
+    appUser,
+    initData,
+    deviceFingerprint,
+    authError,
+    loading: userLoading,
+    updateBalance,
+    retryAuth,
+  } = useTelegramUser()
   const balance = Number(appUser?.balance ?? 0)
   const [selectedPosition, setSelectedPosition] = useState<Position | null>(null)
   const [showStakingModal, setShowStakingModal] = useState(false)
@@ -100,7 +110,7 @@ export default function Portfolio() {
     try {
       if (!userId) return []
       setLoading(true)
-      setError(null)
+      setLoadError(null)
       const response = await fetch('/api/me/positions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -114,7 +124,7 @@ export default function Portfolio() {
       return nextPositions
     } catch (err) {
       console.error('fetch error:', err)
-      setError(err instanceof Error ? err.message : 'failed to fetch positions')
+      setLoadError(err instanceof Error ? err.message : 'failed to fetch positions')
       return []
     } finally {
       setLoading(false)
@@ -122,12 +132,20 @@ export default function Portfolio() {
   }, [initData, userId])
 
   useEffect(() => {
+    if (userLoading) return
+
     const timeout = window.setTimeout(() => {
-      fetchPositions()
+      if (userId) {
+        fetchPositions()
+        return
+      }
+
+      setLoading(false)
+      setPositions([])
     }, 0)
 
     return () => window.clearTimeout(timeout)
-  }, [fetchPositions])
+  }, [fetchPositions, userId, userLoading])
 
   const handleConfirmVote = async (amount: number) => {
     if (!stakingDirection || !selectedPosition || !userId) return
@@ -180,11 +198,15 @@ export default function Portfolio() {
     try {
       haptics.impact('medium')
       setClaimingPositionId(position.id)
-      setError(null)
+      setClaimError(null)
       const response = await fetch('/api/claims', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData, poll_id: position.poll_id }),
+        body: JSON.stringify({
+          initData,
+          poll_id: position.poll_id,
+          device: deviceFingerprint,
+        }),
       })
       const data = await response.json()
 
@@ -195,7 +217,7 @@ export default function Portfolio() {
       await fetchPositions()
     } catch (error) {
       haptics.notification('error')
-      setError(error instanceof Error ? error.message : 'claim failed')
+      setClaimError(error instanceof Error ? error.message : 'claim failed')
     } finally {
       setClaimingPositionId(null)
     }
@@ -506,6 +528,24 @@ export default function Portfolio() {
     )
   }
 
+  if (authError) {
+    return (
+      <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950 px-6 text-center">
+        <div className="max-w-sm rounded-3xl border border-pink-500/30 bg-slate-900 p-6">
+          <p className="text-xl font-bold text-white">Account locked</p>
+          <p className="mt-3 text-sm leading-relaxed text-slate-400">{authError}</p>
+          <button
+            type="button"
+            onClick={retryAuth}
+            className="mt-5 w-full rounded-xl bg-cyan-400 px-4 py-3 text-sm font-bold text-black active:scale-95 transition"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="bg-slate-950 h-screen flex flex-col overflow-hidden">
       <div className="flex-shrink-0 bg-slate-950 px-4 pt-2 pb-0 space-y-2.5">
@@ -612,10 +652,10 @@ export default function Portfolio() {
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-cyan-400" />
             <p className="text-slate-500 text-sm">loading portfolio...</p>
           </div>
-        ) : error ? (
+        ) : loadError ? (
           <div className="flex flex-col items-center gap-4 py-16 text-center">
             <p className="text-white font-semibold">Could not load portfolio</p>
-            <p className="text-slate-500 text-sm">Your positions did not load.</p>
+            <p className="text-slate-500 text-sm">{loadError}</p>
             <button
               onClick={() => {
                 haptics.selection()
@@ -671,6 +711,16 @@ export default function Portfolio() {
           </div>
         ) : (
           <div className="space-y-4">
+            {claimError && (
+              <div className="rounded-xl border border-pink-500/40 bg-pink-500/10 px-4 py-3 text-sm text-pink-200">
+                {claimError}
+              </div>
+            )}
+            {activeTab === 'history' && claimablePositions.length > 0 && (
+              <div className="rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
+                ${totalClaimable.toFixed(2)} ready to claim across {claimablePositions.length} market{claimablePositions.length === 1 ? '' : 's'}.
+              </div>
+            )}
             {history.length === 0 ? (
               <div className="text-center py-16">
                 <p className="text-white font-semibold">No history yet</p>
