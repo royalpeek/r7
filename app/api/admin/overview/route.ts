@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
       pollsResult,
       volumeResult,
       walletAuditResult,
+      deviceLogsResult,
     ] = await Promise.all([
       supabase.from('users').select('*', { count: 'exact', head: true }),
       supabase.from('polls').select('*', { count: 'exact', head: true }),
@@ -56,6 +57,11 @@ export async function POST(request: NextRequest) {
         .select('id, event, actor_user_id, target_user_id, wallet_address, tx_hash, status, details, created_at')
         .order('created_at', { ascending: false })
         .limit(30),
+      supabase
+        .from('device_security_logs')
+        .select('id, event, user_id, device_fingerprint, status, details, created_at')
+        .order('created_at', { ascending: false })
+        .limit(30),
     ])
 
     const firstError =
@@ -65,7 +71,8 @@ export async function POST(request: NextRequest) {
       usersResult.error ||
       pollsResult.error ||
       volumeResult.error ||
-      walletAuditResult.error
+      walletAuditResult.error ||
+      deviceLogsResult.error
 
     if (firstError) throw firstError
 
@@ -83,6 +90,7 @@ export async function POST(request: NextRequest) {
       users: usersResult.data || [],
       polls: pollsResult.data || [],
       walletAuditLogs: walletAuditResult.data || [],
+      deviceSecurityLogs: deviceLogsResult.data || [],
     })
   } catch (error) {
     console.error('Admin overview error:', error)

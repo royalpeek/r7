@@ -43,7 +43,7 @@ export default function PollCard({ polls, focusPollId = null, availableBalance =
   const currentCard = polls && polls.length > 0 ? polls[currentIndex] : null
   const openedFocusPollId = useRef<string | null>(null)
 
-  const { userId, initData, updateBalance } = useTelegramUser()
+  const { userId, initData, deviceFingerprint, updateBalance } = useTelegramUser()
   const { userVotes, refetch } = usePolls(userId, initData)
 
   const userVote = currentCard ? userVotes.find(v => v.poll_id === currentCard.id) : null
@@ -227,7 +227,6 @@ export default function PollCard({ polls, focusPollId = null, availableBalance =
 
     try {
       setVoteError(null)
-      console.log('sending vote:', { userId, poll_id: currentCard.id, direction: stakingDirection, amount })
 
       const response = await fetch('/api/votes', {
         method: 'POST',
@@ -238,11 +237,11 @@ export default function PollCard({ polls, focusPollId = null, availableBalance =
           direction: stakingDirection,
           amount: amount,
           mode: stakingMode,
+          device: deviceFingerprint,
         }),
       })
 
       const responseData = await response.json()
-      console.log('vote response:', responseData)
 
       if (!response.ok) {
         throw new Error(responseData.error || 'vote failed')

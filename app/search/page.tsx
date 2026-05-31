@@ -43,7 +43,7 @@ export default function Search() {
   const [loadingPolls, setLoadingPolls] = useState(true)
   const [pollsError, setPollsError] = useState<string | null>(null)
   const [voteError, setVoteError] = useState<string | null>(null)
-  const { userId, appUser, initData, updateBalance } = useTelegramUser()
+  const { userId, appUser, initData, deviceFingerprint, updateBalance } = useTelegramUser()
   const balance = Number(appUser?.balance ?? 0)
   const [showStakingModal, setShowStakingModal] = useState(false)
   const [stakingDirection, setStakingDirection] = useState<'yes' | 'no' | null>(null)
@@ -117,6 +117,7 @@ export default function Search() {
           direction: stakingDirection,
           amount,
           mode: stakingMode,
+          device: deviceFingerprint,
         }),
       })
       const data = await response.json()

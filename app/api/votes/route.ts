@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
+import { assertUserDevice } from '@/lib/deviceSecurity'
+import { assertRateLimit } from '@/lib/rateLimit'
 import { recordTransaction } from '@/lib/transactions'
 
 function money(value: number) {
@@ -15,6 +17,17 @@ export async function POST(request: NextRequest) {
     let { poll_id, direction, amount } = body
     const mode = body.mode ? String(body.mode).toLowerCase() : null
     const supabase = getSupabaseAdmin()
+
+    await assertUserDevice(supabase, {
+      userId,
+      device: body.device,
+      event: 'user_action_checked',
+    })
+    await assertRateLimit(supabase, {
+      key: `vote:${userId}`,
+      limit: 20,
+      windowSeconds: 60,
+    })
 
     if (!poll_id || !direction || !amount) {
       return NextResponse.json({ error: 'missing required fields' }, { status: 400 })
@@ -35,8 +48,6 @@ export async function POST(request: NextRequest) {
     if (mode && mode !== 'new' && mode !== 'add' && mode !== 'change') {
       return NextResponse.json({ error: 'invalid vote mode' }, { status: 400 })
     }
-
-    console.log('vote request:', { userId, poll_id, direction, amount })
 
     // check if user already voted on this poll
     const { data: existingVote, error: fetchVoteError } = await supabase
@@ -190,8 +201,6 @@ export async function POST(request: NextRequest) {
       voteId = vote[0].id
     }
 
-    console.log('updating poll:', { newYesPool, newNoPool, newYesVotes, newNoVotes, newVolume })
-
     // update poll
     const { error: updateError } = await supabase
       .from('polls')
@@ -244,7 +253,6 @@ export async function POST(request: NextRequest) {
       }),
     ])
 
-    console.log('poll updated successfully')
     return NextResponse.json({ 
       success: true,
       vote_id: voteId,
@@ -253,6 +261,8 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('error:', error)
-    return NextResponse.json({ error: String(error) }, { status: 400 })
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : 'Vote failed',
+    }, { status: 400 })
   }
 }

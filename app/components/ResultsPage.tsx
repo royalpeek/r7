@@ -52,7 +52,7 @@ export default function ResultsPage({
   onClaimed,
 }: ResultsPageProps) {
   const haptics = useHapticFeedback()
-  const { initData, updateBalance } = useTelegramUser()
+  const { initData, deviceFingerprint, updateBalance } = useTelegramUser()
   const [stakerCount, setStakerCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [claiming, setClaiming] = useState(false)
@@ -116,7 +116,7 @@ export default function ResultsPage({
       const response = await fetch('/api/claims', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData, poll_id: pollId }),
+        body: JSON.stringify({ initData, poll_id: pollId, device: deviceFingerprint }),
       })
       const data = await response.json()
 

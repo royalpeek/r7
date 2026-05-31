@@ -39,6 +39,7 @@ type AdminOverview = {
   users: AdminUser[]
   polls: AdminPoll[]
   walletAuditLogs: WalletAuditLog[]
+  deviceSecurityLogs: DeviceSecurityLog[]
 }
 
 type WalletAuditLog = {
@@ -54,6 +55,19 @@ type WalletAuditLog = {
     pending?: boolean
     traceId?: string
     reason?: string
+  } | null
+  created_at: string
+}
+
+type DeviceSecurityLog = {
+  id: string
+  event: string
+  user_id: string | null
+  device_fingerprint: string | null
+  status: 'success' | 'blocked' | 'failed' | string
+  details?: {
+    ownerUserId?: string
+    newUser?: boolean
   } | null
   created_at: string
 }
@@ -80,6 +94,15 @@ function formatAuditEvent(event: string) {
     .split('_')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ')
+}
+
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 function shortValue(value?: string | null) {
@@ -172,7 +195,17 @@ export default function AdminPage() {
 
   const updatePoll = async (pollId: string, action: 'pause' | 'resume' | 'close' | 'archive' | 'delete') => {
     if (action === 'delete') {
-      const confirmed = window.confirm('Delete this market permanently? This also removes its votes and chart history.')
+      const confirmed = window.confirm('Delete this test market permanently? This removes the market, votes, and chart history. Use only for test cleanup.')
+      if (!confirmed) return
+    }
+
+    if (action === 'close') {
+      const confirmed = window.confirm('Close this market now? Users will stop staking and results will be shown.')
+      if (!confirmed) return
+    }
+
+    if (action === 'archive') {
+      const confirmed = window.confirm('Archive and hide this market from the app? You can resume it later if needed.')
       if (!confirmed) return
     }
 
@@ -376,6 +409,12 @@ export default function AdminPage() {
             <p className="mt-1 text-sm leading-relaxed text-slate-500">
               Use the Wallet tab for money movement and audit logs, Users for roles, and Markets for test market cleanup.
             </p>
+            <div className="mt-4 rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-3">
+              <p className="text-sm font-bold text-cyan-200">Account rule active</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                One Telegram ID and one registered device per account. Blocked attempts appear in Users.
+              </p>
+            </div>
             <div className="mt-4 grid grid-cols-3 gap-2 text-center">
               <button
                 onClick={() => {
@@ -542,14 +581,7 @@ export default function AdminPage() {
                       <div className="mb-3 flex items-start justify-between gap-3">
                         <div>
                           <p className="text-sm font-bold text-white">{formatAuditEvent(log.event)}</p>
-                          <p className="mt-1 text-xs text-slate-500">
-                            {new Date(log.created_at).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </p>
+                          <p className="mt-1 text-xs text-slate-500">{formatDateTime(log.created_at)}</p>
                         </div>
                         <span className={`rounded-full px-3 py-1 text-xs font-bold ${
                           isFailed ? 'bg-pink-500/15 text-pink-300' : 'bg-emerald-400/10 text-emerald-300'
@@ -592,43 +624,99 @@ export default function AdminPage() {
       )}
 
       {activeTab === 'users' && (
-        <section className="mb-6">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-white">Users</h2>
-            <p className="text-xs text-slate-500">recent 25</p>
-          </div>
-          <div className="space-y-3">
-            {(overview?.users || []).map(user => (
-              <div key={user.id} className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-                <div className="mb-3 flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-white">@{user.username || 'unknown'}</p>
-                    <p className="text-xs text-slate-500">{user.id}</p>
+        <>
+          <section className="mb-6">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-white">Users</h2>
+              <p className="text-xs text-slate-500">recent 25</p>
+            </div>
+            <div className="space-y-3">
+              {(overview?.users || []).map(user => (
+                <div key={user.id} className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-white">@{user.username || 'unknown'}</p>
+                      <p className="text-xs text-slate-500">{user.id}</p>
+                    </div>
+                    <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-bold text-cyan-400">
+                      {user.role}
+                    </span>
                   </div>
-                  <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-bold text-cyan-400">
-                    {user.role}
-                  </span>
+                  <div className="mb-3 grid grid-cols-2 gap-2 rounded-xl bg-slate-950 p-3 text-xs">
+                    <div>
+                      <p className="text-slate-500">Balance</p>
+                      <p className="mt-1 font-bold text-white">${Number(user.balance || 0).toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Joined</p>
+                      <p className="mt-1 font-bold text-white">{user.created_at ? formatDateTime(user.created_at) : '--'}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {roles.map(role => (
+                      <button
+                        key={role}
+                        disabled={user.role === role || updatingUserId === user.id}
+                        onClick={() => updateRole(user.id, role)}
+                        className={`rounded-lg px-2 py-2 text-xs font-bold transition disabled:cursor-not-allowed ${
+                          user.role === role
+                            ? 'bg-cyan-400 text-black'
+                            : 'bg-slate-800 text-slate-300 active:scale-95'
+                        }`}
+                      >
+                        {role}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {roles.map(role => (
-                    <button
-                      key={role}
-                      disabled={user.role === role || updatingUserId === user.id}
-                      onClick={() => updateRole(user.id, role)}
-                      className={`rounded-lg px-2 py-2 text-xs font-bold transition disabled:cursor-not-allowed ${
-                        user.role === role
-                          ? 'bg-cyan-400 text-black'
-                          : 'bg-slate-800 text-slate-300 active:scale-95'
-                      }`}
-                    >
-                      {role}
-                    </button>
-                  ))}
-                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-4">
+            <div className="mb-4">
+              <h2 className="text-lg font-bold text-white">Device Security</h2>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                Login checks and blocked multi-account attempts. Fingerprints are shown shortened.
+              </p>
+            </div>
+            {(overview?.deviceSecurityLogs || []).length === 0 ? (
+              <div className="rounded-xl bg-slate-950 px-4 py-4 text-sm text-slate-500">
+                No device security events yet.
               </div>
-            ))}
-          </div>
-        </section>
+            ) : (
+              <div className="space-y-3">
+                {(overview?.deviceSecurityLogs || []).map(log => (
+                  <div key={log.id} className="rounded-xl bg-slate-950 p-4">
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold text-white">{formatAuditEvent(log.event)}</p>
+                        <p className="mt-1 text-xs text-slate-500">{formatDateTime(log.created_at)}</p>
+                      </div>
+                      <span className={`rounded-full px-3 py-1 text-xs font-bold ${
+                        log.status === 'blocked'
+                          ? 'bg-pink-500/15 text-pink-300'
+                          : 'bg-emerald-400/10 text-emerald-300'
+                      }`}>
+                        {log.status}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="rounded-lg bg-slate-900 px-3 py-2">
+                        <p className="text-slate-500">User</p>
+                        <p className="mt-1 font-semibold text-slate-200">{log.user_id || '--'}</p>
+                      </div>
+                      <div className="rounded-lg bg-slate-900 px-3 py-2">
+                        <p className="text-slate-500">Device</p>
+                        <p className="mt-1 font-semibold text-slate-200">{shortValue(log.device_fingerprint)}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </>
       )}
 
       {activeTab === 'markets' && (

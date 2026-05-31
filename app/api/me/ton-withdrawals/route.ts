@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'node:crypto'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
+import { assertUserDevice } from '@/lib/deviceSecurity'
 import { assertRateLimit } from '@/lib/rateLimit'
 import { recordSecurityAudit } from '@/lib/securityAudit'
 import { parseTonAmount, parseTonDestination, sendTonFromUserWallet } from '@/lib/tonSend'
@@ -62,6 +63,12 @@ export async function POST(request: NextRequest) {
     const withdrawLimit = Number(process.env.TON_TESTNET_WITHDRAW_LIMIT || DEFAULT_TESTNET_WITHDRAW_LIMIT)
     const dailyWithdrawLimit = Number(process.env.TON_TESTNET_DAILY_WITHDRAW_LIMIT || DEFAULT_TESTNET_DAILY_WITHDRAW_LIMIT)
     const supabase = getSupabaseAdmin()
+
+    await assertUserDevice(supabase, {
+      userId,
+      device: body.device,
+      event: 'withdrawal_device_checked',
+    })
 
     await assertRateLimit(supabase, {
       key: `ton-withdrawal:${userId}`,

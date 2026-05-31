@@ -112,7 +112,7 @@ export default function Home() {
     remaining: number | null
   } | null>(null)
 
-  const { userId, appUser, initData, loading: userLoading } = useTelegramUser()
+  const { userId, appUser, initData, deviceFingerprint, authError, loading: userLoading } = useTelegramUser()
   const { polls, loading: pollsLoading, error: pollsError, refetch } = usePolls(userId, initData)
   const userRole = appUser?.role || (appUser?.is_creator ? 'creator' : 'user')
   const canCreatePoll = userRole === 'creator' || userRole === 'admin'
@@ -166,7 +166,7 @@ export default function Home() {
       const response = await fetch('/api/me/ton-wallet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData }),
+        body: JSON.stringify({ initData, device: deviceFingerprint }),
       })
       const data = await response.json()
 
@@ -176,7 +176,7 @@ export default function Home() {
     } finally {
       if (shouldShowLoader) setTonWalletLoading(false)
     }
-  }, [initData, tonWallet, userId])
+  }, [deviceFingerprint, initData, tonWallet, userId])
 
   const fetchWalletBalance = useCallback(async () => {
     if (!userId) return
@@ -353,6 +353,7 @@ export default function Home() {
           address: withdrawAddress,
           amount: withdrawAmount,
           comment: withdrawComment,
+          device: deviceFingerprint,
         }),
       })
       let data: { error?: string; balance?: number; traceId?: string; pending?: boolean } = {}
@@ -419,6 +420,7 @@ export default function Home() {
           initData,
           description: pollDescription,
           is_private: isPrivate,
+          device: deviceFingerprint,
         }),
       })
       const data = await response.json()
@@ -507,6 +509,19 @@ export default function Home() {
 
   return (
     <div className="bg-slate-950 h-screen overflow-hidden flex flex-col">
+      {authError && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950 px-6 text-center">
+          <div className="max-w-sm rounded-3xl border border-pink-500/30 bg-slate-900 p-6">
+            <p className="text-xl font-bold text-white">Account locked</p>
+            <p className="mt-3 text-sm leading-relaxed text-slate-400">
+              {authError}
+            </p>
+            <p className="mt-3 text-xs leading-relaxed text-slate-500">
+              R7 allows one account per Telegram ID and one device.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* top controls */}
       <div className="flex items-center justify-between gap-2 px-3 pt-3 pb-2 flex-shrink-0">

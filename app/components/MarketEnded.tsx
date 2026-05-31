@@ -39,7 +39,7 @@ export default function MarketEnded({
   onClaimed,
 }: MarketEndedProps) {
   const haptics = useHapticFeedback()
-  const { initData, updateBalance } = useTelegramUser()
+  const { initData, deviceFingerprint, updateBalance } = useTelegramUser()
   const [claiming, setClaiming] = useState(false)
   const [claimError, setClaimError] = useState<string | null>(null)
   const [localClaimedAt, setLocalClaimedAt] = useState<string | null>(claimedAt || null)
@@ -74,7 +74,7 @@ export default function MarketEnded({
       const response = await fetch('/api/claims', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData, poll_id: pollId }),
+        body: JSON.stringify({ initData, poll_id: pollId, device: deviceFingerprint }),
       })
       const data = await response.json()
 

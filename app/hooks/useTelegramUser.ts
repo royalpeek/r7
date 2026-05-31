@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { DeviceFingerprintPayload, getDeviceFingerprintPayload } from '@/lib/deviceFingerprint'
 
 interface TelegramUser {
   id: number
@@ -22,6 +23,8 @@ interface TelegramInitDataUnsafe {
 interface TelegramWebApp {
   ready: () => void
   initData: string
+  platform?: string
+  version?: string
   initDataUnsafe: TelegramInitDataUnsafe
   startParam?: string
   openTelegramLink?: (url: string) => void
@@ -45,17 +48,27 @@ let cachedAppUser: AppUser | null = null
 let cachedUserId: string | null = null
 let cachedInitData = ''
 let cachedInitialized = false
+let cachedDeviceFingerprint: DeviceFingerprintPayload | null = null
+let cachedAuthError: string | null = null
 
 export function useTelegramUser() {
   const [userId, setUserId] = useState<string | null>(cachedUserId)
   const [user, setUser] = useState<TelegramUser | null>(cachedTelegramUser)
   const [appUser, setAppUser] = useState<AppUser | null>(cachedAppUser)
   const [initData, setInitData] = useState(cachedInitData)
+  const [deviceFingerprint, setDeviceFingerprint] = useState<DeviceFingerprintPayload | null>(cachedDeviceFingerprint)
+  const [authError, setAuthError] = useState<string | null>(cachedAuthError)
   const [loading, setLoading] = useState(!cachedInitialized)
 
   useEffect(() => {
     const initTelegram = async () => {
       try {
+        const device = await getDeviceFingerprintPayload()
+        cachedDeviceFingerprint = device
+        setDeviceFingerprint(device)
+        setAuthError(null)
+        cachedAuthError = null
+
         if (!cachedInitialized) {
           await new Promise(resolve => setTimeout(resolve, 1000))
         }
@@ -63,7 +76,6 @@ export function useTelegramUser() {
         const tg = window.Telegram?.WebApp
         
         if (!tg) {
-          console.log('telegram not found, using test id')
           setUser({
             id: 123,
             first_name: 'Test',
@@ -79,7 +91,7 @@ export function useTelegramUser() {
           const response = await fetch('/api/auth/telegram', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ initData: '' }),
+            body: JSON.stringify({ initData: '', device }),
           })
           if (response.ok) {
             const data = await response.json()
@@ -98,10 +110,6 @@ export function useTelegramUser() {
         const initDataUnsafe = tg.initDataUnsafe
         const user = initDataUnsafe?.user
 
-        console.log('user from telegram:', user)
-        console.log('user.id type:', typeof user?.id)
-        console.log('user.id value:', user?.id)
-
         if (user?.id) {
           const telegramId = String(user.id)
           cachedTelegramUser = user
@@ -111,37 +119,33 @@ export function useTelegramUser() {
           const response = await fetch('/api/auth/telegram', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ initData: tg.initData }),
+            body: JSON.stringify({ initData: tg.initData, device }),
           })
 
           if (!response.ok) {
-            throw new Error('telegram auth failed')
+            const data = await response.json().catch(() => ({}))
+            throw new Error(data.error || 'telegram auth failed')
           }
           const data = await response.json()
           cachedAppUser = data.user
           setAppUser(data.user)
 
-          console.log('success! set userid to:', telegramId)
           setUserId(telegramId)
         } else {
-          console.log('no user id found, using test id')
-          cachedTelegramUser = null
-          cachedAppUser = null
-          cachedUserId = '123'
-          setUser(null)
-          setAppUser(null)
-          setUserId('123')
+          throw new Error('No Telegram user found')
         }
         cachedInitialized = true
       } catch (error) {
         console.error('error:', error)
         cachedTelegramUser = null
         cachedAppUser = null
-        cachedUserId = '123'
+        cachedUserId = null
         cachedInitialized = true
+        cachedAuthError = error instanceof Error ? error.message : 'Login failed'
         setUser(null)
         setAppUser(null)
-        setUserId('123')
+        setUserId(null)
+        setAuthError(cachedAuthError)
       } finally {
         setLoading(false)
       }
@@ -158,5 +162,5 @@ export function useTelegramUser() {
     })
   }
 
-  return { userId, user, appUser, initData, loading, updateBalance }
+  return { userId, user, appUser, initData, deviceFingerprint, authError, loading, updateBalance }
 }

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
+import { assertUserDevice } from '@/lib/deviceSecurity'
+import { assertRateLimit } from '@/lib/rateLimit'
 import { getOrCreateUserTonWallet, getTonAssetName, getTonNetwork, makeTonDepositMemo } from '@/lib/tonWallet'
 
 export async function POST(request: NextRequest) {
@@ -8,7 +10,20 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const telegramUser = getRequestTelegramUser(body.initData)
     const userId = String(telegramUser.id)
-    const wallet = await getOrCreateUserTonWallet(getSupabaseAdmin(), userId)
+    const supabase = getSupabaseAdmin()
+
+    await assertRateLimit(supabase, {
+      key: `ton-wallet:${userId}`,
+      limit: 10,
+      windowSeconds: 60,
+    })
+    await assertUserDevice(supabase, {
+      userId,
+      device: body.device,
+      event: 'wallet_creation_checked',
+    })
+
+    const wallet = await getOrCreateUserTonWallet(supabase, userId)
 
     return NextResponse.json({
       network: getTonNetwork(),
@@ -20,6 +35,8 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('TON wallet info error:', error)
-    return NextResponse.json({ error: 'Failed to load TON wallet' }, { status: 400 })
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : 'Failed to load TON wallet',
+    }, { status: 400 })
   }
 }

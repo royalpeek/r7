@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
+import { assertUserDevice } from '@/lib/deviceSecurity'
+import { assertRateLimit } from '@/lib/rateLimit'
 import { CREATOR_OPEN_MARKET_LIMIT, getOpenMarketCutoff } from '@/lib/creatorQuota'
 import { closeExpiredMarkets } from '@/lib/marketLifecycle'
 import { MARKET_DURATION_HOURS, moderateMarketQuestion } from '@/lib/marketModeration'
@@ -34,6 +36,17 @@ export async function POST(request: NextRequest) {
     const userId = String(telegramUser.id)
     const { question } = body
     const admin = getSupabaseAdmin()
+
+    await assertUserDevice(admin, {
+      userId,
+      device: body.device,
+      event: 'user_action_checked',
+    })
+    await assertRateLimit(admin, {
+      key: `market-create:${userId}`,
+      limit: 6,
+      windowSeconds: 60,
+    })
 
     if (!question || question.trim().length === 0) {
       return NextResponse.json({ error: 'Question is required' }, { status: 400 })

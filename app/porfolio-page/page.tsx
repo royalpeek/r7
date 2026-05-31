@@ -68,7 +68,7 @@ export default function Portfolio() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [voteError, setVoteError] = useState<string | null>(null)
-  const { userId, appUser, initData, updateBalance } = useTelegramUser()
+  const { userId, appUser, initData, deviceFingerprint, updateBalance } = useTelegramUser()
   const balance = Number(appUser?.balance ?? 0)
   const [selectedPosition, setSelectedPosition] = useState<Position | null>(null)
   const [showStakingModal, setShowStakingModal] = useState(false)
@@ -142,6 +142,7 @@ export default function Portfolio() {
           direction: stakingDirection,
           amount,
           mode: stakingMode,
+          device: deviceFingerprint,
         }),
       })
       const data = await response.json()
