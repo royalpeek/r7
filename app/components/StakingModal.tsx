@@ -54,15 +54,14 @@ export default function StakingModal({
   return (
     <div className="fixed inset-0 z-[80] bg-black/40">
       <div
-        className="absolute left-0 right-0 bg-slate-900 rounded-t-3xl p-8 border-t border-slate-700"
+        className="absolute left-0 right-0 flex flex-col bg-slate-900 rounded-t-3xl border-t border-slate-700"
         style={{
           bottom: 0,
           height: vh ? `${vh}px` : '100dvh',
-          overflowY: 'auto',
-          paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))',
         }}
       >
-        <div className="max-w-sm mx-auto">
+        <div className="flex-1 overflow-y-auto px-8 pt-8 pb-5">
+          <div className="max-w-sm mx-auto">
           <div className="mb-8">
             <p className={`text-sm font-bold mb-3 ${textColor}`}>STAKE {voteDirection}</p>
             <h2 className="text-white font-bold text-2xl">{question}</h2>
@@ -142,33 +141,38 @@ export default function StakingModal({
             </div>
           </div>
 
-          <div className="flex gap-3 mb-4">
-            <button
-              onClick={() => {
-                haptics.selection()
-                onCancel()
-              }}
-              className="flex-1 bg-slate-800 text-white font-bold py-3 rounded-lg border border-slate-700 hover:bg-slate-700"
-            >
-              Cancel
-            </button>
-            <button
-              disabled={!hasEnoughBalance}
-              onClick={() => {
-                haptics.impact('medium')
-                onConfirm(amount)
-              }}
-              className={`flex-1 ${buttonColor} text-black font-bold py-3 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              {hasEnoughBalance ? `Confirm ${voteDirection}` : 'Insufficient balance'}
-            </button>
           </div>
+        </div>
+        <div className="shrink-0 border-t border-slate-800 bg-slate-900/95 px-8 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <div className="max-w-sm mx-auto">
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  haptics.selection()
+                  onCancel()
+                }}
+                className="flex-1 bg-slate-800 text-white font-bold py-3 rounded-lg border border-slate-700 hover:bg-slate-700"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={!hasEnoughBalance}
+                onClick={() => {
+                  haptics.impact('medium')
+                  onConfirm(amount)
+                }}
+                className={`flex-1 ${buttonColor} text-black font-bold py-3 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {hasEnoughBalance ? `Confirm ${voteDirection}` : 'Insufficient balance'}
+              </button>
+            </div>
 
-          {!hasEnoughBalance && (
-            <p className="text-center text-xs text-pink-300">
-              You need ${amountNeededFromBalance.toFixed(2)} USDT after using your old stake. Available balance is ${availableBalance.toFixed(2)} USDT.
-            </p>
-          )}
+            {!hasEnoughBalance && (
+              <p className="mt-3 text-center text-xs text-pink-300">
+                You need ${amountNeededFromBalance.toFixed(2)} USDT after using your old stake. Available balance is ${availableBalance.toFixed(2)} USDT.
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>
