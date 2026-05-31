@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
+import { assertUserDevice } from '@/lib/deviceSecurity'
+import { assertRequestRateLimit } from '@/lib/requestSecurity'
+
+const voteDirections = ['yes', 'no'] as const
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,11 +14,33 @@ export async function POST(request: NextRequest) {
     const { poll_id, old_direction, new_direction, new_amount } = body
     const supabase = getSupabaseAdmin()
 
+    await assertUserDevice(supabase, {
+      userId,
+      device: body.device,
+      event: 'user_action_checked',
+    })
+
+    await assertRequestRateLimit(supabase, {
+      key: `change-vote:${userId}`,
+      limit: 10,
+      windowSeconds: 60,
+      auditEvent: 'suspicious_rate_limit',
+      actorUserId: userId,
+      details: { phase: 'change_vote' },
+    })
+
     if (!poll_id || !old_direction || !new_direction || !new_amount) {
       return NextResponse.json({ error: 'missing required fields' }, { status: 400 })
     }
 
     const newAmount = Number(new_amount)
+    if (!Number.isFinite(newAmount) || newAmount <= 0) {
+      return NextResponse.json({ error: 'invalid amount' }, { status: 400 })
+    }
+    if (!voteDirections.includes(old_direction) || !voteDirections.includes(new_direction)) {
+      return NextResponse.json({ error: 'invalid vote direction' }, { status: 400 })
+    }
+
     const fee = newAmount * 0.005 // 0.5% fee
     const stakeAmount = newAmount - fee
 
@@ -146,6 +172,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, refund: refundAmount, fee })
   } catch (error) {
     console.error('change vote error:', error)
-    return NextResponse.json({ error: String(error) }, { status: 400 })
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : 'Change vote failed',
+    }, { status: 400 })
   }
 }

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'node:crypto'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
-import { assertRateLimit } from '@/lib/rateLimit'
 import { recordSecurityAudit } from '@/lib/securityAudit'
+import { assertRequestRateLimit } from '@/lib/requestSecurity'
 import { parseTonAmount, parseTonDestination, sendTonFromUserWallet } from '@/lib/tonSend'
 import { recordTransaction } from '@/lib/transactions'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
@@ -47,10 +47,14 @@ export async function POST(request: NextRequest) {
     targetUserId = String(body.userId || '').trim()
     if (!targetUserId) throw new Error('target user is required')
 
-    await assertRateLimit(supabase, {
+    await assertRequestRateLimit(supabase, {
       key: `admin-ton-recovery:${adminUserId}`,
       limit: 3,
       windowSeconds: 60,
+      auditEvent: 'suspicious_rate_limit',
+      actorUserId: adminUserId,
+      targetUserId,
+      details: { phase: 'admin_ton_recovery' },
     })
 
     const amount = parseTonAmount(body.amount)

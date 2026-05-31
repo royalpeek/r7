@@ -3,8 +3,8 @@ import crypto from 'node:crypto'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
 import { assertUserDevice } from '@/lib/deviceSecurity'
-import { assertRateLimit } from '@/lib/rateLimit'
 import { recordSecurityAudit } from '@/lib/securityAudit'
+import { assertRequestRateLimit } from '@/lib/requestSecurity'
 import { parseTonAmount, parseTonDestination, sendTonFromUserWallet } from '@/lib/tonSend'
 import { recordTransaction } from '@/lib/transactions'
 import { getTonAssetName, getTonNetwork } from '@/lib/tonWallet'
@@ -70,10 +70,13 @@ export async function POST(request: NextRequest) {
       event: 'withdrawal_device_checked',
     })
 
-    await assertRateLimit(supabase, {
+    await assertRequestRateLimit(supabase, {
       key: `ton-withdrawal:${userId}`,
       limit: 5,
       windowSeconds: 60,
+      auditEvent: 'withdrawal_blocked_by_rate_limit',
+      actorUserId: userId,
+      details: { phase: 'ton_withdrawal' },
     })
 
     if (amount > withdrawLimit) {
@@ -180,7 +183,11 @@ export async function POST(request: NextRequest) {
       pending: sendResult.pending,
     })
   } catch (error) {
-    console.error('TON withdrawal error:', { traceId, error })
+    console.error('TON withdrawal error:', {
+      traceId,
+      userId: auditUserId,
+      message: error instanceof Error ? error.message : 'Failed to send testnet TON',
+    })
     if (auditUserId) {
       await recordSecurityAudit(getSupabaseAdmin(), {
         event: 'withdrawal_failed',

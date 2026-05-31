@@ -7,24 +7,48 @@ import {
   registerOrVerifyDevice,
   tryNormalizeDevicePayload,
 } from '@/lib/deviceSecurity'
-import { assertRateLimit } from '@/lib/rateLimit'
+import { recordSecurityAudit } from '@/lib/securityAudit'
+import {
+  assertRequestRateLimit,
+  classifyTelegramAuthError,
+  getRequestFingerprint,
+} from '@/lib/requestSecurity'
 import { recordTransaction } from '@/lib/transactions'
 
 export async function POST(request: NextRequest) {
+  const supabase = getSupabaseAdmin()
+  const requestFingerprint = getRequestFingerprint(request)
+  let body: Record<string, unknown> = {}
+  let auditUserId: string | undefined
+
   try {
-    const body = await request.json()
-    const { initData } = body
+    body = await request.json()
+    const initData = typeof body.initData === 'string' ? body.initData : undefined
+
+    await assertRequestRateLimit(supabase, {
+      key: `auth-request:${requestFingerprint}`,
+      limit: 30,
+      windowSeconds: 60,
+      auditEvent: 'suspicious_rate_limit',
+      details: { phase: 'telegram_auth', requestFingerprint },
+    })
+
     const telegramUser = getRequestTelegramUser(initData)
     const userId = String(telegramUser.id)
+    auditUserId = userId
     const username = telegramUser.username || telegramUser.first_name || 'user'
-    const supabase = getSupabaseAdmin()
     const deviceSecurityDisabled = isDeviceSecurityDisabled()
-    const device = deviceSecurityDisabled ? null : tryNormalizeDevicePayload(body.device)
+    const device = deviceSecurityDisabled ? null : tryNormalizeDevicePayload(
+      body.device as Parameters<typeof tryNormalizeDevicePayload>[0]
+    )
 
-    await assertRateLimit(supabase, {
+    await assertRequestRateLimit(supabase, {
       key: `auth:${userId}`,
       limit: 12,
       windowSeconds: 60,
+      auditEvent: 'suspicious_rate_limit',
+      actorUserId: userId,
+      details: { phase: 'telegram_auth_user' },
     })
 
     const { data: existingUser, error: checkError } = await supabase
@@ -39,16 +63,25 @@ export async function POST(request: NextRequest) {
 
     if (!deviceSecurityDisabled) {
       if (!device && !isExistingAdmin) {
+        await recordDeviceLog(supabase, {
+          event: 'login_blocked',
+          userId,
+          status: 'blocked',
+          details: { reason: 'missing_or_invalid_device_payload' },
+        })
         return NextResponse.json({
           error: 'One account is allowed per device. Please reopen the app and try again.',
         }, { status: 401 })
       }
 
       if (device) {
-        await assertRateLimit(supabase, {
+        await assertRequestRateLimit(supabase, {
           key: `auth-device:${device.fingerprint}`,
           limit: 12,
           windowSeconds: 60,
+          auditEvent: 'suspicious_rate_limit',
+          actorUserId: userId,
+          details: { phase: 'telegram_auth_device' },
         })
       }
     } else {
@@ -56,6 +89,11 @@ export async function POST(request: NextRequest) {
         event: 'device_security_disabled',
         userId,
         status: 'success',
+        details: { phase: 'auth_route' },
+      })
+      await recordSecurityAudit(supabase, {
+        event: 'emergency_device_bypass_active',
+        actorUserId: userId,
         details: { phase: 'auth_route' },
       })
     }
@@ -76,7 +114,7 @@ export async function POST(request: NextRequest) {
 
       await registerOrVerifyDevice(supabase, {
         userId,
-        device: body.device,
+        device: body.device as Parameters<typeof registerOrVerifyDevice>[1]['device'],
         isNewUser: true,
       })
 
@@ -93,7 +131,7 @@ export async function POST(request: NextRequest) {
 
     await registerOrVerifyDevice(supabase, {
       userId,
-      device: body.device,
+      device: body.device as Parameters<typeof registerOrVerifyDevice>[1]['device'],
       isNewUser: false,
     })
 
@@ -108,7 +146,23 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ user: data })
   } catch (error) {
-    console.error('Auth error:', error)
+    const reason = classifyTelegramAuthError(error)
+    if (reason !== 'telegram_auth_failed' || !auditUserId) {
+      await recordSecurityAudit(supabase, {
+        event: reason === 'expired_telegram_auth' ? 'telegram_auth_expired' : 'telegram_auth_failed',
+        actorUserId: auditUserId,
+        status: 'failed',
+        details: {
+          reason,
+          requestFingerprint,
+        },
+      })
+    }
+
+    console.error('Auth error:', {
+      reason,
+      userId: auditUserId,
+    })
     const message = error instanceof Error ? error.message : 'Auth failed'
     const status = message.includes('Only one account') || message.includes('linked to another device')
       ? 409

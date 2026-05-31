@@ -37,6 +37,28 @@ User IDs in R7 are stored in `public.users.id` (the Telegram numeric ID as text)
 
 Run `supabase/devices.sql` if the `devices` and `device_security_logs` tables are missing.
 
+## Security environment variables
+
+Required server-only secrets:
+
+```bash
+TELEGRAM_BOT_TOKEN=your_botfather_token
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+TON_WALLET_ENCRYPTION_KEY=your_private_wallet_encryption_secret
+CRON_SECRET=your_private_cron_secret
+```
+
+Optional security controls:
+
+```bash
+DISABLE_DEVICE_SECURITY=false
+TON_TESTNET_WITHDRAW_LIMIT=5
+TON_TESTNET_DAILY_WITHDRAW_LIMIT=10
+TON_ADMIN_RECOVERY_LIMIT=25
+```
+
+Never create `NEXT_PUBLIC_TELEGRAM_BOT_TOKEN`, `NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY`, or `NEXT_PUBLIC_TON_WALLET_ENCRYPTION_KEY`. Those secrets must stay on the server.
+
 ## Telegram market sharing
 
 Market share links use each market's database `id` as the deep-link payload.
