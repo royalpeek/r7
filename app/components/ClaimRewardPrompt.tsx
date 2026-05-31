@@ -6,6 +6,7 @@ import { Gift, X } from 'lucide-react'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { ClaimablePosition, getClaimablePositions, getPositionClaimBreakdown } from '@/lib/positionClaims'
+import { formatTradingAsset } from '@/lib/tradingAsset'
 
 export default function ClaimRewardPrompt() {
   const haptics = useHapticFeedback()
@@ -67,7 +68,7 @@ export default function ClaimRewardPrompt() {
           <div className="min-w-0 flex-1">
             <p className="font-bold text-white">Reward ready</p>
             <p className="mt-1 text-sm text-slate-400">
-              ${totalClaimable.toFixed(2)} USDT available from {claimablePositions.length} ended market{claimablePositions.length === 1 ? '' : 's'}.
+              {formatTradingAsset(totalClaimable)} available from {claimablePositions.length} ended market{claimablePositions.length === 1 ? '' : 's'}.
             </p>
             <p className="mt-1 text-xs text-slate-500">Open Portfolio to review each reward before claiming.</p>
             <button

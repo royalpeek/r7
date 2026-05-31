@@ -4,7 +4,7 @@ create table if not exists public.ton_deposits (
   tx_lt text,
   user_id text not null references public.users(id) on delete cascade,
   amount numeric not null,
-  asset text not null default 'Testnet TON',
+  asset text not null default 'Test TON',
   memo text not null,
   deposit_address text,
   source_address text,

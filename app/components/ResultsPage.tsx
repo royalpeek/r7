@@ -7,6 +7,7 @@ import Timer from './Timer'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { calculatePayoutBreakdown, getWinningDirection } from '@/lib/payouts'
+import { formatTradingAsset } from '@/lib/tradingAsset'
 
 interface ResultsPageProps {
   question: string
@@ -166,7 +167,7 @@ export default function ResultsPage({
             <p className={`text-sm font-bold mb-2 ${voteDirection === 'YES' ? 'text-cyan-400' : 'text-pink-500'}`}>
               You voted {voteDirection}
             </p>
-            <p className="text-slate-400 text-sm mb-4">${amount.toFixed(2)} USDT staked</p>
+            <p className="text-slate-400 text-sm mb-4">{formatTradingAsset(amount)} staked</p>
             <h2 className="text-white font-bold text-xl mb-4">{question}</h2>
 
             <div className="space-y-4 mb-6">
@@ -192,11 +193,11 @@ export default function ResultsPage({
             <div className="flex justify-between text-lg font-bold mb-4">
               <div className="text-center">
                 <p className="text-cyan-400">YES {yesPercent}%</p>
-                <p className="text-cyan-400 text-sm">${yesPool.toFixed(2)}</p>
+                <p className="text-cyan-400 text-sm">{formatTradingAsset(yesPool)}</p>
               </div>
               <div className="text-center">
                 <p className="text-pink-500">NO {noPercent}%</p>
-                <p className="text-pink-500 text-sm">${noPool.toFixed(2)}</p>
+                <p className="text-pink-500 text-sm">{formatTradingAsset(noPool)}</p>
               </div>
             </div>
 
@@ -229,11 +230,11 @@ export default function ResultsPage({
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
                 <p className="text-slate-500">Your stake</p>
-                <p className="font-bold text-white">${amount.toFixed(2)}</p>
+                <p className="font-bold text-white">{formatTradingAsset(amount)}</p>
               </div>
               <div>
                 <p className="text-slate-500">Total pool</p>
-                <p className="font-bold text-white">${totalVolume.toFixed(2)}</p>
+                <p className="font-bold text-white">{formatTradingAsset(totalVolume)}</p>
               </div>
               {marketEnded ? (
                 <div>
@@ -268,7 +269,7 @@ export default function ResultsPage({
                     ? loading ? 'loading...' : `${stakerCount} ${stakerCount === 1 ? 'person' : 'people'} staked`
                     : 'Votes hidden until market ends'}
                 </p>
-                <p className="text-slate-400 text-sm">${totalVolume.toFixed(2)} USDT total volume</p>
+                <p className="text-slate-400 text-sm">{formatTradingAsset(totalVolume)} total volume</p>
               </div>
             </div>
           </div>
@@ -296,7 +297,7 @@ export default function ResultsPage({
 
               <p className="text-slate-400 text-xs uppercase tracking-wide">{localClaimedAt ? 'Claimed amount' : 'Claimable'}</p>
               <p className="text-white font-bold text-2xl">
-                {userWon ? `$${displayClaimable.toFixed(2)} USDT` : '$0.00 USDT'}
+                {userWon ? formatTradingAsset(displayClaimable) : formatTradingAsset(0)}
               </p>
               <p className="mt-1 text-xs text-slate-500">
                 {userWon
@@ -306,7 +307,7 @@ export default function ResultsPage({
               <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <p className="text-slate-500">Staked</p>
-                  <p className="font-bold text-white">${amount.toFixed(2)}</p>
+                  <p className="font-bold text-white">{formatTradingAsset(amount)}</p>
                 </div>
                 <div>
                   <p className="text-slate-500">P&L</p>
@@ -316,11 +317,11 @@ export default function ResultsPage({
                 </div>
                 <div>
                   <p className="text-slate-500">Gross value</p>
-                  <p className="font-bold text-slate-200">${payoutBreakdown.grossPayout.toFixed(2)}</p>
+                  <p className="font-bold text-slate-200">{formatTradingAsset(payoutBreakdown.grossPayout)}</p>
                 </div>
                 <div>
                   <p className="text-slate-500">Creator reward</p>
-                  <p className="font-bold text-slate-200">-${payoutBreakdown.creatorRewardShare.toFixed(2)}</p>
+                  <p className="font-bold text-slate-200">-{formatTradingAsset(payoutBreakdown.creatorRewardShare)}</p>
                 </div>
               </div>
               <p className="text-slate-400 text-sm mt-3">
@@ -337,7 +338,7 @@ export default function ResultsPage({
                   disabled={claiming}
                   className="mt-4 w-full rounded-2xl bg-cyan-400 py-3.5 text-sm font-bold text-black active:scale-95 transition disabled:opacity-60"
                 >
-                  {claiming ? 'Claiming...' : `Claim $${displayClaimable.toFixed(2)}`}
+                  {claiming ? 'Claiming...' : `Claim ${formatTradingAsset(displayClaimable)}`}
                 </button>
               )}
             </div>

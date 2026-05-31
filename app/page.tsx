@@ -11,6 +11,7 @@ import { usePolls } from './hooks/usePolls'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { getMarketLifecycleStatus } from '@/lib/marketLifecycle'
 import { parseMarketStartParam } from '@/lib/marketDeepLink'
+import { TRADING_ASSET_NAME, formatTradingAsset, formatSignedTradingAsset } from '@/lib/tradingAsset'
 
 const DISCOVERY_TABS = [
   { label: 'Trending', value: 'trending' },
@@ -73,7 +74,7 @@ function getTransactionLabel(transaction: WalletTransaction) {
 }
 
 function getTransactionUnit(transaction: WalletTransaction) {
-  return transaction.type.startsWith('ton_') ? 'TON' : 'USDT'
+  return transaction.type.startsWith('ton_') ? 'TON' : TRADING_ASSET_NAME
 }
 
 function getTransactionStatus(transaction: WalletTransaction) {
@@ -321,7 +322,7 @@ export default function Home() {
     if (!tonWallet?.address) return
 
     haptics.selection()
-    const shareText = `R7 Testnet TON address: ${tonWallet.address}`
+    const shareText = `R7 ${TRADING_ASSET_NAME} address: ${tonWallet.address}`
     if (navigator.share) {
       try {
         await navigator.share({
@@ -552,7 +553,7 @@ export default function Home() {
           }}
           className="h-10 rounded-xl bg-slate-800 px-3 text-xs font-medium text-slate-300 whitespace-nowrap active:scale-95 transition"
         >
-          ${balance.toFixed(2)} USDT
+          {formatTradingAsset(balance)}
         </button>
 
         {canCreatePoll && (
@@ -756,7 +757,7 @@ export default function Home() {
                 <span className="text-cyan-400 text-sm font-medium">0.25% win · 0.5% lose</span>
               </div>
               <p className="text-slate-500 text-xs">
-                When your poll resolves, you earn 0.25% of the winning pool and 0.5% of the losing pool, paid directly in USDT.
+                When your poll resolves, you earn 0.25% of the winning pool and 0.5% of the losing pool, paid directly in {TRADING_ASSET_NAME}.
               </p>
             </div>
 
@@ -941,8 +942,8 @@ export default function Home() {
             <div className="mb-5 rounded-2xl bg-slate-900/90 p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-slate-500 text-sm font-bold">Testnet TON Balance</p>
-                  <p className="mt-2 text-white text-3xl font-bold">{balance.toFixed(3)} TON</p>
+                  <p className="text-slate-500 text-sm font-bold">{TRADING_ASSET_NAME} Balance</p>
+                  <p className="mt-2 text-white text-3xl font-bold">{formatTradingAsset(balance)}</p>
                 </div>
                 <button
                   onClick={() => {
@@ -1197,7 +1198,7 @@ export default function Home() {
             </div>
 
             <div className="mt-5 space-y-2 rounded-3xl bg-amber-400/10 px-5 py-4 text-sm font-semibold leading-relaxed text-amber-100">
-              <p>Only send Testnet TON to this address.</p>
+              <p>Only send {TRADING_ASSET_NAME} to this address.</p>
               <p>No memo is needed.</p>
               <p>Wrong sends cannot be reversed.</p>
             </div>
@@ -1242,7 +1243,7 @@ export default function Home() {
               {[
                 'Open your exchange or testnet wallet.',
                 'Choose Send or Withdraw.',
-                'Send Testnet TON to your R7 address below.',
+                `Send ${TRADING_ASSET_NAME} to your R7 address below.`,
               ].map((step, index) => (
                 <div key={step} className="flex gap-3">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-400/15 text-sm font-bold text-emerald-300">
@@ -1280,7 +1281,7 @@ export default function Home() {
             </div>
 
             <div className="mt-5 space-y-2 rounded-3xl bg-amber-400/10 px-5 py-4 text-sm font-semibold leading-relaxed text-amber-100">
-              <p>Only send Testnet TON to this address.</p>
+              <p>Only send {TRADING_ASSET_NAME} to this address.</p>
               <p>No memo is needed.</p>
               <p>Wrong sends cannot be reversed.</p>
             </div>
@@ -1330,9 +1331,13 @@ export default function Home() {
               const positive = amount > 0
               const status = getTransactionStatus(transaction)
               const unit = getTransactionUnit(transaction)
-              const amountText = `${positive ? '+' : '-'}${Math.abs(amount).toFixed(unit === 'TON' ? 3 : 2)} ${unit}`
+              const amountText = unit === 'TON'
+                ? `${positive ? '+' : '-'}${Math.abs(amount).toFixed(3)} TON`
+                : formatSignedTradingAsset(amount)
               const balanceText = typeof transaction.balance_after === 'number'
-                ? `${Number(transaction.balance_after).toFixed(unit === 'TON' ? 3 : 2)} ${unit}`
+                ? unit === 'TON'
+                  ? `${Number(transaction.balance_after).toFixed(3)} TON`
+                  : formatTradingAsset(Number(transaction.balance_after))
                 : null
 
               return (

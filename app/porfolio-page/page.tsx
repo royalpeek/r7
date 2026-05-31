@@ -10,6 +10,7 @@ import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { getMarketLifecycleLabel, getMarketLifecycleStatus } from '@/lib/marketLifecycle'
 import { getClaimablePositions, getPositionClaimBreakdown } from '@/lib/positionClaims'
+import { formatTradingAsset } from '@/lib/tradingAsset'
 
 type Position = {
   id: string
@@ -349,7 +350,7 @@ export default function Portfolio() {
           <>
             <div className="mb-7 text-center">
               <p className={`text-5xl font-bold ${performance.profit >= 0 ? 'text-cyan-400' : 'text-pink-500'}`}>
-                {performance.profit >= 0 ? '+' : '-'}${Math.abs(performance.profit).toFixed(2)}
+                {performance.profit >= 0 ? '+' : '-'}{formatTradingAsset(Math.abs(performance.profit))}
               </p>
               <div className="mt-4 flex items-center justify-center gap-3 text-sm">
                 <span className={`rounded-xl px-3 py-2 font-bold ${
@@ -357,26 +358,26 @@ export default function Portfolio() {
                 }`}>
                   {performance.pnlPercent >= 0 ? '+' : ''}{performance.pnlPercent.toFixed(1)}%
                 </span>
-                <span className="font-semibold text-slate-400">on ${performance.totalResolvedStaked.toFixed(2)} staked</span>
+                <span className="font-semibold text-slate-400">on {formatTradingAsset(performance.totalResolvedStaked)} staked</span>
               </div>
             </div>
 
             <PerformanceChart value={performance.profit} />
 
             <div className="mt-7 grid grid-cols-2 gap-4">
-              <MetricCard label="ATH Gain" value={`+$${Math.max(0, performance.profit).toFixed(2)}`} accent />
-              <MetricCard label="Best Day" value={performance.profit > 0 ? `+$${performance.profit.toFixed(2)}` : '--'} accent={performance.profit > 0} />
+              <MetricCard label="ATH Gain" value={`+${formatTradingAsset(Math.max(0, performance.profit))}`} accent />
+              <MetricCard label="Best Day" value={performance.profit > 0 ? `+${formatTradingAsset(performance.profit)}` : '--'} accent={performance.profit > 0} />
               <MetricCard label="Win Rate" value={`${performance.winRate}%`} sub={`${performance.wins}W / ${performance.losses}L / ${performance.draws}D`} />
               <MetricCard label="Best Streak" value={performance.wins} sub="wins tracked" accent />
               <MetricCard label="Markets" value={performance.markets} sub="total played" />
-              <MetricCard label="Worst Dip" value={performance.profit < 0 ? `-$${Math.abs(performance.profit).toFixed(2)}` : '--'} danger={performance.profit < 0} />
+              <MetricCard label="Worst Dip" value={performance.profit < 0 ? `-${formatTradingAsset(Math.abs(performance.profit))}` : '--'} danger={performance.profit < 0} />
             </div>
           </>
         ) : (
           <>
             <div className="mb-7 text-center">
               <p className="text-5xl font-bold text-cyan-400">
-                ${Number(creatorStats?.totalFees || 0).toFixed(2)}
+                {formatTradingAsset(Number(creatorStats?.totalFees || 0))}
               </p>
               <div className="mt-4 flex items-center justify-center gap-3 text-sm">
                 <span className="rounded-xl bg-cyan-400/10 px-3 py-2 font-bold text-cyan-400">
@@ -402,10 +403,10 @@ export default function Portfolio() {
             <PerformanceChart value={creatorStats?.totalFees || 0} />
 
             <div className="mt-7 grid grid-cols-2 gap-4">
-              <MetricCard label="All-time fees" value={`$${Number(creatorStats?.totalFees || 0).toFixed(2)}`} sub={`${creatorStats?.resolvedPolls ?? 0} resolved`} accent />
-              <MetricCard label="Avg pool" value={`$${Number(creatorStats?.avgPool || 0).toFixed(0)}`} sub="per market" />
+              <MetricCard label="All-time fees" value={formatTradingAsset(Number(creatorStats?.totalFees || 0))} sub={`${creatorStats?.resolvedPolls ?? 0} resolved`} accent />
+              <MetricCard label="Avg pool" value={formatTradingAsset(Number(creatorStats?.avgPool || 0), 0)} sub="per market" />
               <MetricCard label="Avg votes" value={creatorStats?.avgVotes ?? 0} sub="per market" />
-              <MetricCard label="Top market" value={`$${Number(creatorStats?.topPollReward || 0).toFixed(2)}`} sub={creatorStats?.topPollQuestion || 'No resolved market'} accent />
+              <MetricCard label="Top market" value={formatTradingAsset(Number(creatorStats?.topPollReward || 0))} sub={creatorStats?.topPollQuestion || 'No resolved market'} accent />
               <MetricCard label="Markets created" value={creatorStats?.totalPolls ?? 0} sub="all time" />
               <MetricCard label="Pending" value={creatorStats?.pendingPolls ?? 0} sub="not yet resolved" />
             </div>
@@ -428,13 +429,13 @@ export default function Portfolio() {
                       <div className="flex items-start justify-between gap-3">
                         <p className="flex-1 text-sm font-bold text-white">{poll.question}</p>
                         <p className="text-sm font-bold text-cyan-400">
-                          {reward > 0 ? `$${reward.toFixed(2)}` : '--'}
+                          {reward > 0 ? formatTradingAsset(reward) : '--'}
                         </p>
                       </div>
                       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                         <span className="rounded-md border border-slate-700 px-2 py-0.5 text-slate-300">{getMarketLifecycleLabel(status)}</span>
                         <span>{poll.category || 'general'}</span>
-                        <span>${totalPool.toFixed(2)} pool</span>
+                        <span>{formatTradingAsset(totalPool)} pool</span>
                         <span>{totalVotes} votes</span>
                         <span>{formatDate(poll.created_at)}</span>
                       </div>
@@ -557,7 +558,7 @@ export default function Portfolio() {
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
           <p className="text-slate-400 text-xs mb-1">Balance</p>
           <p className="text-white text-3xl font-bold">
-            ${balance.toFixed(2)}
+            {formatTradingAsset(balance)}
           </p>
         </div>
 
@@ -571,13 +572,13 @@ export default function Portfolio() {
               <ChevronRight size={14} className="text-slate-500" />
             </div>
             <p className={`text-xl font-bold ${performance.profit >= 0 ? 'text-cyan-400' : 'text-pink-500'}`}>
-              {loading ? '...' : `${performance.profit >= 0 ? '+' : '-'}$${Math.abs(performance.profit).toFixed(2)}`}
+              {loading ? '...' : `${performance.profit >= 0 ? '+' : '-'}${formatTradingAsset(Math.abs(performance.profit))}`}
             </p>
           </button>
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5">
             <p className="text-slate-400 text-xs mb-1">Claimable</p>
             <p className={`text-xl font-bold ${totalClaimable > 0 ? 'text-cyan-400' : 'text-slate-500'}`}>
-              {loading ? '...' : `$${totalClaimable.toFixed(2)}`}
+              {loading ? '...' : formatTradingAsset(totalClaimable)}
             </p>
           </div>
         </div>
@@ -594,7 +595,7 @@ export default function Portfolio() {
               <Gift size={16} />
               {claimablePositions.length} reward{claimablePositions.length === 1 ? '' : 's'} ready
             </span>
-            <span className="text-sm font-bold text-white">${totalClaimable.toFixed(2)}</span>
+            <span className="text-sm font-bold text-white">{formatTradingAsset(totalClaimable)}</span>
           </button>
         )}
 
@@ -702,7 +703,7 @@ export default function Portfolio() {
                   </div>
                 </div>
                 <div className="flex items-center justify-between text-sm mb-3">
-                  <span className="text-slate-400">Stake: <span className="text-white font-bold">${pos.amount}</span></span>
+                  <span className="text-slate-400">Stake: <span className="text-white font-bold">{formatTradingAsset(pos.amount)}</span></span>
                   <span className="text-slate-500 text-xs">tap to view</span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -723,7 +724,7 @@ export default function Portfolio() {
             )}
             {activeTab === 'history' && claimablePositions.length > 0 && (
               <div className="rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
-                ${totalClaimable.toFixed(2)} ready to claim across {claimablePositions.length} market{claimablePositions.length === 1 ? '' : 's'}.
+                {formatTradingAsset(totalClaimable)} ready to claim across {claimablePositions.length} market{claimablePositions.length === 1 ? '' : 's'}.
               </div>
             )}
             {history.length === 0 ? (
@@ -759,9 +760,9 @@ export default function Portfolio() {
                   </div>
                 </div>
                 <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-slate-400">Stake: <span className="text-white font-bold">${pos.amount}</span></span>
+                  <span className="text-slate-400">Stake: <span className="text-white font-bold">{formatTradingAsset(pos.amount)}</span></span>
                   <span className={`text-xs font-bold ${claimValue > 0 ? 'text-cyan-300' : 'text-slate-500'}`}>
-                    {pos.claimed_at ? `Claimed $${claimValue.toFixed(2)}` : canClaim ? `Ready $${claimValue.toFixed(2)}` : 'tap to view'}
+                    {pos.claimed_at ? `Claimed ${formatTradingAsset(claimValue)}` : canClaim ? `Ready ${formatTradingAsset(claimValue)}` : 'tap to view'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -780,7 +781,7 @@ export default function Portfolio() {
                     <Gift size={16} />
                     {claimingPositionId === pos.id
                       ? 'Claiming...'
-                      : `Claim $${claimBreakdown.claimablePayout.toFixed(2)}`}
+                      : `Claim ${formatTradingAsset(claimBreakdown.claimablePayout)}`}
                   </button>
                 )}
                 {pos.claimed_at && (

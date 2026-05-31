@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { calculatePayoutBreakdown } from '@/lib/payouts'
+import { TRADING_ASSET_NAME, formatTradingAsset } from '@/lib/tradingAsset'
 
 interface StakingModalProps {
   question: string
@@ -112,11 +113,11 @@ export default function StakingModal({
 
           <div className="mb-8">
             <div className="flex items-center justify-center mb-6">
-              <span className={`text-6xl font-bold ${textColor}`}>${amount}</span>
-              <span className="text-slate-400 ml-3">USDT</span>
+              <span className={`text-6xl font-bold ${textColor}`}>{amount}</span>
+              <span className="text-slate-400 ml-3">{TRADING_ASSET_NAME}</span>
             </div>
             <p className="text-center text-slate-400 text-sm mb-6">
-              Available: ${availableBalance.toFixed(2)} USDT
+              Available: {formatTradingAsset(availableBalance)}
             </p>
 
             <input
@@ -146,7 +147,7 @@ export default function StakingModal({
                     : 'bg-slate-800 text-slate-300 border border-slate-700'
                 }`}
               >
-                ${preset}
+                {preset}
               </button>
             ))}
           </div>
@@ -156,7 +157,7 @@ export default function StakingModal({
               <p className="text-xs font-bold uppercase tracking-[0.14em] text-cyan-300">Previous stake</p>
               <div className="mt-2 flex items-center justify-between gap-3">
                 <span className="text-sm font-semibold text-slate-200">Returned before this stake</span>
-                <span className="shrink-0 text-base font-bold text-cyan-200">${safeReplacementCredit.toFixed(2)} USDT</span>
+                <span className="shrink-0 text-base font-bold text-cyan-200">{formatTradingAsset(safeReplacementCredit)}</span>
               </div>
             </div>
           )}
@@ -164,22 +165,22 @@ export default function StakingModal({
           <div className="space-y-4 mb-8 p-4 bg-slate-800 rounded-lg">
             <div className="flex justify-between text-sm">
               <span className="text-slate-400">Fee: 1%</span>
-              <span className="text-slate-300">${fee.toFixed(2)} USDT</span>
+              <span className="text-slate-300">{formatTradingAsset(fee)}</span>
             </div>
             {safeReplacementCredit > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-slate-400">Old stake returned</span>
-                <span className="text-cyan-300">${safeReplacementCredit.toFixed(2)} USDT</span>
+                <span className="text-cyan-300">{formatTradingAsset(safeReplacementCredit)}</span>
               </div>
             )}
             <div className="flex justify-between text-sm font-bold">
               <span className="text-white">Est. payout if {voteDirection} wins</span>
-              <span className={textColor}>${estimatedPayout} USDT</span>
+              <span className={textColor}>{formatTradingAsset(Number(estimatedPayout))}</span>
             </div>
             <div className="flex justify-between text-sm font-bold pt-4 border-t border-slate-700">
               <span className="text-white">{walletChange >= 0 ? 'Wallet receives' : 'Needed from balance'}</span>
               <span className={walletChange >= 0 ? 'text-cyan-300' : 'text-white'}>
-                ${Math.abs(walletChange).toFixed(2)} USDT
+                {formatTradingAsset(Math.abs(walletChange))}
               </span>
             </div>
           </div>
@@ -212,7 +213,7 @@ export default function StakingModal({
 
             {!hasEnoughBalance && (
               <p className="mt-3 text-center text-xs text-pink-300">
-                You need ${amountNeededFromBalance.toFixed(2)} USDT after using your old stake. Available balance is ${availableBalance.toFixed(2)} USDT.
+                You need {formatTradingAsset(amountNeededFromBalance)} after using your old stake. Available balance is {formatTradingAsset(availableBalance)}.
               </p>
             )}
           </div>

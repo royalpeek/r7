@@ -40,7 +40,7 @@ export function getTonNetwork() {
 
 export function getTonAssetName() {
   const network = getTonNetwork()
-  const defaultAsset = network === 'testnet' ? 'Testnet TON' : 'USDT on TON'
+  const defaultAsset = network === 'testnet' ? 'Test TON' : 'USDT on TON'
 
   return process.env.TON_CUSTODY_ASSET_NAME || defaultAsset
 }

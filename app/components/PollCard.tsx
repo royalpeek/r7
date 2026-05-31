@@ -14,6 +14,7 @@ import { useMarketShare } from '@/app/hooks/useMarketShare'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { usePolls } from '@/app/hooks/usePolls'
 import { getMarketLifecycleLabel, getMarketLifecycleStatus } from '@/lib/marketLifecycle'
+import { formatTradingAsset } from '@/lib/tradingAsset'
 
 type Poll = {
   id: string
@@ -451,18 +452,18 @@ export default function PollCard({ polls, focusPollId = null, availableBalance =
                   <span className="text-slate-400"> · </span>
                   <span className="text-pink-500">{currentCard.no_votes} NO</span>
                 </p>
-                <p className="text-slate-400 text-sm">${(currentCard.yes_pool + currentCard.no_pool).toFixed(2)} USDT total volume</p>
+                <p className="text-slate-400 text-sm">{formatTradingAsset(currentCard.yes_pool + currentCard.no_pool)} total volume</p>
               </div>
             </div>
 
             <div className="flex gap-4 mb-6">
               <div className="flex-1 bg-slate-800 rounded-xl p-4 text-center">
-                <p className="text-cyan-400 font-bold text-2xl">${currentCard.yes_pool.toFixed(2)}</p>
+                <p className="text-cyan-400 font-bold text-2xl">{formatTradingAsset(currentCard.yes_pool)}</p>
                 <p className="text-cyan-400 text-xs mt-1">YES Pool</p>
                 <p className="text-slate-400 text-xs mt-2">{yesPercent}%</p>
               </div>
               <div className="flex-1 bg-slate-800 rounded-xl p-4 text-center">
-                <p className="text-pink-500 font-bold text-2xl">${currentCard.no_pool.toFixed(2)}</p>
+                <p className="text-pink-500 font-bold text-2xl">{formatTradingAsset(currentCard.no_pool)}</p>
                 <p className="text-pink-500 text-xs mt-1">NO Pool</p>
                 <p className="text-slate-400 text-xs mt-2">{noPercent}%</p>
               </div>
@@ -654,7 +655,7 @@ export default function PollCard({ polls, focusPollId = null, availableBalance =
                         {getMarketLifecycleLabel(cardStatus)}
                       </span>
                     </div>
-                    <div className="text-slate-400 text-sm">${(poll.yes_pool + poll.no_pool).toFixed(2)} USDT</div>
+                    <div className="text-slate-400 text-sm">{formatTradingAsset(poll.yes_pool + poll.no_pool)}</div>
                   </div>
 
                   {isActive && (

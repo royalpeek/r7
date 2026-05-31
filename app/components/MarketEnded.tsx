@@ -6,6 +6,7 @@ import PoolHistoryChart from './PoolHistoryChart'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { calculatePayoutBreakdown, getWinningDirection } from '@/lib/payouts'
+import { formatTradingAsset } from '@/lib/tradingAsset'
 
 interface MarketEndedProps {
   pollId: string
@@ -153,7 +154,7 @@ export default function MarketEnded({
 
           <p className="text-slate-400 text-xs uppercase tracking-wide">{localClaimedAt ? 'Claimed amount' : 'Claimable'}</p>
           <p className="text-white font-bold text-2xl">
-            {userWon ? `$${displayClaimable.toFixed(2)} USDT` : '$0.00 USDT'}
+            {userWon ? formatTradingAsset(displayClaimable) : formatTradingAsset(0)}
           </p>
           <p className="mt-1 text-xs text-slate-500">
             {userWon
@@ -163,7 +164,7 @@ export default function MarketEnded({
           <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
             <div>
               <p className="text-slate-500">Staked</p>
-              <p className="font-bold text-white">${userVoteAmount.toFixed(2)}</p>
+              <p className="font-bold text-white">{formatTradingAsset(userVoteAmount)}</p>
             </div>
             <div>
               <p className="text-slate-500">P&L</p>
@@ -173,11 +174,11 @@ export default function MarketEnded({
             </div>
             <div>
               <p className="text-slate-500">Gross value</p>
-              <p className="font-bold text-slate-200">${payoutBreakdown.grossPayout.toFixed(2)}</p>
+              <p className="font-bold text-slate-200">{formatTradingAsset(payoutBreakdown.grossPayout)}</p>
             </div>
             <div>
               <p className="text-slate-500">Creator reward</p>
-              <p className="font-bold text-slate-200">-${payoutBreakdown.creatorRewardShare.toFixed(2)}</p>
+              <p className="font-bold text-slate-200">-{formatTradingAsset(payoutBreakdown.creatorRewardShare)}</p>
             </div>
           </div>
           <p className="text-slate-400 text-sm mt-3">
@@ -194,7 +195,7 @@ export default function MarketEnded({
               disabled={claiming}
               className="mt-4 w-full rounded-2xl bg-cyan-400 py-3.5 text-sm font-bold text-black active:scale-95 transition disabled:opacity-60"
             >
-              {claiming ? 'Claiming...' : `Claim $${displayClaimable.toFixed(2)}`}
+              {claiming ? 'Claiming...' : `Claim ${formatTradingAsset(displayClaimable)}`}
             </button>
           )}
         </div>
@@ -223,11 +224,11 @@ export default function MarketEnded({
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
               <p className="text-slate-500">Your stake</p>
-              <p className="font-bold text-white">${userVoteAmount.toFixed(2)}</p>
+              <p className="font-bold text-white">{formatTradingAsset(userVoteAmount)}</p>
             </div>
             <div>
               <p className="text-slate-500">Total pool</p>
-              <p className="font-bold text-white">${totalVolume.toFixed(2)}</p>
+              <p className="font-bold text-white">{formatTradingAsset(totalVolume)}</p>
             </div>
             <div>
               <p className="text-slate-500">Votes</p>
@@ -249,7 +250,7 @@ export default function MarketEnded({
               <span className="text-slate-400"> · </span>
               <span className="text-pink-500">{noVotes} NO</span>
             </p>
-            <p className="text-slate-400 text-sm">${totalVolume.toFixed(2)} USDT total volume</p>
+            <p className="text-slate-400 text-sm">{formatTradingAsset(totalVolume)} total volume</p>
           </div>
         </div>
 
@@ -264,12 +265,12 @@ export default function MarketEnded({
           <p className="text-slate-400 text-xs mb-3">POOL BREAKDOWN</p>
           <div className="flex gap-4">
             <div className="flex-1 bg-slate-800 rounded-xl p-4 text-center">
-              <p className="text-cyan-400 font-bold text-2xl">${yesPool.toFixed(2)}</p>
+              <p className="text-cyan-400 font-bold text-2xl">{formatTradingAsset(yesPool)}</p>
               <p className="text-cyan-400 text-xs mt-1">YES Pool</p>
               <p className="text-slate-400 text-xs mt-2">{yesPercent}%</p>
             </div>
             <div className="flex-1 bg-slate-800 rounded-xl p-4 text-center">
-              <p className="text-pink-500 font-bold text-2xl">${noPool.toFixed(2)}</p>
+              <p className="text-pink-500 font-bold text-2xl">{formatTradingAsset(noPool)}</p>
               <p className="text-pink-500 text-xs mt-1">NO Pool</p>
               <p className="text-slate-400 text-xs mt-2">{noPercent}%</p>
             </div>

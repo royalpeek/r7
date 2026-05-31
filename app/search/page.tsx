@@ -12,6 +12,7 @@ import Toast from '../components/Toast'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { useMarketShare } from '@/app/hooks/useMarketShare'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
+import { formatTradingAsset } from '@/lib/tradingAsset'
 
 type Poll = {
   id: string
@@ -240,18 +241,18 @@ export default function Search() {
                   <span className="text-slate-400"> · </span>
                   <span className="text-pink-500">{selectedPoll.no_votes} NO</span>
                 </p>
-                <p className="text-slate-400 text-sm">${totalPool.toFixed(2)} USDT total volume</p>
+                <p className="text-slate-400 text-sm">{formatTradingAsset(totalPool)} total volume</p>
               </div>
             </div>
 
             <div className="flex gap-4 mb-6">
               <div className="flex-1 bg-slate-800 rounded-xl p-4 text-center">
-                <p className="text-cyan-400 font-bold text-2xl">${selectedPoll.yes_pool.toFixed(2)}</p>
+                <p className="text-cyan-400 font-bold text-2xl">{formatTradingAsset(selectedPoll.yes_pool)}</p>
                 <p className="text-cyan-400 text-xs mt-1">YES Pool</p>
                 <p className="text-slate-400 text-xs mt-2">{yesPercent}%</p>
               </div>
               <div className="flex-1 bg-slate-800 rounded-xl p-4 text-center">
-                <p className="text-pink-500 font-bold text-2xl">${selectedPoll.no_pool.toFixed(2)}</p>
+                <p className="text-pink-500 font-bold text-2xl">{formatTradingAsset(selectedPoll.no_pool)}</p>
                 <p className="text-pink-500 text-xs mt-1">NO Pool</p>
                 <p className="text-slate-400 text-xs mt-2">{noPercent}%</p>
               </div>
@@ -498,7 +499,7 @@ export default function Search() {
                   <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-400">
                     {poll.category || 'other'}
                   </span>
-                  <span className="text-slate-500 text-xs">${total.toFixed(2)} vol</span>
+                  <span className="text-slate-500 text-xs">{formatTradingAsset(total)} vol</span>
                 </div>
               </div>
 

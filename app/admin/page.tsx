@@ -5,6 +5,7 @@ import { RefreshCw, ShieldCheck, Users, BarChart3, Vote, WalletCards, Radar, Sen
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { getMarketLifecycleLabel, getMarketLifecycleStatus } from '@/lib/marketLifecycle'
+import { formatTradingAsset } from '@/lib/tradingAsset'
 
 type Role = 'user' | 'creator' | 'admin'
 type AdminTab = 'overview' | 'wallet' | 'users' | 'markets'
@@ -479,7 +480,7 @@ export default function AdminPage() {
             <StatCard icon={<Users size={18} />} label="Users" value={overview?.stats.totalUsers ?? 0} />
             <StatCard icon={<BarChart3 size={18} />} label="Markets" value={overview?.stats.totalPolls ?? 0} />
             <StatCard icon={<Vote size={18} />} label="Votes" value={overview?.stats.totalVotes ?? 0} />
-            <StatCard icon={<WalletCards size={18} />} label="Volume" value={`$${(overview?.stats.totalVolume ?? 0).toFixed(2)}`} />
+            <StatCard icon={<WalletCards size={18} />} label="Volume" value={formatTradingAsset(overview?.stats.totalVolume ?? 0)} />
           </div>
 
           <section className="rounded-xl border border-slate-800 bg-slate-900 p-4">
@@ -752,7 +753,7 @@ export default function AdminPage() {
                   <div className="mb-3 grid grid-cols-2 gap-2 rounded-xl bg-slate-950 p-3 text-xs">
                     <div>
                       <p className="text-slate-500">Balance</p>
-                      <p className="mt-1 font-bold text-white">${Number(user.balance || 0).toFixed(2)}</p>
+                      <p className="mt-1 font-bold text-white">{formatTradingAsset(Number(user.balance || 0))}</p>
                     </div>
                     <div>
                       <p className="text-slate-500">Joined</p>
@@ -898,7 +899,7 @@ export default function AdminPage() {
                     }`}>
                       {getMarketLifecycleLabel(status)}
                     </span>
-                    <span className="text-xs text-slate-500">${totalPool.toFixed(2)} vol</span>
+                    <span className="text-xs text-slate-500">{formatTradingAsset(totalPool)} vol</span>
                   </div>
                   <p className="mb-3 font-semibold text-white">{poll.question}</p>
                   <div className="flex justify-between text-xs">

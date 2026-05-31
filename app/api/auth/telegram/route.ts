@@ -13,7 +13,6 @@ import {
   classifyTelegramAuthError,
   getRequestFingerprint,
 } from '@/lib/requestSecurity'
-import { recordTransaction } from '@/lib/transactions'
 
 export async function POST(request: NextRequest) {
   const supabase = getSupabaseAdmin()
@@ -104,7 +103,7 @@ export async function POST(request: NextRequest) {
         .insert({
           id: userId,
           username,
-          balance: 100,
+          balance: 0,
           is_creator: false,
         })
         .select()
@@ -116,14 +115,6 @@ export async function POST(request: NextRequest) {
         userId,
         device: body.device as Parameters<typeof registerOrVerifyDevice>[1]['device'],
         isNewUser: true,
-      })
-
-      await recordTransaction(supabase, {
-        userId,
-        type: 'test_credit',
-        amount: 100,
-        balanceAfter: 100,
-        description: 'Test wallet credit',
       })
 
       return NextResponse.json({ user: data })
