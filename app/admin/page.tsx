@@ -366,7 +366,7 @@ export default function AdminPage() {
         <>
           <div className="mb-5 grid grid-cols-2 gap-2.5">
             <StatCard icon={<Users size={18} />} label="Users" value={overview?.stats.totalUsers ?? 0} />
-            <StatCard icon={<BarChart3 size={18} />} label="Polls" value={overview?.stats.totalPolls ?? 0} />
+            <StatCard icon={<BarChart3 size={18} />} label="Markets" value={overview?.stats.totalPolls ?? 0} />
             <StatCard icon={<Vote size={18} />} label="Votes" value={overview?.stats.totalVotes ?? 0} />
             <StatCard icon={<WalletCards size={18} />} label="Volume" value={`$${(overview?.stats.totalVolume ?? 0).toFixed(2)}`} />
           </div>
@@ -458,25 +458,44 @@ export default function AdminPage() {
               </p>
             </div>
             <div className="space-y-3">
-              <input
-                value={recoveryUserId}
-                onChange={event => setRecoveryUserId(event.target.value)}
-                placeholder="User Telegram ID"
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-400"
-              />
-              <input
-                value={recoveryAddress}
-                onChange={event => setRecoveryAddress(event.target.value)}
-                placeholder="Destination TON address"
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-400"
-              />
-              <input
-                value={recoveryAmount}
-                onChange={event => setRecoveryAmount(event.target.value)}
-                placeholder="Amount"
-                inputMode="decimal"
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-400"
-              />
+              <div>
+                <label htmlFor="recovery-user-id" className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+                  User Telegram ID
+                </label>
+                <input
+                  id="recovery-user-id"
+                  value={recoveryUserId}
+                  onChange={event => setRecoveryUserId(event.target.value)}
+                  placeholder="Example: 123456789"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-400"
+                />
+              </div>
+              <div>
+                <label htmlFor="recovery-address" className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+                  Destination TON address
+                </label>
+                <input
+                  id="recovery-address"
+                  value={recoveryAddress}
+                  onChange={event => setRecoveryAddress(event.target.value)}
+                  placeholder="Paste destination address"
+                  autoComplete="off"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-400"
+                />
+              </div>
+              <div>
+                <label htmlFor="recovery-amount" className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+                  Amount
+                </label>
+                <input
+                  id="recovery-amount"
+                  value={recoveryAmount}
+                  onChange={event => setRecoveryAmount(event.target.value)}
+                  placeholder="0.00"
+                  inputMode="decimal"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-cyan-400"
+                />
+              </div>
               <button
                 disabled={recoveryLoading || !recoveryUserId.trim() || !recoveryAddress.trim() || !recoveryAmount.trim()}
                 onClick={recoverTonWallet}
@@ -615,7 +634,7 @@ export default function AdminPage() {
       {activeTab === 'markets' && (
         <section>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-white">Recent Polls</h2>
+            <h2 className="text-lg font-bold text-white">Recent Markets</h2>
             <p className="text-xs text-slate-500">recent 50</p>
           </div>
           <div className="space-y-3">

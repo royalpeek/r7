@@ -164,14 +164,21 @@ export default function Profile() {
 
       {/* invite and referrals */}
       <div className="grid grid-cols-2 gap-3 mb-4">
-        <button className="bg-slate-900 border border-slate-700 rounded-2xl p-4 flex flex-col items-center gap-2">
+        <button
+          onClick={handleCopyReferralCode}
+          disabled={!referralCode}
+          className="bg-slate-900 border border-slate-700 rounded-2xl p-4 flex flex-col items-center gap-2 active:scale-[0.99] transition disabled:opacity-60"
+          aria-label="Copy referral invite link"
+        >
           <Gift size={24} className="text-cyan-400" />
           <p className="text-white text-sm font-semibold">{referralCode || 'Invite'}</p>
+          <p className="text-slate-500 text-xs">Copy invite link</p>
         </button>
-        <button className="bg-slate-900 border border-slate-700 rounded-2xl p-4 flex flex-col items-center gap-2">
+        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 flex flex-col items-center gap-2">
           <Users size={24} className="text-cyan-400" />
           <p className="text-white text-sm font-semibold">{referralCount} Referrals</p>
-        </button>
+          <p className="text-slate-500 text-xs">Total invited</p>
+        </div>
       </div>
 
       {/* referral code */}
@@ -214,11 +221,14 @@ export default function Profile() {
         {referralError && <p className="text-pink-300 text-xs mt-3">{referralError}</p>}
       </div>
 
-      {/* sign out */}
-      <button className="w-full bg-slate-900 border border-pink-500 text-pink-500 font-bold py-4 rounded-2xl flex items-center justify-center gap-2">
-        <LogOut size={18} />
-        Sign Out
-      </button>
+      {/* telegram controls the active session */}
+      <div className="w-full bg-slate-900 border border-slate-800 text-slate-400 py-4 rounded-2xl flex flex-col items-center justify-center gap-1">
+        <div className="flex items-center gap-2 text-sm font-bold text-slate-300">
+          <LogOut size={18} />
+          Signed in with Telegram
+        </div>
+        <p className="text-xs text-slate-500">Close the mini app to leave.</p>
+      </div>
 
       <p className="text-center text-slate-600 text-xs mt-6">v1.0.0</p>
     </div>

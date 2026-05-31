@@ -125,6 +125,7 @@ export default function Home() {
   const [walletNotice, setWalletNotice] = useState<string | null>(null)
   const [walletSuccess, setWalletSuccess] = useState<string | null>(null)
   const [showWithdrawForm, setShowWithdrawForm] = useState(false)
+  const [showWithdrawReview, setShowWithdrawReview] = useState(false)
   const [showDepositForm, setShowDepositForm] = useState(false)
   const [showWalletDeposit, setShowWalletDeposit] = useState(false)
   const [showWalletHistory, setShowWalletHistory] = useState(false)
@@ -371,6 +372,7 @@ export default function Home() {
       setWithdrawAmount('')
       setWithdrawComment('')
       setShowWithdrawForm(false)
+      setShowWithdrawReview(false)
       setWalletNotice(data.pending ? `${withdrawAmount} TON submitted` : `${withdrawAmount} TON sent`)
       setWalletSuccess(data.pending
         ? `${withdrawAmount} TON submitted. It may take a minute to appear.`
@@ -384,6 +386,12 @@ export default function Home() {
     } finally {
       setWithdrawLoading(false)
     }
+  }
+
+  const openWithdrawReview = () => {
+    haptics.selection()
+    setWithdrawError(null)
+    setShowWithdrawReview(true)
   }
 
   const handleCreatePoll = async () => {
@@ -570,7 +578,7 @@ export default function Home() {
             <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-700 border-t-cyan-400" />
             <div>
               <p className="text-white font-semibold">Loading markets</p>
-              <p className="text-slate-500 text-sm mt-1">Getting the latest polls ready.</p>
+              <p className="text-slate-500 text-sm mt-1">Getting the latest markets ready.</p>
             </div>
           </div>
         ) : showPollsError ? (
@@ -610,8 +618,8 @@ export default function Home() {
             </p>
             <p className="text-slate-500 text-sm mt-2">
               {filterStatus === 'active'
-                ? 'New polls will appear here when they are created.'
-                : 'Finished polls will appear here after they close.'}
+                ? 'New markets will appear here when they are created.'
+                : 'Finished markets will appear here after they close.'}
             </p>
           </div>
         )}
@@ -879,6 +887,7 @@ export default function Home() {
             <button
               onClick={() => setShowWallet(false)}
               className="absolute top-5 right-5 text-slate-400"
+              aria-label="Close wallet"
             >
               <X size={20} />
             </button>
@@ -899,6 +908,7 @@ export default function Home() {
                 setShowWalletDeposit(true)
               }}
               className="mb-5 flex w-full items-center justify-between rounded-2xl bg-slate-900/90 px-4 py-4 text-left active:scale-[0.99] transition disabled:opacity-60"
+              aria-label="Open wallet address and QR code"
             >
               <div className="flex min-w-0 items-center gap-3">
                 <Wallet size={22} className="shrink-0 text-emerald-300" />
@@ -920,6 +930,7 @@ export default function Home() {
                   }}
                   className="rounded-2xl bg-slate-800 p-3 text-slate-400 active:scale-95 transition"
                   title="Refresh wallet"
+                  aria-label="Refresh wallet balance"
                 >
                   <RefreshCw size={20} />
                 </button>
@@ -936,6 +947,7 @@ export default function Home() {
                   setShowDepositForm(true)
                 }}
                 className="flex items-center justify-center gap-2 rounded-2xl bg-cyan-400 py-4 text-base font-bold text-black active:scale-95 transition disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed"
+                aria-label="Add funds"
               >
                 <PlusCircle size={20} />
                 Add Funds
@@ -944,9 +956,11 @@ export default function Home() {
                 onClick={() => {
                   haptics.selection()
                   setShowWithdrawForm(true)
+                  setShowWithdrawReview(false)
                   setWithdrawError(null)
                 }}
                 className="flex items-center justify-center gap-2 rounded-2xl border border-emerald-400/30 bg-slate-950 py-4 text-base font-bold text-emerald-300 active:scale-95 transition"
+                aria-label="Send TON"
               >
                 <Send size={20} />
                 Send TON
@@ -960,6 +974,7 @@ export default function Home() {
                   fetchTransactions()
                 }}
                 className="flex w-full items-center justify-between border-t border-slate-800 py-4 text-left active:scale-[0.99] transition"
+                aria-label="Open transaction history"
               >
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-cyan-300">
@@ -982,79 +997,129 @@ export default function Home() {
           <div className="flex items-center justify-between border-b border-slate-900 px-5 py-5">
             <button
               onClick={() => {
+                if (showWithdrawReview) {
+                  setShowWithdrawReview(false)
+                  return
+                }
                 setShowWithdrawForm(false)
                 setWithdrawError(null)
               }}
               className="rounded-full bg-slate-900 p-3 text-slate-300 active:scale-95 transition"
+              aria-label={showWithdrawReview ? 'Back to send form' : 'Close send form'}
             >
               <X size={20} />
             </button>
-            <p className="text-lg font-bold text-white">Send TON</p>
+            <p className="text-lg font-bold text-white">{showWithdrawReview ? 'Review Send' : 'Send TON'}</p>
             <div className="h-11 w-11" />
           </div>
-          <div className="flex-1 overflow-y-auto px-5 py-6">
-            <div className="mb-7 rounded-3xl bg-slate-900 px-5 py-7 text-center">
-              <p className="text-sm font-bold text-slate-500">Available</p>
-              <p className="mt-3 text-4xl font-bold text-white">{balance.toFixed(3)} TON</p>
-            </div>
-            <div className="space-y-5">
-              <div>
-                <p className="mb-2 text-sm font-bold text-slate-400">Recipient Address</p>
-                <input
-                  value={withdrawAddress}
-                  onChange={event => setWithdrawAddress(event.target.value)}
-                  placeholder="TON wallet address"
-                  className="w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-4 text-base text-white placeholder-slate-600 outline-none focus:border-cyan-400"
-                />
+          {!showWithdrawReview ? (
+            <div className="flex-1 overflow-y-auto px-5 py-6">
+              <div className="mb-7 rounded-3xl bg-slate-900 px-5 py-7 text-center">
+                <p className="text-sm font-bold text-slate-500">Available</p>
+                <p className="mt-3 text-4xl font-bold text-white">{balance.toFixed(3)} TON</p>
               </div>
-              <div>
-                <p className="mb-2 text-sm font-bold text-slate-400">Amount</p>
-                <div className="flex gap-3">
+              <div className="space-y-5">
+                <div>
+                  <label htmlFor="withdraw-address" className="mb-2 block text-sm font-bold text-slate-400">Recipient Address</label>
                   <input
-                    value={withdrawAmount}
-                    onChange={event => setWithdrawAmount(event.target.value)}
-                    placeholder="0.00"
-                    inputMode="decimal"
-                    className="min-w-0 flex-1 rounded-2xl border border-slate-700 bg-slate-900 px-4 py-4 text-base text-white placeholder-slate-600 outline-none focus:border-cyan-400"
+                    id="withdraw-address"
+                    value={withdrawAddress}
+                    onChange={event => setWithdrawAddress(event.target.value)}
+                    placeholder="TON wallet address"
+                    autoComplete="off"
+                    className="w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-4 text-base text-white placeholder-slate-600 outline-none focus:border-cyan-400"
                   />
-                  <button
-                    onClick={() => setWithdrawAmount(Math.max(0, balance - 0.05).toFixed(3))}
-                    className="rounded-2xl bg-emerald-400/15 px-5 text-sm font-bold text-emerald-300 active:scale-95 transition"
-                  >
-                    MAX
-                  </button>
                 </div>
+                <div>
+                  <label htmlFor="withdraw-amount" className="mb-2 block text-sm font-bold text-slate-400">Amount</label>
+                  <div className="flex gap-3">
+                    <input
+                      id="withdraw-amount"
+                      value={withdrawAmount}
+                      onChange={event => setWithdrawAmount(event.target.value)}
+                      placeholder="0.00"
+                      inputMode="decimal"
+                      className="min-w-0 flex-1 rounded-2xl border border-slate-700 bg-slate-900 px-4 py-4 text-base text-white placeholder-slate-600 outline-none focus:border-cyan-400"
+                    />
+                    <button
+                      onClick={() => setWithdrawAmount(Math.max(0, balance - 0.05).toFixed(3))}
+                      className="rounded-2xl bg-emerald-400/15 px-5 text-sm font-bold text-emerald-300 active:scale-95 transition"
+                      aria-label="Use maximum sendable balance"
+                    >
+                      MAX
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="withdraw-comment" className="mb-2 block text-sm font-bold text-slate-400">Comment</label>
+                  <input
+                    id="withdraw-comment"
+                    value={withdrawComment}
+                    onChange={event => setWithdrawComment(event.target.value)}
+                    placeholder="Optional"
+                    maxLength={120}
+                    className="w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-4 text-base text-white placeholder-slate-600 outline-none focus:border-cyan-400"
+                  />
+                </div>
+                <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-4">
+                  <p className="text-sm font-semibold leading-relaxed text-amber-100">
+                    Only send to TON testnet addresses. Wrong addresses cannot be recovered.
+                  </p>
+                </div>
+                {withdrawError && (
+                  <p className="rounded-2xl border border-pink-500/40 bg-pink-500/10 px-4 py-3 text-sm font-semibold text-pink-100">
+                    {withdrawError}
+                  </p>
+                )}
               </div>
-              <div>
-                <p className="mb-2 text-sm font-bold text-slate-400">Comment</p>
-                <input
-                  value={withdrawComment}
-                  onChange={event => setWithdrawComment(event.target.value)}
-                  placeholder="Optional"
-                  maxLength={120}
-                  className="w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-4 text-base text-white placeholder-slate-600 outline-none focus:border-cyan-400"
-                />
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto px-5 py-6">
+              <div className="mb-5 rounded-3xl bg-slate-900 p-5">
+                <p className="mb-4 text-sm font-bold text-slate-400">Check the details before sending.</p>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Amount</p>
+                    <p className="mt-1 text-2xl font-bold text-white">{withdrawAmount || '0'} TON</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Destination</p>
+                    <p className="mt-1 break-all text-sm font-semibold leading-relaxed text-white">{withdrawAddress}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-2xl bg-slate-950 px-4 py-3">
+                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Network</p>
+                      <p className="mt-1 text-sm font-bold text-cyan-200">TON testnet</p>
+                    </div>
+                    <div className="rounded-2xl bg-slate-950 px-4 py-3">
+                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Comment</p>
+                      <p className="mt-1 truncate text-sm font-bold text-white">{withdrawComment.trim() || 'None'}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-4">
                 <p className="text-sm font-semibold leading-relaxed text-amber-100">
-                  Only send to TON testnet addresses. Wrong addresses cannot be recovered.
+                  Sends cannot be reversed. Make sure the address and network are correct.
                 </p>
               </div>
               {withdrawError && (
-                <p className="rounded-2xl border border-pink-500/40 bg-pink-500/10 px-4 py-3 text-sm font-semibold text-pink-100">
+                <p className="mt-5 rounded-2xl border border-pink-500/40 bg-pink-500/10 px-4 py-3 text-sm font-semibold text-pink-100">
                   {withdrawError}
                 </p>
               )}
             </div>
-          </div>
+          )}
           <div className="border-t border-slate-900 px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <button
               disabled={withdrawLoading || !withdrawAddress.trim() || !withdrawAmount.trim()}
-              onClick={handleWithdraw}
+              onClick={showWithdrawReview ? handleWithdraw : openWithdrawReview}
               className="flex w-full items-center justify-center gap-3 rounded-2xl bg-cyan-400 py-4 text-base font-bold text-black active:scale-95 transition disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Send size={18} />
-              {withdrawLoading ? 'Sending...' : 'Send'}
+              {showWithdrawReview
+                ? withdrawLoading ? 'Sending...' : 'Confirm Send'
+                : 'Review Send'}
             </button>
           </div>
         </div>
@@ -1066,6 +1131,7 @@ export default function Home() {
             <button
               onClick={() => setShowWalletDeposit(false)}
               className="rounded-full bg-slate-900 p-3 text-slate-300 active:scale-95 transition"
+              aria-label="Close wallet address"
             >
               <X size={18} />
             </button>
@@ -1091,6 +1157,7 @@ export default function Home() {
                   disabled={!tonWallet?.address}
                   onClick={() => tonWallet && copyWalletValue(tonWallet.address, 'Address')}
                   className="flex items-center justify-center gap-2 rounded-2xl bg-cyan-400 py-4 text-base font-bold text-black active:scale-95 transition disabled:opacity-50"
+                  aria-label="Copy wallet address"
                 >
                   <Copy size={18} />
                   Copy
@@ -1099,6 +1166,7 @@ export default function Home() {
                   disabled={!tonWallet?.address}
                   onClick={shareWalletAddress}
                   className="flex items-center justify-center gap-2 rounded-2xl border border-emerald-400/40 py-4 text-base font-bold text-emerald-300 active:scale-95 transition disabled:opacity-50"
+                  aria-label="Share wallet address"
                 >
                   <Share2 size={18} />
                   Share
@@ -1121,6 +1189,7 @@ export default function Home() {
             <button
               onClick={() => setShowDepositForm(false)}
               className="rounded-full bg-slate-900 p-3 text-slate-300 active:scale-95 transition"
+              aria-label="Close add funds"
             >
               <X size={20} />
             </button>
@@ -1140,6 +1209,7 @@ export default function Home() {
                   setShowWalletDeposit(true)
                 }}
                 className="rounded-2xl bg-slate-900 px-4 py-4 text-center text-slate-400 active:scale-95 transition"
+                aria-label="Show wallet address"
               >
                 <Wallet size={24} className="mx-auto mb-2" />
                 <p className="text-sm font-bold">Wallet</p>
@@ -1180,6 +1250,7 @@ export default function Home() {
                 disabled={!tonWallet?.address}
                 onClick={() => tonWallet && copyWalletValue(tonWallet.address, 'Deposit address')}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-cyan-400 py-4 text-base font-bold text-black active:scale-95 transition disabled:opacity-50"
+                aria-label="Copy deposit address"
               >
                 <Copy size={18} />
                 Copy address
@@ -1210,12 +1281,14 @@ export default function Home() {
                   fetchWalletBalance()
                 }}
                 className="rounded-full bg-slate-900 p-3 text-slate-400 active:scale-95 transition"
+                aria-label="Refresh transaction history"
               >
                 <RefreshCw size={16} />
               </button>
               <button
                 onClick={() => setShowWalletHistory(false)}
                 className="rounded-full bg-slate-900 p-3 text-slate-400 active:scale-95 transition"
+                aria-label="Close transaction history"
               >
                 <X size={16} />
               </button>

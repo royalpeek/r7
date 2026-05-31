@@ -109,6 +109,16 @@ export default function StakingModal({
             ))}
           </div>
 
+          {safeReplacementCredit > 0 && (
+            <div className="mb-4 rounded-2xl border border-cyan-400/35 bg-cyan-400/10 px-4 py-3">
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-cyan-300">Previous stake</p>
+              <div className="mt-2 flex items-center justify-between gap-3">
+                <span className="text-sm font-semibold text-slate-200">Returned before this stake</span>
+                <span className="shrink-0 text-base font-bold text-cyan-200">${safeReplacementCredit.toFixed(2)} USDT</span>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-4 mb-8 p-4 bg-slate-800 rounded-lg">
             <div className="flex justify-between text-sm">
               <span className="text-slate-400">Fee: 1%</span>

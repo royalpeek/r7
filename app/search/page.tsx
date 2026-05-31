@@ -419,9 +419,12 @@ export default function Search() {
       <div className="mb-6">
         <div className="flex items-center bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 gap-3">
           <span className="text-slate-500">🔍</span>
+          <label htmlFor="market-search" className="sr-only">Search markets</label>
           <input
+            id="market-search"
             type="text"
-            placeholder="search polls..."
+            placeholder="Search markets..."
+            aria-label="Search markets"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="flex-1 bg-transparent text-white placeholder-slate-500 focus:outline-none"

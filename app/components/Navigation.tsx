@@ -42,6 +42,7 @@ export default function Navigation() {
           href="/"
           onClick={() => haptics.selection()}
           className={navItemClass('/')}
+          aria-label="Home"
         >
           <AiOutlineHome size={22} />
           <span className={labelClass('/')}>Home</span>
@@ -51,6 +52,7 @@ export default function Navigation() {
           href="/porfolio-page"
           onClick={() => haptics.selection()}
           className={navItemClass('/porfolio-page')}
+          aria-label="Portfolio"
         >
           <BiChart size={22} />
           <span className={labelClass('/porfolio-page')}>Portfolio</span>
@@ -60,6 +62,7 @@ export default function Navigation() {
           href="/search"
           onClick={() => haptics.selection()}
           className={navItemClass('/search')}
+          aria-label="Search"
         >
           <AiOutlineSearch size={22} />
           <span className={labelClass('/search')}>Search</span>
@@ -69,6 +72,7 @@ export default function Navigation() {
           href="/profile"
           onClick={() => haptics.selection()}
           className={navItemClass('/profile')}
+          aria-label="Profile"
         >
           <AiOutlineUser size={22} />
           <span className={labelClass('/profile')}>Profile</span>
@@ -79,6 +83,7 @@ export default function Navigation() {
             href="/admin"
             onClick={() => haptics.selection()}
             className={navItemClass('/admin')}
+            aria-label="Admin"
           >
             <AiOutlineSetting size={22} />
             <span className={labelClass('/admin')}>Admin</span>

@@ -344,7 +344,7 @@ export default function Portfolio() {
               </p>
               <div className="mt-4 flex items-center justify-center gap-3 text-sm">
                 <span className="rounded-xl bg-cyan-400/10 px-3 py-2 font-bold text-cyan-400">
-                  {creatorStats?.totalPolls ?? 0} polls
+                  {creatorStats?.totalPolls ?? 0} markets
                 </span>
                 <span className="font-semibold text-slate-400">
                   {creatorStats?.resolvedPolls ?? 0} resolved · all-time creator fees
@@ -369,13 +369,13 @@ export default function Portfolio() {
               <MetricCard label="All-time fees" value={`$${Number(creatorStats?.totalFees || 0).toFixed(2)}`} sub={`${creatorStats?.resolvedPolls ?? 0} resolved`} accent />
               <MetricCard label="Avg pool" value={`$${Number(creatorStats?.avgPool || 0).toFixed(0)}`} sub="per market" />
               <MetricCard label="Avg votes" value={creatorStats?.avgVotes ?? 0} sub="per market" />
-              <MetricCard label="Top poll" value={`$${Number(creatorStats?.topPollReward || 0).toFixed(2)}`} sub={creatorStats?.topPollQuestion || 'No resolved poll'} accent />
-              <MetricCard label="Polls created" value={creatorStats?.totalPolls ?? 0} sub="all time" />
+              <MetricCard label="Top market" value={`$${Number(creatorStats?.topPollReward || 0).toFixed(2)}`} sub={creatorStats?.topPollQuestion || 'No resolved market'} accent />
+              <MetricCard label="Markets created" value={creatorStats?.totalPolls ?? 0} sub="all time" />
               <MetricCard label="Pending" value={creatorStats?.pendingPolls ?? 0} sub="not yet resolved" />
             </div>
 
             <div className="mt-8">
-              <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-white">Polls</h2>
+              <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-white">Markets</h2>
               <div className="space-y-3">
                 {creatorLoading ? (
                   <p className="rounded-2xl bg-slate-900 p-4 text-sm text-slate-400">loading creator stats...</p>
