@@ -36,6 +36,7 @@ POST /api/admin/unlock-device
 User IDs in R7 are stored in `public.users.id` (the Telegram numeric ID as text). The optional `telegram_id` column is legacy and not required.
 
 Run `supabase/devices.sql` if the `devices` and `device_security_logs` tables are missing.
+Run `supabase/security-events.sql` to store broader auth, rate-limit, admin, and withdrawal security events outside the wallet-only audit table.
 
 ## Security environment variables
 

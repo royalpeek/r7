@@ -51,6 +51,8 @@ export async function recordSecurityAudit(
     details?: AuditDetails
   }
 ) {
+  const safeDetails = cleanDetails(details)
+
   const { error } = await supabase
     .from('wallet_audit_logs')
     .insert({
@@ -60,7 +62,7 @@ export async function recordSecurityAudit(
       wallet_address: walletAddress || null,
       tx_hash: txHash || null,
       status,
-      details: cleanDetails(details),
+      details: safeDetails,
     })
 
   if (error) {
@@ -69,6 +71,34 @@ export async function recordSecurityAudit(
       status,
       code: error.code,
       message: error.message,
+    })
+  }
+
+  const { error: securityEventError } = await supabase
+    .from('security_events')
+    .insert({
+      event,
+      actor_user_id: actorUserId || null,
+      target_user_id: targetUserId || null,
+      wallet_address: walletAddress || null,
+      tx_hash: txHash || null,
+      status,
+      details: safeDetails,
+    })
+
+  const missingSecurityEventsTable = securityEventError && (
+    securityEventError.code === '42P01' ||
+    securityEventError.code === 'PGRST205' ||
+    securityEventError.message?.toLowerCase().includes('does not exist') ||
+    securityEventError.message?.toLowerCase().includes('could not find the table')
+  )
+
+  if (securityEventError && !missingSecurityEventsTable) {
+    console.error('security event insert failed:', {
+      event,
+      status,
+      code: securityEventError.code,
+      message: securityEventError.message,
     })
   }
 }

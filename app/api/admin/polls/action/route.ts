@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
+import { assertRequestRateLimit } from '@/lib/requestSecurity'
 
 const actions = ['pause', 'resume', 'close', 'archive', 'delete'] as const
 type PollAction = (typeof actions)[number]
@@ -19,7 +20,7 @@ async function requireAdmin(initData: string) {
   if (error) throw error
   if (user?.role !== 'admin') throw new Error('admin access required')
 
-  return supabase
+  return { supabase, userId }
 }
 
 export async function POST(request: NextRequest) {
@@ -27,7 +28,16 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const pollId = String(body.pollId || '')
     const action = body.action as PollAction
-    const supabase = await requireAdmin(body.initData)
+    const { supabase, userId } = await requireAdmin(body.initData)
+
+    await assertRequestRateLimit(supabase, {
+      key: `admin-poll-action:${userId}`,
+      limit: 20,
+      windowSeconds: 60,
+      auditEvent: 'suspicious_rate_limit',
+      actorUserId: userId,
+      details: { phase: 'admin_poll_action' },
+    })
 
     if (!pollId || !actions.includes(action)) {
       return NextResponse.json({ error: 'Invalid market action' }, { status: 400 })

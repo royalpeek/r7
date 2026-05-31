@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
+import { assertRequestRateLimit } from '@/lib/requestSecurity'
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,6 +10,15 @@ export async function POST(request: NextRequest) {
     const userId = String(telegramUser.id)
     const code = String(body.code || '').trim().toUpperCase()
     const supabase = getSupabaseAdmin()
+
+    await assertRequestRateLimit(supabase, {
+      key: `referral-apply:${userId}`,
+      limit: 10,
+      windowSeconds: 60,
+      auditEvent: 'suspicious_rate_limit',
+      actorUserId: userId,
+      details: { phase: 'referral_apply' },
+    })
 
     if (!code) {
       return NextResponse.json({ error: 'Enter a referral code' }, { status: 400 })

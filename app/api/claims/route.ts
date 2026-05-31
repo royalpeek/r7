@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
 import { assertUserDevice } from '@/lib/deviceSecurity'
-import { assertRateLimit } from '@/lib/rateLimit'
+import { assertRequestRateLimit } from '@/lib/requestSecurity'
 import { closeExpiredMarkets, getMarketLifecycleStatus } from '@/lib/marketLifecycle'
 import { calculateClaimPayout, calculateCreatorReward, getWinningDirection } from '@/lib/payouts'
 import { recordTransaction } from '@/lib/transactions'
@@ -20,10 +20,13 @@ export async function POST(request: NextRequest) {
       device: body.device,
       event: 'user_action_checked',
     })
-    await assertRateLimit(supabase, {
+    await assertRequestRateLimit(supabase, {
       key: `claim:${userId}`,
       limit: 10,
       windowSeconds: 60,
+      auditEvent: 'suspicious_rate_limit',
+      actorUserId: userId,
+      details: { phase: 'claim' },
     })
 
     if (!pollId) {

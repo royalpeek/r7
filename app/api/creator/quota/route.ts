@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
 import { CREATOR_OPEN_MARKET_LIMIT, getOpenMarketCutoff } from '@/lib/creatorQuota'
 import { closeExpiredMarkets } from '@/lib/marketLifecycle'
+import { assertRequestRateLimit } from '@/lib/requestSecurity'
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,6 +11,16 @@ export async function POST(request: NextRequest) {
     const telegramUser = getRequestTelegramUser(body.initData)
     const userId = String(telegramUser.id)
     const supabase = getSupabaseAdmin()
+
+    await assertRequestRateLimit(supabase, {
+      key: `creator-quota:${userId}`,
+      limit: 30,
+      windowSeconds: 60,
+      auditEvent: 'suspicious_rate_limit',
+      actorUserId: userId,
+      details: { phase: 'creator_quota' },
+    })
+
     await closeExpiredMarkets(supabase)
 
     const { data: user, error: userError } = await supabase

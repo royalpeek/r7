@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
 import { closeExpiredMarkets } from '@/lib/marketLifecycle'
 import { getLatestBlockedLogByUser, getUserDeviceBlockStatus } from '@/lib/deviceSecurity'
+import { assertRequestRateLimit } from '@/lib/requestSecurity'
 
 async function requireAdmin(initData: string) {
   const telegramUser = getRequestTelegramUser(initData)
@@ -24,7 +25,17 @@ async function requireAdmin(initData: string) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { supabase } = await requireAdmin(body.initData)
+    const { supabase, userId } = await requireAdmin(body.initData)
+
+    await assertRequestRateLimit(supabase, {
+      key: `admin-overview:${userId}`,
+      limit: 30,
+      windowSeconds: 60,
+      auditEvent: 'suspicious_rate_limit',
+      actorUserId: userId,
+      details: { phase: 'admin_overview' },
+    })
+
     await closeExpiredMarkets(supabase)
 
     const [

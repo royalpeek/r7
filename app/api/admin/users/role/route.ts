@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
+import { assertRequestRateLimit } from '@/lib/requestSecurity'
 
 const allowedRoles = ['user', 'creator', 'admin'] as const
 type Role = (typeof allowedRoles)[number]
@@ -33,6 +34,16 @@ export async function POST(request: NextRequest) {
     }
 
     const { supabase, adminUserId } = await getAdminUserId(body.initData)
+
+    await assertRequestRateLimit(supabase, {
+      key: `admin-role:${adminUserId}`,
+      limit: 15,
+      windowSeconds: 60,
+      auditEvent: 'suspicious_rate_limit',
+      actorUserId: adminUserId,
+      targetUserId,
+      details: { phase: 'admin_role_update' },
+    })
 
     if (targetUserId === adminUserId && role !== 'admin') {
       return NextResponse.json({ error: 'You cannot remove your own admin role' }, { status: 400 })

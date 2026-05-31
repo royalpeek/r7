@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
 import { assertUserDevice } from '@/lib/deviceSecurity'
-import { assertRateLimit } from '@/lib/rateLimit'
+import { assertRequestRateLimit } from '@/lib/requestSecurity'
 import { CREATOR_OPEN_MARKET_LIMIT, getOpenMarketCutoff } from '@/lib/creatorQuota'
 import { closeExpiredMarkets } from '@/lib/marketLifecycle'
 import { MARKET_DURATION_HOURS, moderateMarketQuestion } from '@/lib/marketModeration'
@@ -42,10 +42,13 @@ export async function POST(request: NextRequest) {
       device: body.device,
       event: 'user_action_checked',
     })
-    await assertRateLimit(admin, {
+    await assertRequestRateLimit(admin, {
       key: `market-create:${userId}`,
       limit: 6,
       windowSeconds: 60,
+      auditEvent: 'suspicious_rate_limit',
+      actorUserId: userId,
+      details: { phase: 'market_create' },
     })
 
     if (!question || question.trim().length === 0) {

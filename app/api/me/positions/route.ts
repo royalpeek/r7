@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
 import { closeExpiredMarkets } from '@/lib/marketLifecycle'
+import { assertRequestRateLimit } from '@/lib/requestSecurity'
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,6 +10,16 @@ export async function POST(request: NextRequest) {
     const user = getRequestTelegramUser(body.initData)
     const userId = String(user.id)
     const supabase = getSupabaseAdmin()
+
+    await assertRequestRateLimit(supabase, {
+      key: `me-positions:${userId}`,
+      limit: 45,
+      windowSeconds: 60,
+      auditEvent: 'suspicious_rate_limit',
+      actorUserId: userId,
+      details: { phase: 'me_positions' },
+    })
+
     await closeExpiredMarkets(supabase)
 
     const { data: votes, error: votesError } = await supabase

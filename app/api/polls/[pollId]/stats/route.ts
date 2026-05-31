@@ -1,13 +1,22 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { assertRequestRateLimit, getRequestFingerprint } from '@/lib/requestSecurity'
 
 export async function GET(
-  _request: Request,
+  request: NextRequest,
   context: { params: Promise<{ pollId: string }> }
 ) {
   try {
     const { pollId } = await context.params
     const supabase = getSupabaseAdmin()
+
+    await assertRequestRateLimit(supabase, {
+      key: `poll-stats:${getRequestFingerprint(request)}`,
+      limit: 120,
+      windowSeconds: 60,
+      auditEvent: 'suspicious_rate_limit',
+      details: { phase: 'poll_stats' },
+    })
 
     const { data, error } = await supabase
       .from('votes')

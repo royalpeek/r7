@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
 import { assertUserDevice } from '@/lib/deviceSecurity'
-import { assertRateLimit } from '@/lib/rateLimit'
+import { assertRequestRateLimit } from '@/lib/requestSecurity'
 import { getOrCreateUserTonWallet, getTonAssetName, getTonNetwork, makeTonDepositMemo } from '@/lib/tonWallet'
 
 export async function POST(request: NextRequest) {
@@ -12,10 +12,13 @@ export async function POST(request: NextRequest) {
     const userId = String(telegramUser.id)
     const supabase = getSupabaseAdmin()
 
-    await assertRateLimit(supabase, {
+    await assertRequestRateLimit(supabase, {
       key: `ton-wallet:${userId}`,
       limit: 10,
       windowSeconds: 60,
+      auditEvent: 'suspicious_rate_limit',
+      actorUserId: userId,
+      details: { phase: 'ton_wallet_load_or_create' },
     })
     await assertUserDevice(supabase, {
       userId,
