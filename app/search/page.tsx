@@ -323,6 +323,11 @@ export default function Search() {
                 voteDirection={stakingDirection === 'yes' ? 'YES' : 'NO'}
                 availableBalance={balance}
                 replacementCredit={userVote && stakingDirection !== userVote.direction ? Number(userVote.amount || 0) : 0}
+                yesPool={selectedPoll.yes_pool}
+                noPool={selectedPoll.no_pool}
+                existingVoteDirection={userVote?.direction ?? null}
+                existingVoteAmount={Number(userVote?.amount || 0)}
+                mode={stakingMode}
                 onConfirm={handleConfirmVote}
                 onCancel={() => { setShowStakingModal(false); setStakingDirection(null); setStakingMode('new') }}
               />,
@@ -405,6 +410,11 @@ export default function Search() {
               voteDirection={stakingDirection === 'yes' ? 'YES' : 'NO'}
               availableBalance={balance}
               replacementCredit={userVote && stakingDirection !== userVote.direction ? Number(userVote.amount || 0) : 0}
+              yesPool={selectedPoll.yes_pool}
+              noPool={selectedPoll.no_pool}
+              existingVoteDirection={userVote?.direction ?? null}
+              existingVoteAmount={Number(userVote?.amount || 0)}
+              mode={stakingMode}
               onConfirm={handleConfirmVote}
               onCancel={() => { setShowStakingModal(false); setStakingDirection(null); setStakingMode('new') }}
             />,

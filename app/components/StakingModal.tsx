@@ -2,12 +2,18 @@
 
 import { useEffect, useState } from 'react'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
+import { calculatePayoutBreakdown } from '@/lib/payouts'
 
 interface StakingModalProps {
   question: string
   voteDirection: 'YES' | 'NO'
   availableBalance?: number
   replacementCredit?: number
+  yesPool?: number
+  noPool?: number
+  existingVoteDirection?: 'yes' | 'no' | null
+  existingVoteAmount?: number
+  mode?: 'new' | 'add' | 'change'
   onConfirm: (amount: number) => void
   onCancel: () => void
 }
@@ -17,6 +23,11 @@ export default function StakingModal({
   voteDirection,
   availableBalance = 0,
   replacementCredit = 0,
+  yesPool = 0,
+  noPool = 0,
+  existingVoteDirection = null,
+  existingVoteAmount = 0,
+  mode = 'new',
   onConfirm,
   onCancel,
 }: StakingModalProps) {
@@ -27,8 +38,40 @@ export default function StakingModal({
   const predefinedAmounts = [5, 10, 50, 100, 500]
   const fee = amount * 0.01
   const total = amount + fee
-  const estimatedPayout = (amount * 0.95).toFixed(2)
   const safeReplacementCredit = Math.max(0, replacementCredit)
+  const selectedDirection = voteDirection.toLowerCase() as 'yes' | 'no'
+  const safeExistingVoteAmount = Math.max(0, existingVoteAmount)
+  let estimatedYesPool = Math.max(0, yesPool)
+  let estimatedNoPool = Math.max(0, noPool)
+  let estimatedVoteAmount = amount
+
+  if (existingVoteDirection && safeExistingVoteAmount > 0) {
+    const isChangingSide = mode === 'change' || existingVoteDirection !== selectedDirection
+
+    if (isChangingSide) {
+      if (existingVoteDirection === 'yes') {
+        estimatedYesPool = Math.max(0, estimatedYesPool - safeExistingVoteAmount)
+      } else {
+        estimatedNoPool = Math.max(0, estimatedNoPool - safeExistingVoteAmount)
+      }
+    } else {
+      estimatedVoteAmount = safeExistingVoteAmount + amount
+    }
+  }
+
+  if (selectedDirection === 'yes') {
+    estimatedYesPool += amount
+  } else {
+    estimatedNoPool += amount
+  }
+
+  const estimatedPayout = calculatePayoutBreakdown({
+    voteAmount: estimatedVoteAmount,
+    voteDirection: selectedDirection,
+    winningDirection: selectedDirection,
+    yesPool: estimatedYesPool,
+    noPool: estimatedNoPool,
+  }).claimablePayout.toFixed(2)
   const amountNeededFromBalance = Math.max(0, total - safeReplacementCredit)
   const walletChange = safeReplacementCredit - total
   const hasEnoughBalance = amountNeededFromBalance <= availableBalance
@@ -130,7 +173,7 @@ export default function StakingModal({
               </div>
             )}
             <div className="flex justify-between text-sm font-bold">
-              <span className="text-white">Est. payout if {voteDirection}</span>
+              <span className="text-white">Est. payout if {voteDirection} wins</span>
               <span className={textColor}>${estimatedPayout} USDT</span>
             </div>
             <div className="flex justify-between text-sm font-bold pt-4 border-t border-slate-700">

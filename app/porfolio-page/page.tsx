@@ -519,6 +519,11 @@ export default function Portfolio() {
               voteDirection={stakingDirection === 'yes' ? 'YES' : 'NO'}
               availableBalance={balance}
               replacementCredit={stakingDirection !== selectedPosition.direction ? Number(selectedPosition.amount || 0) : 0}
+              yesPool={selectedPosition.yes_pool}
+              noPool={selectedPosition.no_pool}
+              existingVoteDirection={selectedPosition.direction}
+              existingVoteAmount={Number(selectedPosition.amount || 0)}
+              mode={stakingMode}
               onConfirm={handleConfirmVote}
               onCancel={() => { setShowStakingModal(false); setStakingDirection(null); setStakingMode('new') }}
             />,
