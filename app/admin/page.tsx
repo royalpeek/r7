@@ -16,6 +16,9 @@ type AdminUser = {
   role: Role
   is_creator?: boolean
   created_at?: string
+  device_registered?: boolean
+  device_last_seen_at?: string | null
+  device_fingerprint?: string | null
 }
 
 type AdminPoll = {
@@ -129,6 +132,7 @@ export default function AdminPage() {
   const [unlockIdentifier, setUnlockIdentifier] = useState('')
   const [unlockingUserId, setUnlockingUserId] = useState<string | null>(null)
   const [unlockResult, setUnlockResult] = useState<string | null>(null)
+  const [recentlyClearedUserIds, setRecentlyClearedUserIds] = useState<Record<string, number>>({})
   const [activeTab, setActiveTab] = useState<AdminTab>('overview')
 
   const isAdmin = appUser?.role === 'admin'
@@ -187,9 +191,22 @@ export default function AdminPage() {
 
       if (!response.ok) throw new Error(data.error || 'failed to unlock device')
 
-      setUnlockResult(`Device cleared for user ${data.userId}`)
+      const clearedUserId = String(data.userId)
+      setUnlockResult(`Device registration cleared for ${clearedUserId}. They can open R7 again on their phone.`)
       setUnlockIdentifier('')
+      setRecentlyClearedUserIds(prev => ({ ...prev, [clearedUserId]: Date.now() }))
       haptics.notification('success')
+      setOverview(prev => prev ? {
+        ...prev,
+        users: prev.users.map(user => user.id === clearedUserId
+          ? {
+              ...user,
+              device_registered: false,
+              device_last_seen_at: null,
+              device_fingerprint: null,
+            }
+          : user),
+      } : prev)
       await fetchOverview()
     } catch (error) {
       haptics.notification('error')
@@ -660,9 +677,10 @@ export default function AdminPage() {
       {activeTab === 'users' && (
         <>
           <section className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-4">
-            <h2 className="text-lg font-bold text-white">Unlock device</h2>
+            <h2 className="text-lg font-bold text-white">Reset device registration</h2>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              Clears the one-device registration for a user. Use their R7 user ID (Telegram numeric ID) or @username.
+              Use this when a user is stuck on “account locked” or “linked to another device.”
+              It removes their saved device so the next login can register again. It does not change their balance or role.
             </p>
             <div className="mt-4 flex gap-2">
               <input
@@ -713,6 +731,22 @@ export default function AdminPage() {
                       <p className="text-slate-500">Joined</p>
                       <p className="mt-1 font-bold text-white">{user.created_at ? formatDateTime(user.created_at) : '--'}</p>
                     </div>
+                    <div className="col-span-2">
+                      <p className="text-slate-500">Device</p>
+                      <p className={`mt-1 font-bold ${
+                        recentlyClearedUserIds[user.id]
+                          ? 'text-emerald-300'
+                          : user.device_registered
+                            ? 'text-amber-200'
+                            : 'text-slate-400'
+                      }`}>
+                        {recentlyClearedUserIds[user.id]
+                          ? 'Cleared just now — waiting for next login'
+                          : user.device_registered
+                            ? `Linked${user.device_last_seen_at ? ` · ${formatDateTime(user.device_last_seen_at)}` : ''}`
+                            : 'Not linked'}
+                      </p>
+                    </div>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     {roles.map(role => (
@@ -730,14 +764,22 @@ export default function AdminPage() {
                       </button>
                     ))}
                   </div>
-                  <button
-                    type="button"
-                    disabled={unlockingUserId === user.id}
-                    onClick={() => unlockDevice(user.id)}
-                    className="mt-3 w-full rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {unlockingUserId === user.id ? 'Unlocking...' : 'Unlock device'}
-                  </button>
+                  {user.device_registered ? (
+                    <button
+                      type="button"
+                      disabled={unlockingUserId === user.id}
+                      onClick={() => unlockDevice(user.id)}
+                      className="mt-3 w-full rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {unlockingUserId === user.id ? 'Clearing...' : 'Clear device lock'}
+                    </button>
+                  ) : (
+                    <p className="mt-3 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-center text-xs text-slate-500">
+                      {recentlyClearedUserIds[user.id]
+                        ? 'Registration cleared. No action needed until they log in again.'
+                        : 'No device on file. Nothing to clear.'}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>

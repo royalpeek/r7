@@ -79,6 +79,33 @@ export async function POST(request: NextRequest) {
       return sum + Number(poll.yes_pool || 0) + Number(poll.no_pool || 0)
     }, 0)
 
+    const users = usersResult.data || []
+    const userIds = users.map(user => user.id)
+    let devicesByUserId: Record<string, { last_seen_at?: string | null; device_fingerprint?: string | null }> = {}
+
+    if (userIds.length > 0) {
+      const { data: devices, error: devicesError } = await supabase
+        .from('devices')
+        .select('user_id, device_fingerprint, last_seen_at')
+        .in('user_id', userIds)
+
+      if (!devicesError && devices) {
+        devicesByUserId = Object.fromEntries(
+          devices.map(device => [device.user_id, device])
+        )
+      }
+    }
+
+    const usersWithDevices = users.map(user => {
+      const device = devicesByUserId[user.id]
+      return {
+        ...user,
+        device_registered: Boolean(device?.device_fingerprint),
+        device_last_seen_at: device?.last_seen_at || null,
+        device_fingerprint: device?.device_fingerprint || null,
+      }
+    })
+
     return NextResponse.json({
       stats: {
         totalUsers: usersCountResult.count ?? 0,
@@ -86,7 +113,7 @@ export async function POST(request: NextRequest) {
         totalVotes: votesCountResult.count ?? 0,
         totalVolume,
       },
-      users: usersResult.data || [],
+      users: usersWithDevices,
       polls: pollsResult.data || [],
       walletAuditLogs: walletAuditResult.data || [],
       deviceSecurityLogs: deviceLogsResult.data || [],
