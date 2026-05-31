@@ -27,18 +27,30 @@ export async function POST(request: NextRequest) {
       windowSeconds: 60,
     })
 
+    const { data: existingUser, error: checkError } = await supabase
+      .from('users')
+      .select('id, role')
+      .eq('id', userId)
+      .maybeSingle()
+
+    if (checkError) throw checkError
+
+    const isExistingAdmin = existingUser?.role === 'admin'
+
     if (!deviceSecurityDisabled) {
-      if (!device) {
+      if (!device && !isExistingAdmin) {
         return NextResponse.json({
           error: 'One account is allowed per device. Please reopen the app and try again.',
         }, { status: 401 })
       }
 
-      await assertRateLimit(supabase, {
-        key: `auth-device:${device.fingerprint}`,
-        limit: 12,
-        windowSeconds: 60,
-      })
+      if (device) {
+        await assertRateLimit(supabase, {
+          key: `auth-device:${device.fingerprint}`,
+          limit: 12,
+          windowSeconds: 60,
+        })
+      }
     } else {
       await recordDeviceLog(supabase, {
         event: 'device_security_disabled',
@@ -47,14 +59,6 @@ export async function POST(request: NextRequest) {
         details: { phase: 'auth_route' },
       })
     }
-
-    const { data: existingUser, error: checkError } = await supabase
-      .from('users')
-      .select('id, role')
-      .eq('id', userId)
-      .maybeSingle()
-
-    if (checkError) throw checkError
 
     if (!existingUser) {
       const { data, error } = await supabase
