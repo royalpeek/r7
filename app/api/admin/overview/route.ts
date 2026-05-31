@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
 import { closeExpiredMarkets } from '@/lib/marketLifecycle'
+import { getLatestBlockedLogByUser, getUserDeviceBlockStatus } from '@/lib/deviceSecurity'
 
 async function requireAdmin(initData: string) {
   const telegramUser = getRequestTelegramUser(initData)
@@ -83,26 +84,68 @@ export async function POST(request: NextRequest) {
     const userIds = users.map(user => user.id)
     let devicesByUserId: Record<string, { last_seen_at?: string | null; device_fingerprint?: string | null }> = {}
 
+    let latestBlockedByUser: ReturnType<typeof getLatestBlockedLogByUser> = {}
+    let ownerUsernamesById: Record<string, string | null> = {}
+
     if (userIds.length > 0) {
-      const { data: devices, error: devicesError } = await supabase
-        .from('devices')
-        .select('user_id, device_fingerprint, last_seen_at')
-        .in('user_id', userIds)
+      const [{ data: devices, error: devicesError }, { data: blockedLogs, error: blockedLogsError }] =
+        await Promise.all([
+          supabase
+            .from('devices')
+            .select('user_id, device_fingerprint, last_seen_at')
+            .in('user_id', userIds),
+          supabase
+            .from('device_security_logs')
+            .select('user_id, event, details, created_at, status')
+            .in('user_id', userIds)
+            .eq('status', 'blocked')
+            .order('created_at', { ascending: false })
+            .limit(200),
+        ])
 
       if (!devicesError && devices) {
         devicesByUserId = Object.fromEntries(
           devices.map(device => [device.user_id, device])
         )
       }
+
+      if (!blockedLogsError && blockedLogs) {
+        latestBlockedByUser = getLatestBlockedLogByUser(blockedLogs)
+      }
+
+      const ownerUserIds = Array.from(new Set(
+        userIds
+          .map(userId => getUserDeviceBlockStatus(latestBlockedByUser[userId]).blockedByUserId)
+          .filter((value): value is string => Boolean(value))
+      ))
+
+      if (ownerUserIds.length > 0) {
+        const { data: owners } = await supabase
+          .from('users')
+          .select('id, username')
+          .in('id', ownerUserIds)
+
+        ownerUsernamesById = Object.fromEntries(
+          (owners || []).map(owner => [owner.id, owner.username || null])
+        )
+      }
     }
 
     const usersWithDevices = users.map(user => {
       const device = devicesByUserId[user.id]
+      const blockStatus = getUserDeviceBlockStatus(latestBlockedByUser[user.id])
+      const blockedByUserId = blockStatus.blockedByUserId
+
       return {
         ...user,
         device_registered: Boolean(device?.device_fingerprint),
         device_last_seen_at: device?.last_seen_at || null,
         device_fingerprint: device?.device_fingerprint || null,
+        device_block_reason: blockStatus.blockReason,
+        device_blocked_by_user_id: blockedByUserId,
+        device_blocked_by_username: blockedByUserId
+          ? ownerUsernamesById[blockedByUserId] || null
+          : null,
       }
     })
 

@@ -32,15 +32,23 @@ export async function POST(request: NextRequest) {
     const { supabase, adminUserId } = await requireAdmin(body.initData)
     const targetUserId = await resolveUserIdentifier(supabase, identifier)
 
-    await unlockUserDevice(supabase, {
+    const result = await unlockUserDevice(supabase, {
       targetUserId,
       adminUserId,
     })
 
+    let message = 'Device registration cleared. Ask them to reopen R7.'
+    if (result.clearedOwnerUserId) {
+      message = `Phone released from user ${result.clearedOwnerUserId}. ${targetUserId} can log in on this device now. Your admin account is not blocked by device rules.`
+    } else if (!result.hadTargetDevice) {
+      message = `No device was on file for ${targetUserId}. If they were still locked, ask them to try again after you clear the account that owns this phone.`
+    }
+
     return NextResponse.json({
       ok: true,
       userId: targetUserId,
-      message: 'Device registration cleared for this user.',
+      clearedOwnerUserId: result.clearedOwnerUserId,
+      message,
     })
   } catch (error) {
     console.error('Admin unlock device error:', error)

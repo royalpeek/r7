@@ -19,6 +19,9 @@ type AdminUser = {
   device_registered?: boolean
   device_last_seen_at?: string | null
   device_fingerprint?: string | null
+  device_block_reason?: 'phone_taken' | 'mismatch' | null
+  device_blocked_by_user_id?: string | null
+  device_blocked_by_username?: string | null
 }
 
 type AdminPoll = {
@@ -192,20 +195,43 @@ export default function AdminPage() {
       if (!response.ok) throw new Error(data.error || 'failed to unlock device')
 
       const clearedUserId = String(data.userId)
-      setUnlockResult(`Device registration cleared for ${clearedUserId}. They can open R7 again on their phone.`)
+      const clearedOwnerUserId = data.clearedOwnerUserId
+        ? String(data.clearedOwnerUserId)
+        : null
+      setUnlockResult(String(data.message || `Device access reset for ${clearedUserId}.`))
       setUnlockIdentifier('')
-      setRecentlyClearedUserIds(prev => ({ ...prev, [clearedUserId]: Date.now() }))
+      setRecentlyClearedUserIds(prev => {
+        const next = { ...prev, [clearedUserId]: Date.now() }
+        if (clearedOwnerUserId) next[clearedOwnerUserId] = Date.now()
+        return next
+      })
       haptics.notification('success')
       setOverview(prev => prev ? {
         ...prev,
-        users: prev.users.map(user => user.id === clearedUserId
-          ? {
+        users: prev.users.map(user => {
+          if (user.id === clearedUserId) {
+            return {
+              ...user,
+              device_registered: false,
+              device_last_seen_at: null,
+              device_fingerprint: null,
+              device_block_reason: null,
+              device_blocked_by_user_id: null,
+              device_blocked_by_username: null,
+            }
+          }
+
+          if (clearedOwnerUserId && user.id === clearedOwnerUserId) {
+            return {
               ...user,
               device_registered: false,
               device_last_seen_at: null,
               device_fingerprint: null,
             }
-          : user),
+          }
+
+          return user
+        }),
       } : prev)
       await fetchOverview()
     } catch (error) {
@@ -679,8 +705,8 @@ export default function AdminPage() {
           <section className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-4">
             <h2 className="text-lg font-bold text-white">Reset device registration</h2>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              Use this when a user is stuck on “account locked” or “linked to another device.”
-              It removes their saved device so the next login can register again. It does not change their balance or role.
+              Use when someone is stuck on “account locked.” If their phone is already tied to another R7 account,
+              this also releases that other registration so they can log in. R7 still allows only one Telegram account per phone.
             </p>
             <div className="mt-4 flex gap-2">
               <input
@@ -736,15 +762,21 @@ export default function AdminPage() {
                       <p className={`mt-1 font-bold ${
                         recentlyClearedUserIds[user.id]
                           ? 'text-emerald-300'
-                          : user.device_registered
-                            ? 'text-amber-200'
-                            : 'text-slate-400'
+                          : user.device_block_reason === 'phone_taken'
+                            ? 'text-pink-300'
+                            : user.device_registered
+                              ? 'text-amber-200'
+                              : 'text-slate-400'
                       }`}>
                         {recentlyClearedUserIds[user.id]
-                          ? 'Cleared just now — waiting for next login'
-                          : user.device_registered
-                            ? `Linked${user.device_last_seen_at ? ` · ${formatDateTime(user.device_last_seen_at)}` : ''}`
-                            : 'Not linked'}
+                          ? 'Cleared just now — ask them to reopen R7'
+                          : user.device_block_reason === 'phone_taken'
+                            ? `Locked — phone used by @${user.device_blocked_by_username || user.device_blocked_by_user_id || 'another account'}`
+                            : user.device_block_reason === 'mismatch'
+                              ? 'Locked — different device on file'
+                              : user.device_registered
+                                ? `Linked${user.device_last_seen_at ? ` · ${formatDateTime(user.device_last_seen_at)}` : ''}`
+                                : 'Not linked'}
                       </p>
                     </div>
                   </div>
@@ -764,20 +796,28 @@ export default function AdminPage() {
                       </button>
                     ))}
                   </div>
-                  {user.device_registered ? (
+                  {user.role === 'admin' ? (
+                    <p className="mt-3 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-center text-xs text-slate-500">
+                      Admin accounts are not hard-locked by device rules.
+                    </p>
+                  ) : user.device_registered || user.device_block_reason ? (
                     <button
                       type="button"
                       disabled={unlockingUserId === user.id}
                       onClick={() => unlockDevice(user.id)}
                       className="mt-3 w-full rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {unlockingUserId === user.id ? 'Clearing...' : 'Clear device lock'}
+                      {unlockingUserId === user.id
+                        ? 'Resetting...'
+                        : user.device_block_reason === 'phone_taken'
+                          ? 'Release phone for this user'
+                          : 'Reset device access'}
                     </button>
                   ) : (
                     <p className="mt-3 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-center text-xs text-slate-500">
                       {recentlyClearedUserIds[user.id]
-                        ? 'Registration cleared. No action needed until they log in again.'
-                        : 'No device on file. Nothing to clear.'}
+                        ? 'Reset done. Ask them to fully close and reopen the mini app.'
+                        : 'No device lock on file for this user.'}
                     </p>
                   )}
                 </div>

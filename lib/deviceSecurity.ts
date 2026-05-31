@@ -10,6 +10,7 @@ type DeviceLogEvent =
   | 'admin_device_mismatch_warning'
   | 'admin_login_allowed'
   | 'admin_unlock_device'
+  | 'admin_release_shared_phone'
   | 'devices_table_unavailable'
   | 'wallet_creation_checked'
   | 'withdrawal_device_checked'
@@ -241,6 +242,51 @@ async function upsertUserDevice(
   }
 }
 
+export type DeviceBlockReason = 'phone_taken' | 'mismatch' | null
+
+export type UserDeviceBlockStatus = {
+  blockReason: DeviceBlockReason
+  blockedByUserId: string | null
+}
+
+type DeviceSecurityLogRow = {
+  user_id: string | null
+  event: string
+  details?: { ownerUserId?: string | number | null } | null
+  created_at?: string
+}
+
+export function getLatestBlockedLogByUser(logs: DeviceSecurityLogRow[]) {
+  const latestByUser: Record<string, DeviceSecurityLogRow> = {}
+
+  for (const log of logs) {
+    if (!log.user_id || latestByUser[log.user_id]) continue
+    latestByUser[log.user_id] = log
+  }
+
+  return latestByUser
+}
+
+export function getUserDeviceBlockStatus(log?: DeviceSecurityLogRow | null): UserDeviceBlockStatus {
+  if (!log) {
+    return { blockReason: null, blockedByUserId: null }
+  }
+
+  if (log.event === 'multiple_account_blocked') {
+    const ownerUserId = log.details?.ownerUserId
+    return {
+      blockReason: 'phone_taken',
+      blockedByUserId: ownerUserId != null ? String(ownerUserId) : null,
+    }
+  }
+
+  if (log.event === 'device_mismatch_blocked') {
+    return { blockReason: 'mismatch', blockedByUserId: null }
+  }
+
+  return { blockReason: null, blockedByUserId: null }
+}
+
 export async function unlockUserDevice(
   supabase: SupabaseClient,
   {
@@ -251,12 +297,59 @@ export async function unlockUserDevice(
     adminUserId: string
   }
 ) {
-  const { error } = await supabase
+  let clearedOwnerUserId: string | null = null
+
+  const { data: targetDevice, error: targetLookupError } = await supabase
+    .from('devices')
+    .select('id')
+    .eq('user_id', targetUserId)
+    .maybeSingle()
+
+  if (targetLookupError && !isMissingRelationError(targetLookupError)) throw targetLookupError
+
+  const { error: targetDeleteError } = await supabase
     .from('devices')
     .delete()
     .eq('user_id', targetUserId)
 
-  if (error && !isMissingRelationError(error)) throw error
+  if (targetDeleteError && !isMissingRelationError(targetDeleteError)) throw targetDeleteError
+
+  const { data: blockedLogs, error: blockedLogsError } = await supabase
+    .from('device_security_logs')
+    .select('event, details')
+    .eq('user_id', targetUserId)
+    .eq('status', 'blocked')
+    .order('created_at', { ascending: false })
+    .limit(10)
+
+  if (blockedLogsError && !isMissingRelationError(blockedLogsError)) throw blockedLogsError
+
+  const sharedPhoneLog = (blockedLogs || []).find(log => log.event === 'multiple_account_blocked')
+  const ownerUserId = sharedPhoneLog?.details?.ownerUserId
+
+  if (ownerUserId != null) {
+    const ownerId = String(ownerUserId)
+    if (ownerId && ownerId !== targetUserId) {
+      const { error: ownerDeleteError } = await supabase
+        .from('devices')
+        .delete()
+        .eq('user_id', ownerId)
+
+      if (ownerDeleteError && !isMissingRelationError(ownerDeleteError)) throw ownerDeleteError
+
+      clearedOwnerUserId = ownerId
+
+      await recordDeviceLog(supabase, {
+        event: 'admin_release_shared_phone',
+        userId: targetUserId,
+        status: 'success',
+        details: {
+          adminUserId,
+          ownerUserId: ownerId,
+        },
+      })
+    }
+  }
 
   await recordDeviceLog(supabase, {
     event: 'admin_unlock_device',
@@ -264,9 +357,18 @@ export async function unlockUserDevice(
     status: 'success',
     details: {
       adminUserId,
-      devicesTableMissing: Boolean(error && isMissingRelationError(error)),
+      hadTargetDevice: Boolean(targetDevice),
+      clearedOwnerUserId,
+      devicesTableMissing: Boolean(
+        targetDeleteError && isMissingRelationError(targetDeleteError)
+      ),
     },
   })
+
+  return {
+    hadTargetDevice: Boolean(targetDevice),
+    clearedOwnerUserId,
+  }
 }
 
 export async function registerOrVerifyDevice(
