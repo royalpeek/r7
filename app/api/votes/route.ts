@@ -13,6 +13,7 @@ export async function POST(request: NextRequest) {
     const user = getRequestTelegramUser(body.initData)
     const userId = String(user.id)
     let { poll_id, direction, amount } = body
+    const mode = body.mode ? String(body.mode).toLowerCase() : null
     const supabase = getSupabaseAdmin()
 
     if (!poll_id || !direction || !amount) {
@@ -29,6 +30,10 @@ export async function POST(request: NextRequest) {
 
     if (direction !== 'yes' && direction !== 'no') {
       return NextResponse.json({ error: 'invalid vote direction' }, { status: 400 })
+    }
+
+    if (mode && mode !== 'new' && mode !== 'add' && mode !== 'change') {
+      return NextResponse.json({ error: 'invalid vote mode' }, { status: 400 })
     }
 
     console.log('vote request:', { userId, poll_id, direction, amount })
@@ -92,6 +97,18 @@ export async function POST(request: NextRequest) {
     if (existingVote) {
       const oldDirection = existingVote.direction
       const oldAmount = Number(existingVote.amount || 0)
+
+      if (mode === 'add' && oldDirection !== direction) {
+        return NextResponse.json({
+          error: 'Your vote side changed. Reopen this market and try again.',
+        }, { status: 409 })
+      }
+
+      if (mode === 'change' && oldDirection === direction) {
+        return NextResponse.json({
+          error: 'You are already on this side. Use Add instead.',
+        }, { status: 409 })
+      }
 
       // user is changing sides
       if (oldDirection !== direction) {

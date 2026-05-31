@@ -73,6 +73,7 @@ export default function Portfolio() {
   const [selectedPosition, setSelectedPosition] = useState<Position | null>(null)
   const [showStakingModal, setShowStakingModal] = useState(false)
   const [stakingDirection, setStakingDirection] = useState<'yes' | 'no' | null>(null)
+  const [stakingMode, setStakingMode] = useState<'new' | 'add' | 'change'>('new')
   const [claimingPositionId, setClaimingPositionId] = useState<string | null>(null)
   const [showPerformance, setShowPerformance] = useState(false)
   const [performanceTab, setPerformanceTab] = useState<'performance' | 'creator'>('performance')
@@ -127,6 +128,7 @@ export default function Portfolio() {
           poll_id: selectedPosition.poll_id,
           direction: stakingDirection,
           amount,
+          mode: stakingMode,
         }),
       })
       const data = await response.json()
@@ -136,6 +138,7 @@ export default function Portfolio() {
       haptics.notification('success')
       setShowStakingModal(false)
       setStakingDirection(null)
+      setStakingMode('new')
       const nextPositions = await fetchPositions()
       const nextSelectedPosition = nextPositions.find(position => position.poll_id === selectedPosition.poll_id)
       if (nextSelectedPosition) {
@@ -450,6 +453,7 @@ export default function Portfolio() {
               haptics.impact('medium')
               setVoteError(null)
               setStakingDirection(selectedPosition.direction)
+              setStakingMode('add')
               setShowStakingModal(true)
             }}
             onChangeVote={() => {
@@ -457,6 +461,7 @@ export default function Portfolio() {
               haptics.impact('medium')
               setVoteError(null)
               setStakingDirection(selectedPosition.direction === 'yes' ? 'no' : 'yes')
+              setStakingMode('change')
               setShowStakingModal(true)
             }}
             onClaimed={async balance => {
@@ -479,7 +484,7 @@ export default function Portfolio() {
               availableBalance={balance}
               replacementCredit={stakingDirection !== selectedPosition.direction ? Number(selectedPosition.amount || 0) : 0}
               onConfirm={handleConfirmVote}
-              onCancel={() => { setShowStakingModal(false); setStakingDirection(null) }}
+              onCancel={() => { setShowStakingModal(false); setStakingDirection(null); setStakingMode('new') }}
             />,
             document.body
           )}

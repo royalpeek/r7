@@ -47,6 +47,7 @@ export default function Search() {
   const balance = Number(appUser?.balance ?? 0)
   const [showStakingModal, setShowStakingModal] = useState(false)
   const [stakingDirection, setStakingDirection] = useState<'yes' | 'no' | null>(null)
+  const [stakingMode, setStakingMode] = useState<'new' | 'add' | 'change'>('new')
 
   const fetchPolls = useCallback(async () => {
     try {
@@ -115,6 +116,7 @@ export default function Search() {
           poll_id: selectedPoll.id,
           direction: stakingDirection,
           amount,
+          mode: stakingMode,
         }),
       })
       const data = await response.json()
@@ -124,6 +126,7 @@ export default function Search() {
       haptics.notification('success')
       setShowStakingModal(false)
       setStakingDirection(null)
+      setStakingMode('new')
       await fetchUserVote(selectedPoll.id)
       await fetchPolls()
     } catch (error) {
@@ -139,6 +142,7 @@ export default function Search() {
     setUserVote(null)
     setShowStakingModal(false)
     setStakingDirection(null)
+    setStakingMode('new')
   }
 
   // --- detail view ---
@@ -293,11 +297,13 @@ export default function Search() {
             onAddMore={() => {
               haptics.impact('medium')
               setStakingDirection(userVote.direction)
+              setStakingMode('add')
               setShowStakingModal(true)
             }}
             onChangeVote={() => {
               haptics.impact('medium')
               setStakingDirection(userVote.direction === 'yes' ? 'no' : 'yes')
+              setStakingMode('change')
               setShowStakingModal(true)
             }}
           />
@@ -317,7 +323,7 @@ export default function Search() {
                 availableBalance={balance}
                 replacementCredit={userVote && stakingDirection !== userVote.direction ? Number(userVote.amount || 0) : 0}
                 onConfirm={handleConfirmVote}
-                onCancel={() => { setShowStakingModal(false); setStakingDirection(null) }}
+                onCancel={() => { setShowStakingModal(false); setStakingDirection(null); setStakingMode('new') }}
               />,
               document.body
             )}
@@ -369,6 +375,7 @@ export default function Search() {
                 onClick={() => {
                   haptics.impact('medium')
                   setStakingDirection('no')
+                  setStakingMode('new')
                   setShowStakingModal(true)
                 }}
                 className="flex-1 bg-pink-500 text-black font-bold py-4 rounded-2xl"
@@ -379,6 +386,7 @@ export default function Search() {
                 onClick={() => {
                   haptics.impact('medium')
                   setStakingDirection('yes')
+                  setStakingMode('new')
                   setShowStakingModal(true)
                 }}
                 className="flex-1 bg-cyan-400 text-black font-bold py-4 rounded-2xl"
@@ -397,7 +405,7 @@ export default function Search() {
               availableBalance={balance}
               replacementCredit={userVote && stakingDirection !== userVote.direction ? Number(userVote.amount || 0) : 0}
               onConfirm={handleConfirmVote}
-              onCancel={() => { setShowStakingModal(false); setStakingDirection(null) }}
+              onCancel={() => { setShowStakingModal(false); setStakingDirection(null); setStakingMode('new') }}
             />,
             document.body
           )}

@@ -50,6 +50,7 @@ export default function PollCard({ polls, focusPollId = null, availableBalance =
 
   const [showStakingModal, setShowStakingModal] = useState(false)
   const [stakingDirection, setStakingDirection] = useState<'yes' | 'no' | null>(null)
+  const [stakingMode, setStakingMode] = useState<'new' | 'add' | 'change'>('new')
   const [showDetail, setShowDetail] = useState(false)
   const [voteError, setVoteError] = useState<string | null>(null)
 
@@ -87,10 +88,11 @@ export default function PollCard({ polls, focusPollId = null, availableBalance =
     onDetailChange?.(nextShowDetail)
   }
 
-  const openStakingModal = (direction: 'yes' | 'no') => {
+  const openStakingModal = (direction: 'yes' | 'no', mode?: 'new' | 'add' | 'change') => {
     haptics.impact('medium')
     setVoteError(null)
     setStakingDirection(direction)
+    setStakingMode(mode || (userVote ? direction === userVote.direction ? 'add' : 'change' : 'new'))
     setShowStakingModal(true)
   }
 
@@ -235,6 +237,7 @@ export default function PollCard({ polls, focusPollId = null, availableBalance =
           poll_id: currentCard.id,
           direction: stakingDirection,
           amount: amount,
+          mode: stakingMode,
         }),
       })
 
@@ -258,6 +261,7 @@ export default function PollCard({ polls, focusPollId = null, availableBalance =
       haptics.notification('success')
       setShowStakingModal(false)
       setStakingDirection(null)
+      setStakingMode('new')
     } catch (error) {
       haptics.notification('error')
       console.error('vote error:', error)
@@ -349,12 +353,12 @@ export default function PollCard({ polls, focusPollId = null, availableBalance =
             onShare={() => shareMarket({ pollId: currentCard.id, question: currentCard.question })}
             onAddMore={() => {
               if (!marketEnded) {
-                openStakingModal(userVote.direction === 'yes' ? 'yes' : 'no')
+                openStakingModal(userVote.direction === 'yes' ? 'yes' : 'no', 'add')
               }
             }}
             onChangeVote={() => {
               if (!marketEnded) {
-                openStakingModal(userVote.direction === 'yes' ? 'no' : 'yes')
+                openStakingModal(userVote.direction === 'yes' ? 'no' : 'yes', 'change')
               }
             }}
           />
@@ -377,6 +381,7 @@ export default function PollCard({ polls, focusPollId = null, availableBalance =
                 onCancel={() => {
                   setShowStakingModal(false)
                   setStakingDirection(null)
+                  setStakingMode('new')
                 }}
               />,
               document.body
@@ -561,6 +566,7 @@ export default function PollCard({ polls, focusPollId = null, availableBalance =
               onCancel={() => {
                 setShowStakingModal(false)
                 setStakingDirection(null)
+                setStakingMode('new')
               }}
             />,
             document.body
@@ -730,6 +736,7 @@ export default function PollCard({ polls, focusPollId = null, availableBalance =
             onCancel={() => {
               setShowStakingModal(false)
               setStakingDirection(null)
+              setStakingMode('new')
             }}
           />,
           document.body
