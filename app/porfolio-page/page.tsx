@@ -477,6 +477,7 @@ export default function Portfolio() {
               question={selectedPosition.question}
               voteDirection={stakingDirection === 'yes' ? 'YES' : 'NO'}
               availableBalance={balance}
+              replacementCredit={stakingDirection !== selectedPosition.direction ? Number(selectedPosition.amount || 0) : 0}
               onConfirm={handleConfirmVote}
               onCancel={() => { setShowStakingModal(false); setStakingDirection(null) }}
             />,

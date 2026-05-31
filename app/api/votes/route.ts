@@ -3,6 +3,10 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getRequestTelegramUser } from '@/lib/telegramAuth'
 import { recordTransaction } from '@/lib/transactions'
 
+function money(value: number) {
+  return Number(value.toFixed(2))
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -62,8 +66,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'market has ended' }, { status: 400 })
     }
 
-    const fee = amount * 0.01
-    const totalCost = amount + fee
+    const fee = money(amount * 0.01)
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('balance')
@@ -73,9 +76,6 @@ export async function POST(request: NextRequest) {
     if (userError) throw userError
     const currentBalance = Number(userData.balance ?? 0)
     if (!Number.isFinite(currentBalance)) throw new Error('invalid user balance')
-    if (currentBalance < totalCost) {
-      return NextResponse.json({ error: 'insufficient balance' }, { status: 400 })
-    }
 
     let newYesPool = poll.yes_pool || 0
     let newNoPool = poll.no_pool || 0
@@ -83,11 +83,15 @@ export async function POST(request: NextRequest) {
     let newNoVotes = poll.no_votes || 0
     let newVolume = poll.volume || 0
     let voteId = null
+    let balanceDelta = money(-(amount + fee))
+    let stakeTransactionAmount = -amount
+    let stakeTransactionDescription = `${direction.toUpperCase()} stake`
+    let nextVoteAmount = amount
 
     // if user already voted
     if (existingVote) {
       const oldDirection = existingVote.direction
-      const oldAmount = existingVote.amount
+      const oldAmount = Number(existingVote.amount || 0)
 
       // user is changing sides
       if (oldDirection !== direction) {
@@ -110,8 +114,14 @@ export async function POST(request: NextRequest) {
         }
 
         newVolume = newVolume - oldAmount + amount
+        balanceDelta = money(oldAmount - amount - fee)
+        stakeTransactionAmount = money(oldAmount - amount)
+        stakeTransactionDescription = stakeTransactionAmount >= 0
+          ? 'Stake difference refunded'
+          : `${direction.toUpperCase()} stake increase`
       } else {
         // user is adding more to the same side
+        nextVoteAmount = money(oldAmount + amount)
         if (direction === 'yes') {
           newYesPool += amount
         } else {
@@ -119,13 +129,29 @@ export async function POST(request: NextRequest) {
         }
         newVolume += amount
       }
+    } else {
+      // add to pools
+      if (direction === 'yes') {
+        newYesPool += amount
+        newYesVotes += 1
+      } else {
+        newNoPool += amount
+        newNoVotes += 1
+      }
+      newVolume += amount
+    }
 
-      // update existing vote
+    const nextBalance = money(currentBalance + balanceDelta)
+    if (nextBalance < 0) {
+      return NextResponse.json({ error: 'insufficient balance' }, { status: 400 })
+    }
+
+    if (existingVote) {
       const { error: updateVoteError } = await supabase
         .from('votes')
         .update({
-          amount: oldDirection === direction ? oldAmount + amount : amount,
-          direction: direction,
+          amount: nextVoteAmount,
+          direction,
           updated_at: new Date().toISOString(),
         })
         .eq('id', existingVote.id)
@@ -133,7 +159,6 @@ export async function POST(request: NextRequest) {
       if (updateVoteError) throw updateVoteError
       voteId = existingVote.id
     } else {
-      // first time voting
       const { data: vote, error: voteError } = await supabase
         .from('votes')
         .insert([{
@@ -146,16 +171,6 @@ export async function POST(request: NextRequest) {
 
       if (voteError) throw voteError
       voteId = vote[0].id
-
-      // add to pools
-      if (direction === 'yes') {
-        newYesPool += amount
-        newYesVotes += 1
-      } else {
-        newNoPool += amount
-        newNoVotes += 1
-      }
-      newVolume += amount
     }
 
     console.log('updating poll:', { newYesPool, newNoPool, newYesVotes, newNoVotes, newVolume })
@@ -188,20 +203,19 @@ export async function POST(request: NextRequest) {
 
     const { error: balanceError } = await supabase
       .from('users')
-      .update({ balance: Number((currentBalance - totalCost).toFixed(2)) })
+      .update({ balance: nextBalance })
       .eq('id', userId)
 
     if (balanceError) throw balanceError
-    const nextBalance = Number((currentBalance - totalCost).toFixed(2))
 
     await Promise.all([
       recordTransaction(supabase, {
         userId,
         type: 'stake',
-        amount: -amount,
+        amount: stakeTransactionAmount,
         balanceAfter: nextBalance,
         pollId: poll_id,
-        description: `${direction.toUpperCase()} stake`,
+        description: stakeTransactionDescription,
       }),
       recordTransaction(supabase, {
         userId,

@@ -315,6 +315,7 @@ export default function Search() {
                 question={selectedPoll.question}
                 voteDirection={stakingDirection === 'yes' ? 'YES' : 'NO'}
                 availableBalance={balance}
+                replacementCredit={userVote && stakingDirection !== userVote.direction ? Number(userVote.amount || 0) : 0}
                 onConfirm={handleConfirmVote}
                 onCancel={() => { setShowStakingModal(false); setStakingDirection(null) }}
               />,
@@ -394,6 +395,7 @@ export default function Search() {
               question={selectedPoll.question}
               voteDirection={stakingDirection === 'yes' ? 'YES' : 'NO'}
               availableBalance={balance}
+              replacementCredit={userVote && stakingDirection !== userVote.direction ? Number(userVote.amount || 0) : 0}
               onConfirm={handleConfirmVote}
               onCancel={() => { setShowStakingModal(false); setStakingDirection(null) }}
             />,

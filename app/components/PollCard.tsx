@@ -372,6 +372,7 @@ export default function PollCard({ polls, focusPollId = null, availableBalance =
                 question={currentCard.question}
                 voteDirection={stakingDirection === 'yes' ? 'YES' : 'NO'}
                 availableBalance={availableBalance}
+                replacementCredit={userVote && stakingDirection !== userVote.direction ? Number(userVote.amount || 0) : 0}
                 onConfirm={handleConfirmVote}
                 onCancel={() => {
                   setShowStakingModal(false)
@@ -724,6 +725,7 @@ export default function PollCard({ polls, focusPollId = null, availableBalance =
             question={currentCard.question}
             voteDirection={stakingDirection === 'yes' ? 'YES' : 'NO'}
             availableBalance={availableBalance}
+            replacementCredit={userVote && stakingDirection !== userVote.direction ? Number(userVote.amount || 0) : 0}
             onConfirm={handleConfirmVote}
             onCancel={() => {
               setShowStakingModal(false)
