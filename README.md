@@ -16,6 +16,27 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Device security
+
+R7 can enforce one registered device per user. Set this in Vercel to bypass **only** device fingerprint checks during an emergency (Telegram auth, admin checks, and TON wallet security stay enabled):
+
+```bash
+DISABLE_DEVICE_SECURITY=true
+```
+
+Redeploy after changing this variable. Admins are never hard-locked by device checks when device security is enabled.
+
+Admins can clear a user's device registration from **Admin → Users → Unlock device**, or via:
+
+```text
+POST /api/admin/unlock-device
+{ "initData": "...", "userId": "TELEGRAM_NUMERIC_ID_OR_@username" }
+```
+
+User IDs in R7 are stored in `public.users.id` (the Telegram numeric ID as text). The optional `telegram_id` column is legacy and not required.
+
+Run `supabase/devices.sql` if the `devices` and `device_security_logs` tables are missing.
+
 ## Telegram market sharing
 
 Market share links use each market's database `id` as the deep-link payload.

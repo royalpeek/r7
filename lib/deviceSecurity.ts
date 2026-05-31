@@ -1,4 +1,4 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
 
 type DeviceLogEvent =
   | 'device_registered'
@@ -6,6 +6,11 @@ type DeviceLogEvent =
   | 'login_blocked'
   | 'multiple_account_blocked'
   | 'device_mismatch_blocked'
+  | 'device_security_disabled'
+  | 'admin_device_mismatch_warning'
+  | 'admin_login_allowed'
+  | 'admin_unlock_device'
+  | 'devices_table_unavailable'
   | 'wallet_creation_checked'
   | 'withdrawal_device_checked'
   | 'user_action_checked'
@@ -16,6 +21,26 @@ export type DevicePayload = {
   fingerprint?: string
   osVersion?: string | null
   deviceModel?: string | null
+}
+
+export type NormalizedDevice = {
+  fingerprint: string
+  osVersion: string | null
+  deviceModel: string | null
+}
+
+export function isDeviceSecurityDisabled() {
+  return process.env.DISABLE_DEVICE_SECURITY === 'true'
+}
+
+function isMissingRelationError(error: PostgrestError | null | undefined) {
+  if (!error) return false
+  return (
+    error.code === 'PGRST205' ||
+    error.code === '42P01' ||
+    error.message?.toLowerCase().includes('does not exist') ||
+    error.message?.toLowerCase().includes('could not find the table')
+  )
 }
 
 function cleanDeviceDetails(details: DeviceDetails = {}) {
@@ -31,7 +56,7 @@ function cleanDeviceDetails(details: DeviceDetails = {}) {
   return safeDetails
 }
 
-export function normalizeDevicePayload(input?: DevicePayload | null) {
+export function normalizeDevicePayload(input?: DevicePayload | null): NormalizedDevice {
   const fingerprint = typeof input?.fingerprint === 'string' ? input.fingerprint.trim().toLowerCase() : ''
   const osVersion = typeof input?.osVersion === 'string' ? input.osVersion.trim().slice(0, 160) : null
   const deviceModel = typeof input?.deviceModel === 'string' ? input.deviceModel.trim().slice(0, 240) : null
@@ -41,6 +66,14 @@ export function normalizeDevicePayload(input?: DevicePayload | null) {
   }
 
   return { fingerprint, osVersion, deviceModel }
+}
+
+export function tryNormalizeDevicePayload(input?: DevicePayload | null) {
+  try {
+    return normalizeDevicePayload(input)
+  } catch {
+    return null
+  }
 }
 
 export async function recordDeviceLog(
@@ -70,6 +103,7 @@ export async function recordDeviceLog(
     })
 
   if (error) {
+    if (isMissingRelationError(error)) return
     console.error('device security log insert failed:', {
       event,
       status,
@@ -77,6 +111,162 @@ export async function recordDeviceLog(
       message: error.message,
     })
   }
+}
+
+export async function getUserRole(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<'user' | 'creator' | 'admin' | null> {
+  const { data, error } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', userId)
+    .maybeSingle()
+
+  if (error) throw error
+  if (!data?.role) return null
+  if (data.role === 'admin' || data.role === 'creator' || data.role === 'user') {
+    return data.role
+  }
+  return 'user'
+}
+
+export async function resolveUserIdentifier(
+  supabase: SupabaseClient,
+  identifier: string
+) {
+  const trimmed = identifier.trim()
+  if (!trimmed) throw new Error('User identifier is required')
+
+  const { data: byId, error: byIdError } = await supabase
+    .from('users')
+    .select('id')
+    .eq('id', trimmed)
+    .maybeSingle()
+
+  if (byIdError) throw byIdError
+  if (byId?.id) return byId.id
+
+  const username = trimmed.replace(/^@/, '')
+  const { data: byUsername, error: byUsernameError } = await supabase
+    .from('users')
+    .select('id')
+    .eq('username', username)
+    .maybeSingle()
+
+  if (byUsernameError) throw byUsernameError
+  if (byUsername?.id) return byUsername.id
+
+  throw new Error('User not found')
+}
+
+async function upsertUserDevice(
+  supabase: SupabaseClient,
+  userId: string,
+  normalized: NormalizedDevice
+) {
+  const { data: existing, error: existingError } = await supabase
+    .from('devices')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (existingError) {
+    if (isMissingRelationError(existingError)) {
+      await recordDeviceLog(supabase, {
+        event: 'devices_table_unavailable',
+        userId,
+        fingerprint: normalized.fingerprint,
+        status: 'failed',
+      })
+      return
+    }
+    throw existingError
+  }
+
+  if (!existing) {
+    const { error: insertError } = await supabase
+      .from('devices')
+      .insert({
+        user_id: userId,
+        device_fingerprint: normalized.fingerprint,
+        os_version: normalized.osVersion,
+        device_model: normalized.deviceModel,
+        first_seen_at: new Date().toISOString(),
+        last_seen_at: new Date().toISOString(),
+      })
+
+    if (insertError) {
+      if (isMissingRelationError(insertError)) {
+        await recordDeviceLog(supabase, {
+          event: 'devices_table_unavailable',
+          userId,
+          fingerprint: normalized.fingerprint,
+          status: 'failed',
+        })
+        return
+      }
+      throw insertError
+    }
+
+    await recordDeviceLog(supabase, {
+      event: 'device_registered',
+      userId,
+      fingerprint: normalized.fingerprint,
+    })
+    return
+  }
+
+  const { error: updateError } = await supabase
+    .from('devices')
+    .update({
+      device_fingerprint: normalized.fingerprint,
+      os_version: normalized.osVersion,
+      device_model: normalized.deviceModel,
+      last_seen_at: new Date().toISOString(),
+    })
+    .eq('user_id', userId)
+
+  if (updateError) {
+    if (isMissingRelationError(updateError)) {
+      await recordDeviceLog(supabase, {
+        event: 'devices_table_unavailable',
+        userId,
+        fingerprint: normalized.fingerprint,
+        status: 'failed',
+      })
+      return
+    }
+    throw updateError
+  }
+}
+
+export async function unlockUserDevice(
+  supabase: SupabaseClient,
+  {
+    targetUserId,
+    adminUserId,
+  }: {
+    targetUserId: string
+    adminUserId: string
+  }
+) {
+  const { error } = await supabase
+    .from('devices')
+    .delete()
+    .eq('user_id', targetUserId)
+
+  if (error && !isMissingRelationError(error)) throw error
+
+  await recordDeviceLog(supabase, {
+    event: 'admin_unlock_device',
+    userId: targetUserId,
+    status: 'success',
+    details: {
+      adminUserId,
+      devicesTableMissing: Boolean(error && isMissingRelationError(error)),
+    },
+  })
 }
 
 export async function registerOrVerifyDevice(
@@ -87,11 +277,78 @@ export async function registerOrVerifyDevice(
     isNewUser,
   }: {
     userId: string
-    device: DevicePayload
+    device?: DevicePayload | null
     isNewUser: boolean
   }
-) {
-  const normalized = normalizeDevicePayload(device)
+): Promise<NormalizedDevice | null> {
+  if (isDeviceSecurityDisabled()) {
+    await recordDeviceLog(supabase, {
+      event: 'device_security_disabled',
+      userId,
+      status: 'success',
+      details: { phase: 'login', newUser: isNewUser },
+    })
+    return null
+  }
+
+  const role = await getUserRole(supabase, userId)
+  const isAdmin = role === 'admin'
+
+  let normalized: NormalizedDevice
+  try {
+    normalized = normalizeDevicePayload(device)
+  } catch (error) {
+    if (isAdmin) {
+      await recordDeviceLog(supabase, {
+        event: 'admin_login_allowed',
+        userId,
+        status: 'success',
+        details: {
+          reason: 'missing_or_invalid_device_payload',
+          message: error instanceof Error ? error.message : 'invalid device',
+        },
+      })
+      return null
+    }
+    throw error
+  }
+
+  if (isAdmin) {
+    const { data: adminDevice, error: adminDeviceError } = await supabase
+      .from('devices')
+      .select('device_fingerprint')
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (adminDeviceError && !isMissingRelationError(adminDeviceError)) {
+      throw adminDeviceError
+    }
+
+    if (
+      adminDevice?.device_fingerprint &&
+      adminDevice.device_fingerprint !== normalized.fingerprint
+    ) {
+      await recordDeviceLog(supabase, {
+        event: 'admin_device_mismatch_warning',
+        userId,
+        fingerprint: normalized.fingerprint,
+        status: 'success',
+        details: {
+          previousFingerprint: adminDevice.device_fingerprint,
+          newUser: isNewUser,
+        },
+      })
+    }
+
+    await upsertUserDevice(supabase, userId, normalized)
+    await recordDeviceLog(supabase, {
+      event: 'admin_login_allowed',
+      userId,
+      fingerprint: normalized.fingerprint,
+      details: { newUser: isNewUser },
+    })
+    return normalized
+  }
 
   const { data: fingerprintOwner, error: fingerprintError } = await supabase
     .from('devices')
@@ -99,7 +356,19 @@ export async function registerOrVerifyDevice(
     .eq('device_fingerprint', normalized.fingerprint)
     .maybeSingle()
 
-  if (fingerprintError) throw fingerprintError
+  if (fingerprintError) {
+    if (isMissingRelationError(fingerprintError)) {
+      await recordDeviceLog(supabase, {
+        event: 'devices_table_unavailable',
+        userId,
+        fingerprint: normalized.fingerprint,
+        status: 'failed',
+        details: { phase: 'login' },
+      })
+      return normalized
+    }
+    throw fingerprintError
+  }
 
   if (fingerprintOwner && fingerprintOwner.user_id !== userId) {
     await recordDeviceLog(supabase, {
@@ -118,7 +387,19 @@ export async function registerOrVerifyDevice(
     .eq('user_id', userId)
     .maybeSingle()
 
-  if (userDeviceError) throw userDeviceError
+  if (userDeviceError) {
+    if (isMissingRelationError(userDeviceError)) {
+      await recordDeviceLog(supabase, {
+        event: 'devices_table_unavailable',
+        userId,
+        fingerprint: normalized.fingerprint,
+        status: 'failed',
+        details: { phase: 'login' },
+      })
+      return normalized
+    }
+    throw userDeviceError
+  }
 
   if (userDevice && userDevice.device_fingerprint !== normalized.fingerprint) {
     await recordDeviceLog(supabase, {
@@ -126,6 +407,7 @@ export async function registerOrVerifyDevice(
       userId,
       fingerprint: normalized.fingerprint,
       status: 'blocked',
+      details: { registeredFingerprint: userDevice.device_fingerprint },
     })
     throw new Error('This Telegram account is already linked to another device.')
   }
@@ -142,7 +424,18 @@ export async function registerOrVerifyDevice(
         last_seen_at: new Date().toISOString(),
       })
 
-    if (insertError) throw insertError
+    if (insertError) {
+      if (isMissingRelationError(insertError)) {
+        await recordDeviceLog(supabase, {
+          event: 'devices_table_unavailable',
+          userId,
+          fingerprint: normalized.fingerprint,
+          status: 'failed',
+        })
+        return normalized
+      }
+      throw insertError
+    }
 
     await recordDeviceLog(supabase, {
       event: 'device_registered',
@@ -181,10 +474,33 @@ export async function assertUserDevice(
     event,
   }: {
     userId: string
-    device: DevicePayload
+    device?: DevicePayload | null
     event: Extract<DeviceLogEvent, 'wallet_creation_checked' | 'withdrawal_device_checked' | 'user_action_checked'>
   }
 ) {
+  if (isDeviceSecurityDisabled()) {
+    await recordDeviceLog(supabase, {
+      event: 'device_security_disabled',
+      userId,
+      status: 'success',
+      details: { phase: event },
+    })
+    return null
+  }
+
+  const role = await getUserRole(supabase, userId)
+  if (role === 'admin') {
+    const normalized = tryNormalizeDevicePayload(device)
+    await recordDeviceLog(supabase, {
+      event: 'admin_login_allowed',
+      userId,
+      fingerprint: normalized?.fingerprint,
+      status: 'success',
+      details: { phase: event, adminBypass: true },
+    })
+    return normalized
+  }
+
   const normalized = normalizeDevicePayload(device)
   const { data: userDevice, error } = await supabase
     .from('devices')
@@ -192,7 +508,19 @@ export async function assertUserDevice(
     .eq('user_id', userId)
     .maybeSingle()
 
-  if (error) throw error
+  if (error) {
+    if (isMissingRelationError(error)) {
+      await recordDeviceLog(supabase, {
+        event: 'devices_table_unavailable',
+        userId,
+        fingerprint: normalized.fingerprint,
+        status: 'failed',
+        details: { phase: event },
+      })
+      return normalized
+    }
+    throw error
+  }
 
   if (!userDevice || userDevice.device_fingerprint !== normalized.fingerprint) {
     await recordDeviceLog(supabase, {
@@ -200,6 +528,7 @@ export async function assertUserDevice(
       userId,
       fingerprint: normalized.fingerprint,
       status: 'blocked',
+      details: { phase: event },
     })
     throw new Error('This account can only be used from its registered device.')
   }

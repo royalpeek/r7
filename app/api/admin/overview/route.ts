@@ -71,8 +71,7 @@ export async function POST(request: NextRequest) {
       usersResult.error ||
       pollsResult.error ||
       volumeResult.error ||
-      walletAuditResult.error ||
-      deviceLogsResult.error
+      walletAuditResult.error
 
     if (firstError) throw firstError
 

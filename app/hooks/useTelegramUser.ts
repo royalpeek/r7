@@ -51,6 +51,16 @@ let cachedInitialized = false
 let cachedDeviceFingerprint: DeviceFingerprintPayload | null = null
 let cachedAuthError: string | null = null
 
+export function resetTelegramAuthCache() {
+  cachedTelegramUser = null
+  cachedAppUser = null
+  cachedUserId = null
+  cachedInitData = ''
+  cachedInitialized = false
+  cachedDeviceFingerprint = null
+  cachedAuthError = null
+}
+
 export function useTelegramUser() {
   const [userId, setUserId] = useState<string | null>(cachedUserId)
   const [user, setUser] = useState<TelegramUser | null>(cachedTelegramUser)
@@ -162,5 +172,10 @@ export function useTelegramUser() {
     })
   }
 
-  return { userId, user, appUser, initData, deviceFingerprint, authError, loading, updateBalance }
+  const retryAuth = () => {
+    resetTelegramAuthCache()
+    window.location.reload()
+  }
+
+  return { userId, user, appUser, initData, deviceFingerprint, authError, loading, updateBalance, retryAuth }
 }

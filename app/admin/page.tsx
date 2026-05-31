@@ -126,6 +126,9 @@ export default function AdminPage() {
   const [recoveryAmount, setRecoveryAmount] = useState('')
   const [recoveryLoading, setRecoveryLoading] = useState(false)
   const [recoveryResult, setRecoveryResult] = useState<string | null>(null)
+  const [unlockIdentifier, setUnlockIdentifier] = useState('')
+  const [unlockingUserId, setUnlockingUserId] = useState<string | null>(null)
+  const [unlockResult, setUnlockResult] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<AdminTab>('overview')
 
   const isAdmin = appUser?.role === 'admin'
@@ -164,6 +167,37 @@ export default function AdminPage() {
 
     return () => window.clearTimeout(timeout)
   }, [fetchOverview, isAdmin, userLoading])
+
+  const unlockDevice = async (identifier: string) => {
+    const trimmed = identifier.trim()
+    if (!trimmed) return
+
+    try {
+      haptics.selection()
+      setUnlockingUserId(trimmed)
+      setUnlockResult(null)
+      setError(null)
+
+      const response = await fetch('/api/admin/unlock-device', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData, userId: trimmed }),
+      })
+      const data = await response.json()
+
+      if (!response.ok) throw new Error(data.error || 'failed to unlock device')
+
+      setUnlockResult(`Device cleared for user ${data.userId}`)
+      setUnlockIdentifier('')
+      haptics.notification('success')
+      await fetchOverview()
+    } catch (error) {
+      haptics.notification('error')
+      setError(error instanceof Error ? error.message : 'failed to unlock device')
+    } finally {
+      setUnlockingUserId(null)
+    }
+  }
 
   const updateRole = async (userId: string, role: Role) => {
     try {
@@ -625,6 +659,34 @@ export default function AdminPage() {
 
       {activeTab === 'users' && (
         <>
+          <section className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-4">
+            <h2 className="text-lg font-bold text-white">Unlock device</h2>
+            <p className="mt-1 text-xs leading-relaxed text-slate-500">
+              Clears the one-device registration for a user. Use their R7 user ID (Telegram numeric ID) or @username.
+            </p>
+            <div className="mt-4 flex gap-2">
+              <input
+                value={unlockIdentifier}
+                onChange={event => setUnlockIdentifier(event.target.value)}
+                placeholder="User ID or @username"
+                className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none"
+              />
+              <button
+                type="button"
+                disabled={!unlockIdentifier.trim() || unlockingUserId !== null}
+                onClick={() => unlockDevice(unlockIdentifier)}
+                className="rounded-xl bg-cyan-400 px-4 py-3 text-sm font-bold text-black disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Unlock
+              </button>
+            </div>
+            {unlockResult && (
+              <p className="mt-3 rounded-lg bg-emerald-400/10 px-3 py-2 text-xs font-semibold text-emerald-300">
+                {unlockResult}
+              </p>
+            )}
+          </section>
+
           <section className="mb-6">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-bold text-white">Users</h2>
@@ -668,6 +730,14 @@ export default function AdminPage() {
                       </button>
                     ))}
                   </div>
+                  <button
+                    type="button"
+                    disabled={unlockingUserId === user.id}
+                    onClick={() => unlockDevice(user.id)}
+                    className="mt-3 w-full rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {unlockingUserId === user.id ? 'Unlocking...' : 'Unlock device'}
+                  </button>
                 </div>
               ))}
             </div>

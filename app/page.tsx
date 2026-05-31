@@ -112,7 +112,7 @@ export default function Home() {
     remaining: number | null
   } | null>(null)
 
-  const { userId, appUser, initData, deviceFingerprint, authError, loading: userLoading } = useTelegramUser()
+  const { userId, appUser, initData, deviceFingerprint, authError, loading: userLoading, retryAuth } = useTelegramUser()
   const { polls, loading: pollsLoading, error: pollsError, refetch } = usePolls(userId, initData)
   const userRole = appUser?.role || (appUser?.is_creator ? 'creator' : 'user')
   const canCreatePoll = userRole === 'creator' || userRole === 'admin'
@@ -519,6 +519,13 @@ export default function Home() {
             <p className="mt-3 text-xs leading-relaxed text-slate-500">
               R7 allows one account per Telegram ID and one device.
             </p>
+            <button
+              type="button"
+              onClick={retryAuth}
+              className="mt-5 w-full rounded-xl bg-cyan-400 px-4 py-3 text-sm font-bold text-black active:scale-95 transition"
+            >
+              Try again
+            </button>
           </div>
         </div>
       )}

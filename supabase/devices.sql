@@ -9,9 +9,8 @@ create table if not exists public.devices (
   created_at timestamptz not null default now()
 );
 
-create unique index if not exists users_telegram_id_key
-on public.users (telegram_id)
-where telegram_id is not null;
+-- R7 uses public.users.id as the Telegram user identifier (numeric ID as text).
+-- telegram_id is optional legacy metadata; do not rely on it for auth or unlock flows.
 
 create unique index if not exists devices_user_id_key
 on public.devices (user_id);
