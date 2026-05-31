@@ -5,7 +5,7 @@ import ResultsPage from '../components/ResultsPage'
 import StakingModal from '../components/StakingModal'
 import Timer from '../components/Timer'
 import { createPortal } from 'react-dom'
-import { ArrowLeft, ChevronRight, Gift, Share2 } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, ChevronRight, Gift, Share2, Trophy } from 'lucide-react'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
 import { getMarketLifecycleLabel, getMarketLifecycleStatus } from '@/lib/marketLifecycle'
@@ -82,6 +82,19 @@ export default function Portfolio() {
   const [creatorLoading, setCreatorLoading] = useState(false)
   const userRole = appUser?.role || (appUser?.is_creator ? 'creator' : 'user')
   const canViewCreatorStats = userRole === 'creator' || userRole === 'admin'
+
+  const getOutcomeLabel = (position: Position) => {
+    const breakdown = getPositionClaimBreakdown(position)
+    if (breakdown.winner === 'draw') return 'Draw'
+    return breakdown.userWon ? 'Won' : 'Lost'
+  }
+
+  const getOutcomeClass = (position: Position) => {
+    const label = getOutcomeLabel(position)
+    if (label === 'Won') return 'bg-cyan-400/10 text-cyan-300 border-cyan-400/30'
+    if (label === 'Draw') return 'bg-slate-800 text-slate-300 border-slate-700'
+    return 'bg-pink-500/10 text-pink-300 border-pink-500/30'
+  }
 
   const fetchPositions = useCallback(async () => {
     try {
@@ -666,6 +679,8 @@ export default function Portfolio() {
               const status = getMarketLifecycleStatus(pos.status, pos.ends_at, now)
               const claimBreakdown = getPositionClaimBreakdown(pos)
               const canClaim = claimablePositions.some(position => position.id === pos.id)
+              const outcomeLabel = getOutcomeLabel(pos)
+              const claimValue = pos.claimed_at ? Number(pos.payout_amount || 0) : claimBreakdown.claimablePayout
 
               return (
               <div
@@ -679,8 +694,8 @@ export default function Portfolio() {
                 <div className="flex items-start justify-between mb-3">
                   <p className="text-white font-semibold text-sm flex-1 pr-4">{pos.question}</p>
                   <div className="flex flex-col items-end gap-1">
-                    <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-400">
-                      {getMarketLifecycleLabel(status)}
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${getOutcomeClass(pos)}`}>
+                      {outcomeLabel}
                     </span>
                     <span className={`text-xs font-bold px-2 py-1 rounded ${pos.direction === 'yes' ? 'bg-cyan-900 text-cyan-400' : 'bg-pink-900 text-pink-400'}`}>
                       {pos.direction.toUpperCase()}
@@ -689,7 +704,9 @@ export default function Portfolio() {
                 </div>
                 <div className="flex items-center justify-between text-sm mb-2">
                   <span className="text-slate-400">Stake: <span className="text-white font-bold">${pos.amount}</span></span>
-                  <span className="text-slate-500 text-xs">tap to view</span>
+                  <span className={`text-xs font-bold ${claimValue > 0 ? 'text-cyan-300' : 'text-slate-500'}`}>
+                    {pos.claimed_at ? `Claimed $${claimValue.toFixed(2)}` : canClaim ? `Ready $${claimValue.toFixed(2)}` : 'tap to view'}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500 text-xs">{formatDate(pos.created_at)}</span>
@@ -709,6 +726,18 @@ export default function Portfolio() {
                       ? 'Claiming...'
                       : `Claim $${claimBreakdown.claimablePayout.toFixed(2)}`}
                   </button>
+                )}
+                {pos.claimed_at && (
+                  <div className="mt-4 flex items-center justify-center gap-2 rounded-2xl border border-cyan-400/20 bg-cyan-400/10 py-3 text-sm font-bold text-cyan-200">
+                    <CheckCircle2 size={16} />
+                    Claimed
+                  </div>
+                )}
+                {!canClaim && !pos.claimed_at && outcomeLabel === 'Lost' && (
+                  <div className="mt-4 flex items-center justify-center gap-2 rounded-2xl border border-slate-800 bg-slate-950 py-3 text-sm font-bold text-slate-500">
+                    <Trophy size={16} />
+                    No reward
+                  </div>
                 )}
               </div>
             )})}

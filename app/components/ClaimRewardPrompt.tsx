@@ -69,6 +69,7 @@ export default function ClaimRewardPrompt() {
             <p className="mt-1 text-sm text-slate-400">
               ${totalClaimable.toFixed(2)} USDT available from {claimablePositions.length} ended market{claimablePositions.length === 1 ? '' : 's'}.
             </p>
+            <p className="mt-1 text-xs text-slate-500">Open Portfolio to review each reward before claiming.</p>
             <button
               onClick={() => {
                 haptics.impact('medium')

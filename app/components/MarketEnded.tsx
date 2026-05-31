@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Share2 } from 'lucide-react'
+import { CheckCircle2, Gift, Info, Share2, Trophy } from 'lucide-react'
 import PoolHistoryChart from './PoolHistoryChart'
 import { useHapticFeedback } from '@/app/hooks/useHapticFeedback'
 import { useTelegramUser } from '@/app/hooks/useTelegramUser'
@@ -59,6 +59,13 @@ export default function MarketEnded({
   const displayClaimable = localClaimedAt ? localPayout : payoutBreakdown.claimablePayout
   const pnl = userVoteAmount > 0 ? ((displayClaimable - userVoteAmount) / userVoteAmount) * 100 : 0
   const winnerLabel = winner === 'draw' ? 'Draw' : `${winner.toUpperCase()} won`
+  const hasClaimableReward = userWon && !localClaimedAt && displayClaimable > 0
+  const outcomeTitle = winner === 'draw' ? 'Stake returned' : userWon ? 'Reward ready' : 'Market lost'
+  const outcomeDescription = winner === 'draw'
+    ? 'This market ended in a draw, so your stake is returned.'
+    : userWon
+      ? 'Your side had more voters. Claim to add this reward to your balance.'
+      : 'Your side had fewer voters, so there is no reward to claim.'
 
   const handleClaim = async () => {
     try {
@@ -129,10 +136,22 @@ export default function MarketEnded({
             ? 'bg-cyan-400/10 border-cyan-400/30'
             : 'bg-pink-500/10 border-pink-500/30'
         }`}>
-          <p className={`text-xs font-bold uppercase mb-1 ${userWon ? 'text-cyan-400' : 'text-pink-400'}`}>
-            {winner === 'draw' ? 'Draw' : userWon ? 'You won' : 'You lost'}
-          </p>
-          <p className="text-slate-400 text-xs uppercase tracking-wide">Claimable</p>
+          <div className="mb-4 flex items-start gap-3">
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+              userWon ? 'bg-cyan-400 text-black' : 'bg-pink-500/20 text-pink-300'
+            }`}>
+              {localClaimedAt ? <CheckCircle2 size={20} /> : userWon ? <Gift size={20} /> : <Trophy size={20} />}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className={`text-xs font-bold uppercase tracking-wide ${userWon ? 'text-cyan-400' : 'text-pink-400'}`}>
+                {winner === 'draw' ? 'Draw' : userWon ? 'You won' : 'You lost'}
+              </p>
+              <p className="mt-1 text-lg font-bold text-white">{localClaimedAt ? 'Reward claimed' : outcomeTitle}</p>
+              <p className="mt-1 text-sm leading-relaxed text-slate-400">{outcomeDescription}</p>
+            </div>
+          </div>
+
+          <p className="text-slate-400 text-xs uppercase tracking-wide">{localClaimedAt ? 'Claimed amount' : 'Claimable'}</p>
           <p className="text-white font-bold text-2xl">
             {userWon ? `$${displayClaimable.toFixed(2)} USDT` : '$0.00 USDT'}
           </p>
@@ -169,15 +188,22 @@ export default function MarketEnded({
                 : 'Only winning votes can claim.'}
           </p>
           {claimError && <p className="text-pink-300 text-sm mt-3">{claimError}</p>}
-          {userWon && !localClaimedAt && (
+          {hasClaimableReward && (
             <button
               onClick={handleClaim}
               disabled={claiming}
               className="mt-4 w-full rounded-2xl bg-cyan-400 py-3.5 text-sm font-bold text-black active:scale-95 transition disabled:opacity-60"
             >
-              {claiming ? 'Claiming...' : 'Claim winnings'}
+              {claiming ? 'Claiming...' : `Claim $${displayClaimable.toFixed(2)}`}
             </button>
           )}
+        </div>
+
+        <div className="mb-6 flex gap-3 rounded-xl border border-slate-800 bg-slate-900 p-4">
+          <Info size={18} className="mt-0.5 shrink-0 text-cyan-300" />
+          <p className="text-sm leading-relaxed text-slate-400">
+            Winners are decided by vote count. Pool size only affects how rewards are shared among the winning side.
+          </p>
         </div>
 
         <div className="mb-6 rounded-xl bg-slate-800 p-4">
